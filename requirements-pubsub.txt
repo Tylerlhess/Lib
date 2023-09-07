@@ -1,0 +1,8 @@
+### non python requirements
+## ipfs version 0.14.0 - 0.17.0
+
+setuptools==65.6.3 # 56.0.0
+
+## needed for Satori pubsub connection
+websocket-client==1.4.2 # not sure if we need this
+websockets==10.4 # import websocket; websocket.WebSocket()
