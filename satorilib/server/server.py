@@ -120,7 +120,7 @@ class SatoriServerClient(object):
         logging.debug('server version', j.get('versions', {}).get('server'))
         # use client version to know when to update the client
         logging.debug('client version', j.get('versions', {}).get('client'))
-        # from satoriserver.utils import Crypt
+        # from satoricentral.utils import Crypt
         # logging.debug('key', Crypt().decrypt(
         #    toDecrypt=j.get('key'),
         #    key='thiskeyisfromenv',
