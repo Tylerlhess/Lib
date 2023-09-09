@@ -25,11 +25,11 @@ def devicePayload(asDict=False):
     return json.dumps(payload)
 
 
-def getDisk(path: str = '/SatoriNeuron'):
+def getDisk(path: str = '/Satori/Neuron'):
     '''
     returns ints in gb total, used, free 
     since we know this will run in a docker container and probably be mounted
-    /SatoriNeuron or /SatoriNeuron/data represents the real disk of the host machine
+    /Satori/Neuron or /Satori/Neuron/data represents the real disk of the host machine
     '''
     # alt
     # free = (os.statvfs(path).f_bavail * os.statvfs(path).f_frsize) / 1024
