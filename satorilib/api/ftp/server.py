@@ -10,7 +10,7 @@ class FTPServer:
         self.address = (host, port)
         self.server = servers.FTPServer(self.address, handlers.FTPHandler)
         # Set a custom banner message
-        self.server.banner = "Welcome to My SatoriNode FTP Server"
+        self.server.banner = "Welcome to My SatoriNeuron FTP Server"
         # Set the username and password with read-only access
         self.handler = self.server.handler
         self.handler.authorizer.add_user(

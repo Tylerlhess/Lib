@@ -284,7 +284,7 @@ def fixConfig(configPath=None):
         return os.path.expanduser('~')
 
     def getConfigPath():
-        import satorinode.config as config
+        import satorineuron.config as config
         explicit = config.var('$IPFS_PATH') + '/config'
         if explicit != '/config':
             return explicit

@@ -16,6 +16,8 @@ from satorilib.api import hash
 from satorilib.api.interfaces.data import DataDiskApi
 from satorilib.api.interfaces.model import ModelDataDiskApi
 from satorilib.api.disk.utils import safetify, safetifyWithResult
+from satorilib.api.disk.model import ModelApi
+from satorilib.api.disk.wallet import WalletApi
 
 
 class Disk(DataDiskApi, ModelDataDiskApi):
@@ -376,7 +378,7 @@ class Disk(DataDiskApi, ModelDataDiskApi):
 
 
 '''
-from satorinode.lib.apis import disk
+from satorineuron.lib.apis import disk
 x = disk.Api(source='streamrSpoof', stream='simpleEURCleaned') 
 df = x.read()
 df

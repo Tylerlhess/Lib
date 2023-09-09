@@ -1,4 +1,4 @@
-# from .model import ModelApi
-# from .wallet import WalletApi
-# from .utils import safetify, safetifyWithResult
-# from .disk import Disk
+from satorilib.api.disk.model import ModelApi
+from satorilib.api.disk.wallet import WalletApi
+from satorilib.api.disk.utils import safetify, safetifyWithResult
+from satorilib.api.disk.disk import Disk
