@@ -139,7 +139,7 @@ class UDPTopic():
 class UDPManager():
     ''' manages connection to the rendezvous server and all our udp topics '''
 
-    def __init__(self, streamIds: list[StreamId]):
+    def __init__(self, streamIds: list[StreamId], signature: None, key: None):
         '''
         1. await - set up your connection to the rendezvous server
         2. tell the rendezvous server which streams you want to connect to
@@ -159,8 +159,8 @@ class UDPManager():
         ])
         self.rendezvous: UDPRendezvousConnection = UDPRendezvousConnection(
             messageCallback=self.handleRendezvousResponse,
-            signature=None,
-            key=None,
+            signature=signature,
+            key=key,
         )
         self.topics: dict[str, UDPTopic] = {}
         self.rendezvous.establish()
