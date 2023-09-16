@@ -39,7 +39,8 @@ class UDPRendezvousConnectionBase:
             '''
             while True:
                 data, addr = self.sock.recvfrom(1024)
-                print(data)
+                print('RECEIVED DATA')
+                print(data, addr)
                 try:
                     msgs = data.split(b'|')
                     if msgs[1] == b'beat':

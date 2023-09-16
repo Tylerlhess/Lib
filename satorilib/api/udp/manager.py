@@ -20,15 +20,22 @@ class UDPChannel():
     ''' manages a single connection between two nodes over UDP '''
 
     def __init__(self, streamId: StreamId, ip: str, port: int, localPort: int):
+        print(f'UDPChannel 1')
         self.streamId = streamId
+        print(f'UDPChannel 2')
         self.disk = Disk(self.streamId)
+        print(f'UDPChannel 3')
         self.connection = UDPConnection(
             peerIp=ip,
             peerPort=port,
             port=localPort,
             # todo: messageCallback= function to handle messages
         )
+        print(f'UDPChannel 4')
         self.messages: list[UDPMessage] = []
+        print(f'UDPChannel 5')
+        self.connect()
+        print(f'UDPChannel 6')
 
     def add(self, message: bytes, sent: bool, time: dt.datetime = None):
         self.messages.append(UDPMessage(sent, message, time))
@@ -103,6 +110,7 @@ class UDPTopic():
         return [channel for channel in self.channels if channel.isReady()]
 
     def create(self, ip: str, port: int, localPort: int):
+        print(f'CREATING: {ip}:{port},{localPort}')
         self.add(UDPChannel(self.streamId, ip, port, localPort))
 
     def add(self, channel: UDPChannel):
@@ -162,6 +170,10 @@ class UDPManager():
             signature=signature,
             key=key,
         )
+        # self.topics: dict[str, UDPTopic] = {
+        #    topic: UDPTopic(streamId)
+        #    for topic, streamId in self.streamIds
+        # }
         self.topics: dict[str, UDPTopic] = {}
         self.rendezvous.establish()
         self.sendTopics()
@@ -176,9 +188,13 @@ class UDPManager():
         this is called when we receive a message from the rendezvous server
         '''
         print('received: ', data, address)
-        data = data.decode().split()
+        data = data.decode().split('|')
         if data[0] == 'CONNECTION':
             try:
+                print('data[1]')
+                print(data[1])
+                print('self.topics.keys()')
+                print(self.topics.keys())
                 self.topics.get(data[1]).create(
                     ip=data[2],
                     port=int(data[3]),

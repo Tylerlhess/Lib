@@ -9,11 +9,13 @@ class UDPConnection:
     ''' raw connection functionality '''
 
     def __init__(self, port: int, peerPort: int, peerIp: str, messageCallback=None):
+        print(f'UDPConnection 1')
         self.port = port
         self.peerIp = peerIp
         self.peerPort = peerPort
         self.sock = None
         self.messageCallback = messageCallback or self.display
+        print(f'UDPConnection 2')
 
     def display(self, msg, addr):
         logging.info(f'from: {addr}, {msg}')
