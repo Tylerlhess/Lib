@@ -1,3 +1,4 @@
+from typing import Union
 import json
 import pandas as pd
 import datetime as dt
@@ -355,51 +356,72 @@ class StreamsOverview():
 
 class Observation:
 
-    def __init__(self, data: dict):
-        self.data = data
-        self.parse()
+    def __init__(self, raw, **kwargs):
+        self.raw = raw
+        self.value: Union[str, None] = None
+        self.data: Union[dict, None] = None
+        self.time: Union[str, None] = None
+        self.streamId: Union[StreamId, None] = None
+        self.observationId: Union[int, None] = None
+        self.df: pd.Union[DataFrame, None] = None
+        self.observationTime: Union[str, None] = None
+        self.target: Union[str, None] = None
+        for key, value in kwargs.items():
+            setattr(self, key, value)
 
-    def parse(self):
-        if (
-            isinstance(self.data, dict) and
-            set(self.data.keys()) == {'topic', 'data'}) or (
-            isinstance(self.data, str) and
-            '"topic":' in self.data and
-            '"data":' in self.data
+    @staticmethod
+    def parse(raw):
+        if (isinstance(raw, dict) and
+            'topic' in raw.keys() and
+            'data' in raw.keys()
+            ) or (
+            isinstance(raw, str) and
+            '"topic":' in raw and
+            '"data":' in raw
         ):
-            self.parseSatoriPubSub()
-        else:
-            self.parseBestGuess()
+            return self.fromTopic()
+        return self.fromGuess()
 
-    def parseSatoriPubSub(self):
+    @staticmethod
+    def fromTopic(raw):
         '''
-        {
+        this is the structur that hte Satori PubSub delivers data in: {
             'topic': '{"source": "satori", "author": "02a85fb71485c6d7c62a3784c5549bd3849d0afa3ee44ce3f9ea5541e4c56402d8", "stream": "WeatherBerlin", "target": "temperature"}',
             'data': 4.2}
         '''
-        if isinstance(self.data, str):
-            j = json.loads(self.data)
-        elif isinstance(self.data, dict):
-            j = self.data
-        self.topic = j.get('topic', None)
-        self.streamId = StreamId.fromTopic(self.topic)
-        self.observedTime = j.get('time', str(dt.datetime.utcnow()))
-        self.observationId = j.get('observation', None)
-        self.value = j.get('data', None)
-        self.target = None
-        self.df = pd.DataFrame(
+        if isinstance(raw, str):
+            j = json.loads(raw)
+        elif isinstance(raw, dict):
+            j = raw
+        topic = j.get('topic', None)
+        streamId = StreamId.fromTopic(topic)
+        observedTime = j.get('time', str(dt.datetime.utcnow()))
+        observationId = j.get('observation', None)
+        value = j.get('data', None)
+        target = None
+        df = pd.DataFrame(
             {
                 (
-                    self.streamId.source,
-                    self.streamId.author,
-                    self.streamId.stream,
-                    self.streamId.target):
-                [self.value] + (
-                    [('StreamObservationId', self.observationId)]
-                    if self.observationId is not None else [])},
-            index=[self.observedTime])
+                    streamId.source,
+                    streamId.author,
+                    streamId.stream,
+                    streamId.target):
+                [value] + (
+                    [('StreamObservationId', observationId)]
+                    if observationId is not None else [])},
+            index=[observedTime])
+        return Observation(
+            raw=raw,
+            topic=topic,
+            streamId=streamId,
+            observedTime=observedTime,
+            observationId=observationId,
+            value=value,
+            target=target,
+            df=df)
 
-    def parseBestGuess(self):
+    @staticmethod
+    def fromGuess(raw):
         ''' {
                 'source:"streamrSpoof",'
                 'author:"pubkey",'
@@ -412,55 +434,63 @@ class Observation:
                     'Close': 0.81512}}
             note: if observed-time is missing, define it here.
         '''
-        if isinstance(self.data, str):
-            j = json.loads(self.data)
-        elif isinstance(self.data, dict):
-            j = self.data
-        elif isinstance(self.data, tuple):
+        if isinstance(raw, str):
+            j = json.loads(raw)
+        elif isinstance(raw, dict):
+            j = raw
+        elif isinstance(raw, tuple):
             j = {}
-            for k, v in self.data:
+            for k, v in raw:
                 j[k] = v
         else:
-            j = self.data
-        self.observedTime = j.get('time', str(dt.datetime.utcnow()))
-        self.observationId = j.get('observation', None)
-        self.content = j.get('content', {})
-        self.streamId = StreamId(
+            j = raw
+        observedTime = j.get('time', str(dt.datetime.utcnow()))
+        observationId = j.get('observation', None)
+        content = j.get('content', {})
+        streamId = StreamId(
             source=j.get('source', None),
             author=j.get('author', None),
             stream=j.get('stream', None),
             target=j.get('target', None))
-        self.value = None
-        if isinstance(self.content, dict):
-            if len(self.content.keys()) == 1:
-                self.streamId.new(target=self.content.keys()[0])
-                self.value = self.content.get(self.streamId.target)
-            self.df = pd.DataFrame(
+        value = None
+        if isinstance(content, dict):
+            if len(content.keys()) == 1:
+                streamId.new(target=content.keys()[0])
+                value = content.get(streamId.target)
+            df = pd.DataFrame(
                 {
                     (
-                        self.streamId.source,
-                        self.streamId.author,
-                        self.streamId.stream,
+                        streamId.source,
+                        streamId.author,
+                        streamId.stream,
                         target): values
                     for target, values in list(
-                        self.content.items()) + (
-                            [('StreamObservationId', self.observationId)]
-                            if self.observationId is not None else [])},
-                index=[self.observedTime])
+                        content.items()) + (
+                            [('StreamObservationId', observationId)]
+                            if observationId is not None else [])},
+                index=[observedTime])
         # todo: handle list
-            # elif isinstance(self.content, list): ...
+            # elif isinstance(content, list): ...
         else:
-            self.value = self.content
-            self.df = pd.DataFrame(
+            value = content
+            df = pd.DataFrame(
                 {(
-                    self.streamId.source,
-                    self.streamId.author,
-                    self.streamId.stream,
+                    streamId.source,
+                    streamId.author,
+                    streamId.stream,
                     None): [
-                    self.content] + (
-                        [('StreamObservationId', self.observationId)]
-                        if self.observationId is not None else [])},
-                index=[self.observedTime])
+                    content] + (
+                        [('StreamObservationId', observationId)]
+                        if observationId is not None else [])},
+                index=[observedTime])
+        return Observation(
+            raw=raw,
+            content=content,
+            observedTime=observedTime,
+            observationId=observationId,
+            streamId=streamId,
+            value=value,
+            df=df)
 
     @property
     def key(self):
