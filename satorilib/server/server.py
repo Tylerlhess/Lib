@@ -100,7 +100,7 @@ class SatoriServerClient(object):
         r.raise_for_status()
         return r
 
-    def checkin(self):
+    def checkin(self) -> dict:
         r = requests.post(
             self.url + '/checkin',
             headers=self.wallet.authPayload(asDict=True),

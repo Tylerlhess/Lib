@@ -227,9 +227,9 @@ class Disk(DataDiskApi, ModelDataDiskApi):
         targetPath = self.path(aggregate, temp=temp)
         if aggregate:
             if (self.exists(aggregate, temp=temp) and (
-                time is None or (
-                            os.stat(targetPath).st_mtime < time and
-                            os.path.isfile(targetPath)))
+                    time is None or (
+                        os.stat(targetPath).st_mtime < time and
+                        os.path.isfile(targetPath)))
                 ):
                 try:
                     os.remove(targetPath)
@@ -280,7 +280,7 @@ class Disk(DataDiskApi, ModelDataDiskApi):
         df = df.drop('TempIndex', axis=1, level=0)
         return self.memory.dropDuplicates(df.sort_index())
 
-    def read(self, aggregate: bool = None, **kwargs):
+    def read(self, aggregate: bool = None, **kwargs) -> pd.DataFrame:
         ''' Layer 1
         reads a parquet file with filtering, use columns=[targets].
         adds on the stream as first level in multiindex column on dataframe.
@@ -299,7 +299,7 @@ class Disk(DataDiskApi, ModelDataDiskApi):
             return self.readBoth(**kwargs)
         if not self.exists(aggregate):
             return None
-        rdf = pq.read_table(self.path(aggregate)).to_pandas()
+        rdf: pd.DataFrame = pq.read_table(self.path(aggregate)).to_pandas()
         # if column is 'value' make it the target so we can merge.
         cols = rdf.columns
         if len(cols) == 1 and cols == 'value':
@@ -307,6 +307,45 @@ class Disk(DataDiskApi, ModelDataDiskApi):
         rdf.columns = pd.MultiIndex.from_product(
             [[source], [author], [stream], cols])
         return rdf.sort_index()
+
+    # not possible, even using read_row_group is weird because its like 128-1gb
+    # chunks at a time... so if we ever do anything with that we'll do it later.
+    # def readOneRowFromAggregate(self, rowNumber=0):
+    #    ''' just read in the values without messing with columns '''
+    #    return (
+    #        pq.ParquetFile(self.path(aggregate=True))
+    #        .read_row(row_number=rowNumber))
+
+    def timeExistsInAggregate(self, time: str) -> bool:
+        '''example: 
+        >>> '2023-05-31 18:13:46.309658' in (pq
+            .ParquetFile('../mt8n5T6TF2H2qQLp-6aQQTnoGYs=/aggregate.parquet')
+            .read(columns=['__index_level_0__'])
+            .to_pandas().index)
+        '''
+        return time in (
+            pq
+            .ParquetFile(self.path(aggregate=True))
+            .read(columns=['__index_level_0__'])
+            .to_pandas().index)
+
+    def readRowCounts(self, aggregate: bool = None) -> int:
+        ''' returns number of rows in incremental and aggregate tables '''
+        if aggregate is None:
+            return (
+                self.readRowCounts(aggregate=False) +
+                self.readRowCounts(aggregate=True))
+        elif aggregate:
+            try:
+                return (
+                    pq.ParquetFile(self.path(aggregate=True)).metadata.num_rows)
+            except Exception as _:
+                return 0
+        else:
+            try:
+                return self.read(aggregate=False).shape[0]
+            except Exception as _:
+                return 0
 
     def savePrediction(self, path: str = None, prediction: str = None):
         ''' Layer 1 - saves prediction to disk '''
