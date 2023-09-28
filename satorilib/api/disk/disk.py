@@ -227,10 +227,10 @@ class Disk(DataDiskApi, ModelDataDiskApi):
         targetPath = self.path(aggregate, temp=temp)
         if aggregate:
             if (self.exists(aggregate, temp=temp) and (
-                    time is None or (
-                        os.stat(targetPath).st_mtime < time and
-                        os.path.isfile(targetPath)))
-                ):
+                        time is None or (
+                            os.stat(targetPath).st_mtime < time and
+                            os.path.isfile(targetPath)))
+                    ):
                 try:
                     os.remove(targetPath)
                 except FileNotFoundError as e:
@@ -329,12 +329,12 @@ class Disk(DataDiskApi, ModelDataDiskApi):
             .read(columns=['__index_level_0__'])
             .to_pandas().index)
 
-    def readRowCounts(self, aggregate: bool = None) -> int:
+    def getRowCounts(self, aggregate: bool = None) -> int:
         ''' returns number of rows in incremental and aggregate tables '''
         if aggregate is None:
             return (
-                self.readRowCounts(aggregate=False) +
-                self.readRowCounts(aggregate=True))
+                self.getRowCounts(aggregate=False) +
+                self.getRowCounts(aggregate=True))
         elif aggregate:
             try:
                 return (
@@ -374,46 +374,49 @@ class Disk(DataDiskApi, ModelDataDiskApi):
                 targetColumn=targetColumn)
         return self.read()
 
-    def lastRowStringBefore(self, streamId: StreamId, timestamp: str) -> Union[Tuple[str, str], None]:
-        """
-        Opens a parquet file and returns the latest row before a given timestamp.
-
-        Parameters:
-            streamId (StreamId): used to define path to the parquet file.
-            timestamp (str or pd.Timestamp): The target timestamp to find the latest row before.
-
-        Returns:
-            str or None: The latest row before the target timestamp, or None if no matching row is found.
-        """
-        def rowToString(row: pd.Series):
-            return row.name, row.values[0]
-
-        def singleRowToString(row: pd.DataFrame):
-            return row.index[0], row.values[0]
-
-        # is this even necessary?
-        # if not isinstance(timestamp, pd.Timestamp):
-        #    timestamp = pd.Timestamp(timestamp)
-
-        # try to get it from the incrementals first
-        df = self.read(aggregate=False)
-        maxTimestampBefore = df.index[df.index < timestamp].max()
-        if str(maxTimestampBefore) != 'nan':
-            return singleRowToString(df.loc[df.index == maxTimestampBefore])
-        # if not found in incrementals, try to get it from the aggregate:
-        filterCondition = ('__index_level_0__', '<', f'{timestamp}')
-        table = pq.read_table(
-            self.path(streamId),
-            filters=[filterCondition],
-            use_pandas_metadata=True)
-        # If no rows are found, return None
-        if len(table) == 0:
-            return None
-        # maybe this solution can be used to get it directly from disk, but no.
-        # batch = next(pf.iter_batches(batch_size = 1))
-        # row = pa.Table.from_batches([batch]).to_pandas()
-        df = table.to_pandas()
-        return rowToString(df.loc[df.index.max()])  # series
+    # # this is not good. we don't want to open the file from disk every time we
+    # # are quiried. instead, just keep it in memory (either in the engine data
+    # # manager or in the rendezvous topic) and pull it from there on demand.
+    # def lastRowStringBefore(self, streamId: StreamId, timestamp: str) -> Union[Tuple[str, str], None]:
+    #    """
+    #    Opens a parquet file and returns the latest row before a given timestamp.
+    #
+    #    Parameters:
+    #        streamId (StreamId): used to define path to the parquet file.
+    #        timestamp (str or pd.Timestamp): The target timestamp to find the latest row before.
+    #
+    #    Returns:
+    #        str or None: The latest row before the target timestamp, or None if no matching row is found.
+    #    """
+    #    def rowToString(row: pd.Series):
+    #        return row.name, row.values[0]
+    #
+    #    def singleRowToString(row: pd.DataFrame):
+    #        return row.index[0], row.values[0]
+    #
+    #    # is this even necessary?
+    #    # if not isinstance(timestamp, pd.Timestamp):
+    #    #    timestamp = pd.Timestamp(timestamp)
+    #
+    #    # try to get it from the incrementals first
+    #    df = self.read(aggregate=False)
+    #    maxTimestampBefore = df.index[df.index < timestamp].max()
+    #    if str(maxTimestampBefore) != 'nan':
+    #        return singleRowToString(df.loc[df.index == maxTimestampBefore])
+    #    # if not found in incrementals, try to get it from the aggregate:
+    #    filterCondition = ('__index_level_0__', '<', f'{timestamp}')
+    #    table = pq.read_table(
+    #        self.path(streamId),
+    #        filters=[filterCondition],
+    #        use_pandas_metadata=True)
+    #    # If no rows are found, return None
+    #    if len(table) == 0:
+    #        return None
+    #    # maybe this solution can be used to get it directly from disk, but no.
+    #    # batch = next(pf.iter_batches(batch_size = 1))
+    #    # row = pa.Table.from_batches([batch]).to_pandas()
+    #    df = table.to_pandas()
+    #    return rowToString(df.loc[df.index.max()])  # series
 
 
 '''
