@@ -44,19 +44,19 @@ class Wallet():
         return self
 
     def __repr__(self):
-        return f'''Wallet(
-    publicKey: {self.publicKey}
-    privateKey: {self.privateKey}
-    words: {self.words}
-    address: {self.address}
-    scripthash: {self.scripthash}
-    balance: {self.balance}
-    stats: {self.stats}
-    banner: {self.banner})'''
+        return (
+            'Wallet('
+            f'\n\tpublicKey: {self.publicKey},'
+            f'\n\tprivateKey: {self.privateKey},'
+            f'\n\twords: {self.words},'
+            f'\n\taddress: {self.address},'
+            f'\n\tscripthash: {self.scripthash},'
+            f'\n\tbalance: {self.balance},'
+            f'\n\tstats: {self.stats},'
+            f'\n\tbanner: {self.banner})')
 
     def authPayload(self, asDict: bool = False, challenge: str = None):
         payload = connection.authPayload(self, challenge)
-        print('AUTH PAYLOAD PAYLOAD: --- ', payload)
         if asDict:
             return payload
         return json.dumps(payload)
