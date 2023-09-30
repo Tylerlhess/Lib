@@ -26,6 +26,8 @@ class SatoriServerClient(object):
 
     def registerStream(self, stream: dict, payload: str = None):
         ''' publish stream {'source': 'test', 'name': 'stream1', 'target': 'target'}'''
+        logging.debug('\nregisterSubscription',
+                      payload or json.dumps(stream))
         r = requests.post(
             self.url + '/register/stream',
             headers=self.wallet.authPayload(asDict=True),

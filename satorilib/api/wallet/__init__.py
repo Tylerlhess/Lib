@@ -72,7 +72,6 @@ class Wallet():
     def init(self):
         ''' try to load, else generate and save '''
         if self.load():
-            logging.debug('regenerate')
             self.regenerate()
         else:
             self.generate()
