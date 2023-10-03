@@ -379,8 +379,8 @@ class Observation:
             '"topic":' in raw and
             '"data":' in raw
         ):
-            return self.fromTopic()
-        return self.fromGuess()
+            return Observation.fromTopic(raw)
+        return Observation.fromGuess(raw)
 
     @staticmethod
     def fromTopic(raw):
