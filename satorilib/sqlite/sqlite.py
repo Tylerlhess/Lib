@@ -1,4 +1,5 @@
 import os
+from typing import Union
 import pandas as pd
 import sqlite3
 from . import sql_io
@@ -60,7 +61,7 @@ class Sqlite:
     def execute(
         self,
         query: str = None,
-        params: list[str] | tuple[str, ...] | dict[str, str] | None = None,
+        params: Union[list[str], tuple[str, ...], dict[str, str], None] = None,
         data: pd.DataFrame = None,
         table: str = None,
     ):
@@ -85,7 +86,7 @@ class Sqlite:
         self,
         query: str = None,
         table: str = None,
-        params: list[str] | tuple[str, ...] | dict[str, str] | None = None,
+        params: Union[list[str], tuple[str, ...], dict[str, str], None] = None,
     ):
         if query:
             return sql_io.read(
@@ -106,7 +107,7 @@ class Sqlite:
     def write(
         self,
         query: str,
-        params: list[str] | tuple[str, ...] | dict[str, str] | None = None,
+        params: Union[list[str], tuple[str, ...], dict[str, str], None] = None,
     ):
         return sql_io.write(
             lock=self.lock,
