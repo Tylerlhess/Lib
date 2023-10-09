@@ -3,6 +3,7 @@ import json
 import pandas as pd
 import datetime as dt
 from functools import partial
+from satorilib.api.hash import generatePathId
 
 
 class StreamId:
@@ -134,6 +135,10 @@ class StreamId:
             self.__author +
             self.__stream +
             (self.__target or ''))
+
+    @property
+    def generateHash(self) -> str:
+        return generatePathId(streamId=self)
 
     @property
     def key(self):

@@ -2,6 +2,7 @@ from functools import reduce
 import pandas as pd
 import warnings
 from satorilib import logging
+from satorilib.concepts import StreamId
 from satorilib.api.interfaces.memory import DiskMemory
 from satorilib.api.interfaces.model import ModelMemoryApi
 
@@ -9,6 +10,18 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 
 
 class Memory(ModelMemoryApi, DiskMemory):
+
+    @staticmethod
+    def expand(df: pd.DataFrame, streamId: StreamId) -> pd.DataFrame:
+        ''' makes a flat dataframe into a multilayered column dataframe '''
+        if 'hash' in df.columns:
+            df.drop(columns='hash', inplace=True)
+        cols = df.columns
+        if len(cols) == 1 and cols == 'value':
+            cols = [streamId.target]
+        df.columns = pd.MultiIndex.from_product(
+            [[streamId.source], [streamId.author], [streamId.stream], cols])
+        return df.sort_index()
 
     @staticmethod
     def mergeAllTime(dfs: list[pd.DataFrame]):

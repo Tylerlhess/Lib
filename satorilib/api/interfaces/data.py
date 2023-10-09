@@ -1,42 +1,19 @@
-import pandas as pd
-from satorilib.concepts import StreamId
+from abc import ABC, abstractmethod
 
 
-class DataDiskApi():
+class FileManager(ABC):
+    @abstractmethod
+    def read(self, filePath: str):
+        pass
 
-    def setAttributes(
-        self,
-        df: pd.DataFrame = None,
-        id: StreamId = None,
-        loc: str = None,
-        ext: str = 'parquet',
-        **kwargs,
-    ):
-        ''' setter for any and all attributes, like __init__ returns self '''
+    @abstractmethod
+    def write(self, filePath: str, data):
+        pass
 
-    def incrementals(self):
-        ''' Layer 0 '''
+    @abstractmethod
+    def append(self, filePath: str, data):
+        pass
 
-    def append(self, df: pd.DataFrame = None):
-        ''' Layer 1
-        writes a dataframe to a parquet file.
-        must remove multiindex column first.
-        must use write_to_dataset rather than write_to_table to support append.
-        streamId is the name of file.
-        '''
-
-    def compress(self):
-        ''' Layer 1
-        assumes columns are always the same...
-        this function is used on rare occasion to compress the on disk 
-        incrementally saved data to long term storage. The compressed
-        table takes up less room than the dataset because the dataset
-        is partitioned into many files, allowing us to easily append
-        to it. So we normally append observations to the dataset, and
-        occasionally, like daily or weekly, run this compress function
-        to save it to long term storage. We can still query long term
-        storage the same way.
-        '''
-
-    def savePrediction(self, path: str = None, prediction: str = None):
-        ''' Layer 1 - saves prediction to disk '''
+    @abstractmethod
+    def readLine(self, filePath: str, lineNumber: int):
+        pass
