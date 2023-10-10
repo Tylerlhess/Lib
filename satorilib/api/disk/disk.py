@@ -54,26 +54,10 @@ class Disk(ModelDataDiskApi):
         self.ext = ext
         return self
 
-    def safetify(self, path: str):
-        path, created = safetifyWithResult(path)
-        if created:
-            self.saveName()
-        return path
+    def setId(self, id: StreamId = None):
+        self.id = id
 
-    def saveHashes(self, df: pd.DataFrame):
-        ''' saves them all to disk '''
-        df.to_csv(self.path(filename='hashes'))
-
-    def readHashes(self) -> pd.DataFrame:
-        ''' returns hashes from disk (only of aggregate) '''
-        return pd.read_csv(self.path(filename='hashes'))
-
-    def readAllHashes(self):
-        ''' returns hashes from disk (aggregate and generates incrementals) '''
-        return self.memory.dropDuplicates(pd.merge(
-            hash.historyHashes(self.read(aggregate=False)),
-            self.readHashes(),
-            how='outer', left_index=True, right_index=True).sort_index())
+    ### passthru ###
 
     @staticmethod
     def defaultModelPath(streamId: StreamId):
@@ -110,8 +94,13 @@ class Disk(ModelDataDiskApi):
     def getModelSize(modelPath: str = None):
         return ModelApi.getModelSize(modelPath)
 
-    def setId(self, id: StreamId = None):
-        self.id = id
+    ### helpers ###
+
+    def safetify(self, path: str):
+        path, created = safetifyWithResult(path)
+        if created:
+            self.saveName()
+        return path
 
     def path(self, filename: str = None):
         '''
@@ -133,37 +122,50 @@ class Disk(ModelDataDiskApi):
     def exists(self, filename: str = None):
         return os.path.exists(self.path(filename=filename))
 
-    def reduceMulti(self, df: pd.DataFrame):
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.droplevel()  # source
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.droplevel()  # author
-        if isinstance(df.columns, pd.MultiIndex):
-            df.columns = df.columns.droplevel()  # stream
-        # if isinstance(df.columns, pd.MultiIndex):
-        #    df.columns = df.columns.droplevel()  # target
-        return df
+    ### write ###
 
-    def saveName(self):
+    def saveHashes(self, df: pd.DataFrame = None) -> bool:
+        ''' saves them all to disk '''
+        return self.write(hash.historyHashes(df or self.read()))
+
+    def saveName(self) -> bool:
         ''' writes a readme.md file to disk describing dataset '''
         with open(self.path(filename='readme.md'), mode='w+') as f:
             file_data = f.read()
             if not file_data:
                 f.write(self.id.topic())
+                return True
+        return False
 
-    def remove(self):
+    def savePrediction(self, path: str = None, prediction: str = None):
+        ''' saves prediction to disk '''
+        # todo: we probably should save the predictions to the actual dataset
+        #       we can easily parse them out if we use parquet
+        #       it's not too much overhead if we use csv
+        #       so they should go on the actaul dataset.
+        safetify(path)
+        with open(path, 'a') as f:
+            f.write(prediction)
+
+    def write(self, df: pd.DataFrame = None) -> bool:
+        return self.csv.write(
+            data=self.memory.flatten(df),
+            filePath=self.path())
+
+    def append(self, df: pd.DataFrame = None) -> bool:
+        return self.csv.append(
+            data=self.memory.flatten(df),
+            filePath=self.path())
+
+    def remove(self) -> Union[bool, None]:
         self.csv.remove(filePath=self.path())
+
+    ### read ###
 
     def read(self) -> Union[pd.DataFrame, None]:
         if not self.exists():
             return None
         return self.csv.read(filePath=self.path())
-
-    def append(self, df: pd.DataFrame = None):
-        self.csv.append(data=df, filePath=self.path())
-
-    def write(self, df: pd.DataFrame = None):
-        self.csv.write(data=df, filePath=self.path())
 
     def timeExistsInAggregate(self, time: str) -> bool:
         return time in self.read().index
@@ -175,36 +177,33 @@ class Disk(ModelDataDiskApi):
         except Exception as _:
             return 0
 
-    def savePrediction(self, path: str = None, prediction: str = None):
-        ''' saves prediction to disk '''
-        safetify(path)
-        with open(path, 'a') as f:
-            f.write(prediction)
-
     def gather(
         self,
         targetColumn: 'str|tuple[str]',
         streamIds: list[StreamId] = None,
     ) -> pd.DataFrame:
         ''' retrieves the targets and merges them '''
-        def filterNone(items: list):
-            return [x for x in items if x is not None]
-
         if streamIds is None:
-            return self.read()
-
-        # todo:
-        # memory.expand
-        # source = self.id.source or self.df.columns.levels[0]
-        # author = self.id.author or self.df.columns.levels[1]
-        # stream = self.id.stream or self.df.columns.levels[2]
-        # try:
-        #    target = self.id.target or self.df.columns.levels[3]
-        # except AttributeError:
-        #    logging.debug('no target. thats cool?')
-        # if column is 'value' make it the target so we can merge.
-        return self.memory.merge(
-            dfs=filterNone([
-                Disk(id=streamId).read()
-                for streamId in streamIds]),
-            targetColumn=targetColumn)
+            source = self.id.source or self.df.columns.levels[0]
+            author = self.id.author or self.df.columns.levels[1]
+            stream = self.id.stream or self.df.columns.levels[2]
+            try:
+                target = self.id.target or self.df.columns.levels[3]
+            except AttributeError:
+                target = None
+            streamId = StreamId(
+                source=source,
+                author=author,
+                stream=stream,
+                target=target)
+            df = self.read()
+            if df is None:
+                return None
+            return self.memory.expand(df=df, streamId=streamId)
+        dfs = []
+        for streamId in streamIds:
+            df = Disk(id=streamId).read()
+            if df is None:
+                continue
+            dfs.append(self.memory.expand(df=df, streamId=streamId))
+        return self.memory.merge(dfs=dfs, targetColumn=targetColumn)

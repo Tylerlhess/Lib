@@ -38,9 +38,9 @@ class CSVManager(FileManager):
         try:
             os.remove(filePath)
             return True
-        except FileNotFoundError as e:
+        except FileNotFoundError as _:
             return None
-        except Exception as e:
+        except Exception as _:
             return False
         return False
 
@@ -48,20 +48,30 @@ class CSVManager(FileManager):
         return self._clean(self._conformBasic(pd.read_csv(filePath, index_col=0)))
 
     def write(self, filePath: str, data: pd.DataFrame) -> bool:
-        data.to_csv(filePath)
-        return True
+        try:
+            data.to_csv(filePath)
+            return True
+        except Exception as _:
+            return False
 
     def append(self, filePath: str, data: pd.DataFrame) -> bool:
-        data.to_csv(filePath, mode='a', header=False)
-        return True
+        try:
+            data.to_csv(filePath, mode='a', header=False)
+            return True
+        except Exception as _:
+            return False
 
-    def readLine(self, filePath: str, lineNumber: int):
+    def readLine(self, filePath: str, lineNumber: int) -> Union[pd.DataFrame, None]:
         ''' 0-indexed '''
-        return self._conformBasic(pd.read_table(
-            filePath,
-            sep=",",
-            index_col=0,
-            skiprows=lineNumber,
-            # skipfooter=lineNumber+1, # slicing is faster; since using c engine
-            # engine='python', # required for skipfooter
-        ).iloc[[0]])
+        try:
+            return self._conformBasic(pd.read_table(
+                filePath,
+                sep=",",
+                index_col=0,
+                skiprows=lineNumber,
+                # skipfooter=lineNumber+1, # slicing is faster; since using c engine
+                # engine='python', # required for skipfooter
+            ).iloc[[0]])
+        except Exception as _:
+            return None
+

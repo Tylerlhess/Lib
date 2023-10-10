@@ -19,11 +19,15 @@ def generatePathId(path: str = None, streamId: 'StreamId' = None):
 
 
 def historyHashes(df: pd.DataFrame, priorRowHash: str = '') -> pd.DataFrame:
-    ''' creates hashes of every row in the dataframe using MD5'''
+    ''' creates hashes of every row in the dataframe based on prior hash '''
     rowHashes = []
     for index, row in df.iterrows():
-        rowStr = priorRowHash + str(index) + str(row)
-        rowHash = hashlib.md5(rowStr.encode()).hexdigest()
+        rowStr = priorRowHash + str(index) + str(row['value'])
+        # rowHash = hashlib.sha256(rowStr.encode()).hexdigest() # 74mb
+        # rowHash = hashlib.md5(rowStr.encode()).hexdigest() # 42mb
+        rowHash = hashlib.blake2s(
+            rowStr.encode(),
+            digest_size=8).hexdigest()  # 27mb / million rows
         rowHashes.append(rowHash)
         priorRowHash = rowHash
     df['hash'] = rowHashes

@@ -12,6 +12,25 @@ warnings.simplefilter(action='ignore', category=FutureWarning)
 class Memory(ModelMemoryApi, DiskMemory):
 
     @staticmethod
+    def flatten(df: pd.DataFrame):
+        '''
+        on disk we store dataframes as flat, with an index, and 
+        [value, hash, prediction] columns, but in memory we always combine 
+        datasets into one multi-columned dataframe, so we need to flatten the
+        dataframe before saving to disk
+        '''
+
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.droplevel()  # source
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.droplevel()  # author
+        if isinstance(df.columns, pd.MultiIndex):
+            df.columns = df.columns.droplevel()  # stream
+        # if isinstance(df.columns, pd.MultiIndex):
+        #    df.columns = df.columns.droplevel()  # target
+        return df
+
+    @staticmethod
     def expand(df: pd.DataFrame, streamId: StreamId) -> pd.DataFrame:
         ''' makes a flat dataframe into a multilayered column dataframe '''
         if 'hash' in df.columns:
