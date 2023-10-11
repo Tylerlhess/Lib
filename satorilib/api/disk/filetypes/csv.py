@@ -8,13 +8,13 @@ class CSVManager(FileManager):
     ''' manages reading and writing to CSV files usind pandas '''
 
     def _conformBasic(self, df: pd.DataFrame) -> pd.DataFrame:
-        return self._conformIndexName(self._conformFlatColumns(df))
+        return self._conformIndexName(self.conformFlatColumns(df))
 
     def _conformIndexName(self, df: pd.DataFrame) -> pd.DataFrame:
         df.index.name = None
         return df
 
-    def _conformFlatColumns(self, df: pd.DataFrame) -> pd.DataFrame:
+    def conformFlatColumns(self, df: pd.DataFrame) -> pd.DataFrame:
         if len(df.columns) == 1:
             df.columns = ['value']
         if len(df.columns) == 2:
@@ -44,7 +44,7 @@ class CSVManager(FileManager):
             return False
         return False
 
-    def read(self, filePath: str) -> pd.DataFrame:
+    def read(self, filePath: str, **kwargs) -> pd.DataFrame:
         return self._clean(self._conformBasic(pd.read_csv(filePath, index_col=0)))
 
     def write(self, filePath: str, data: pd.DataFrame) -> bool:
@@ -61,17 +61,24 @@ class CSVManager(FileManager):
         except Exception as _:
             return False
 
-    def readLine(self, filePath: str, lineNumber: int) -> Union[pd.DataFrame, None]:
+    def readLines(
+        self,
+        filePath: str,
+        start: int,
+        end: int = None,
+    ) -> Union[pd.DataFrame, None]:
         ''' 0-indexed '''
+        end = (end if end > start else None) or start+1
+        capture = end - start - 1
         try:
-            return self._conformBasic(pd.read_table(
+            df = self._conformBasic(pd.read_table(
                 filePath,
                 sep=",",
                 index_col=0,
-                skiprows=lineNumber,
-                # skipfooter=lineNumber+1, # slicing is faster; since using c engine
+                skiprows=start,
+                # skipfooter=end, # slicing is faster; since using c engine
                 # engine='python', # required for skipfooter
-            ).iloc[[0]])
+            ))
+            return df.iloc[[capture]] if capture == 0 else df.iloc[0:capture+1]
         except Exception as _:
             return None
-

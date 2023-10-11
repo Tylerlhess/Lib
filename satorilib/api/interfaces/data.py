@@ -15,5 +15,5 @@ class FileManager(ABC):
         pass
 
     @abstractmethod
-    def readLine(self, filePath: str, lineNumber: int):
+    def readLines(self, filePath: str, start: int, end: int):
         pass
