@@ -80,10 +80,15 @@ def getProcessorUsageOverTime(seconds: int):
 def directorySize(path):
     ''' returns total size of directory in bytes '''
     totalSize = 0
-    with os.scandir(path) as it:
-        for entry in it:
-            if entry.is_file():
-                totalSize += entry.stat().st_size
-            elif entry.is_dir():
-                totalSize += directorySize(entry.path)
+    if not os.path.exists(path):
+        return totalSize
+    if os.path.isfile(path):
+        return os.path.getsize(path)
+    if os.path.isdir(path):
+        with os.scandir(path) as it:
+            for entry in it:
+                if entry.is_file():
+                    totalSize += entry.stat().st_size
+                elif entry.is_dir():
+                    totalSize += directorySize(entry.path)
     return totalSize

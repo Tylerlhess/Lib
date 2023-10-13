@@ -29,7 +29,7 @@ class Disk(ModelDataDiskApi):
         df: pd.DataFrame = None,
         id: StreamId = None,
         loc: str = None,
-        ext: str = 'parquet',
+        ext: str = 'csv',
         **kwargs,
     ):
         self.memory = memory.Memory
@@ -42,7 +42,7 @@ class Disk(ModelDataDiskApi):
         df: pd.DataFrame = None,
         id: StreamId = None,
         loc: str = None,
-        ext: str = 'parquet',
+        ext: str = 'csv',
         **kwargs,
     ):
         self.df = df if df is not None else pd.DataFrame()
@@ -100,6 +100,11 @@ class Disk(ModelDataDiskApi):
     def clearCache(self):
         self.cache = {}
 
+    def addToCacheCount(self, count: int):
+        if 'count' not in self.cache.keys():
+            self.cache['count'] = 0
+        self.updateCacheCount(self.cache['count'] + count)
+
     def updateCacheCount(self, count: int):
         self.cache['count'] = count
 
@@ -128,7 +133,7 @@ class Disk(ModelDataDiskApi):
 
     def searchCache(self, time: str) -> tuple[int, int]:
         before = 0
-        after = self.cache['count']*2
+        after = self.cache['count'] * 2
         for k, v in self.cache.items():
             if k == time:
                 return v, v
@@ -154,7 +159,7 @@ class Disk(ModelDataDiskApi):
         entire folder as the ipfs hash for the datastream.
         path lengths should about 170 characters long typically. for examples:
         C:\\Users\\user\\AppData\\Local\\Satori\\models\\qZk-NkcGgWq6PiVxeFDCbJzQ2J0=.joblib
-        C:\\Users\\user\\AppData\\Local\\Satori\\data\\qZk-NkcGgWq6PiVxeFDCbJzQ2J0=\\aggregate.parquet
+        C:\\Users\\user\\AppData\\Local\\Satori\\data\\qZk-NkcGgWq6PiVxeFDCbJzQ2J0=\\aggregate.csv
         C:\\Users\\user\\AppData\\Local\\Satori\\data\\qZk-NkcGgWq6PiVxeFDCbJzQ2J0=\\incrementals\\6c0a15fcfa1c4535ab1da046cc1b5dc8.parquet
         '''
         return (
@@ -207,10 +212,12 @@ class Disk(ModelDataDiskApi):
         if df.shape[0] == 0:
             return False
         # assumes no duplicates...
-        self.updateCacheCount(self.cache['count'] + df.shape[0])
+        self.addToCacheCount(df.shape[0])
         return self.csv.append(
             filePath=self.path(),
-            data=self.hashDataFrame(df, priorRowHash=self.getLastHash()))
+            data=self.hashDataFrame(
+                df=df,
+                priorRowHash=self.getLastHash()))
 
     def remove(self) -> Union[bool, None]:
         self.csv.remove(filePath=self.path())
@@ -241,15 +248,18 @@ class Disk(ModelDataDiskApi):
     def getLastHash(self) -> Union[str, None]:
         ''' gets the hash of the observation at the given time '''
         def getLastHashFromFull():
-            df = hash.historyHashes(self.read())
+            df = self.read()
+            if df is None or df.shape[0] == 0:
+                return None
+            df = hash.historyHashes(df)
             return df.iloc[df.shape[0]-1].hash
 
         count = self.cache.get('count')
         if count is None:
             return getLastHashFromFull()
-        series = self.read(start=count-1)
-        if 'hash' in series:
-            return series.hash
+        df = self.read(start=count-1)
+        if df is not None and 'hash' in df:
+            return df.hash.values[0]
         return getLastHashFromFull()
 
     def getHashOf(self, time: str) -> Union[str, None]:
@@ -257,7 +267,7 @@ class Disk(ModelDataDiskApi):
         before, after = self.searchCache(time)
         if before == after:
             series = self.read(start=before).iloc[0]
-            if 'hash' in series:
+            if series is not None and 'hash' in series:
                 return series.hash
             return None
         df = self.read(start=before, end=after)
@@ -270,13 +280,13 @@ class Disk(ModelDataDiskApi):
 
         def getTheHash(df):
 
-            def getRowBeforeTime(df: pd.DataFrame, target_time: str) -> Union[pd.Series, None]:
-                timeBeforeTarget = df[df.index < target_time].index.max()
+            def getRowBeforeTime(df: pd.DataFrame, targetTime: str) -> Union[pd.Series, None]:
+                timeBeforeTarget = df[df.index < targetTime].index.max()
                 if timeBeforeTarget is not pd.NaT:
                     return df.loc[timeBeforeTarget]
                 return None
 
-            if 'hash' not in df:
+            if df is not None and 'hash' not in df:
                 row = getRowBeforeTime(df, time)
                 if row is not None:
                     return row.hash
@@ -285,7 +295,7 @@ class Disk(ModelDataDiskApi):
         before, after = self.searchCache(time)
         if before == after:
             series = self.read(start=before-1).iloc[0]
-            if 'hash' in series:
+            if series is not None and 'hash' in series:
                 return series.hash
         else:
             theHash = getTheHash(self.read(start=before, end=after))
@@ -298,8 +308,8 @@ class Disk(ModelDataDiskApi):
 
         def getTheRow(df):
 
-            def getRowBeforeTime(df: pd.DataFrame, target_time: str) -> Union[pd.Series, None]:
-                timeBeforeTarget = df[df.index < target_time].index.max()
+            def getRowBeforeTime(df: pd.DataFrame, targetTime: str) -> Union[pd.Series, None]:
+                timeBeforeTarget = df[df.index < targetTime].index.max()
                 if timeBeforeTarget is not pd.NaT:
                     return df.loc[[timeBeforeTarget]]
                 return None
@@ -326,27 +336,23 @@ class Disk(ModelDataDiskApi):
         streamIds: list[StreamId] = None,
     ) -> pd.DataFrame:
         ''' retrieves the targets and merges them '''
-        if streamIds is None:
-            source = self.id.source or self.df.columns.levels[0]
-            author = self.id.author or self.df.columns.levels[1]
-            stream = self.id.stream or self.df.columns.levels[2]
-            try:
-                target = self.id.target or self.df.columns.levels[3]
-            except AttributeError:
-                target = None
-            streamId = StreamId(
-                source=source,
-                author=author,
-                stream=stream,
-                target=target)
-            df = self.read()
-            if df is None:
-                return None
-            return self.memory.expand(df=df, streamId=streamId)
+        streamIds = streamIds or [
+            self.id or
+            StreamId(
+                source=self.df.columns.levels[0],
+                author=self.df.columns.levels[1],
+                stream=self.df.columns.levels[2],
+                target=(
+                    self.df.columns.levels[3]
+                    if len(self.df.columns.levels) == 4 else None))]
         dfs = []
         for streamId in streamIds:
-            df = Disk(id=streamId).read()
+            df = (self if streamId == self.id else Disk(id=streamId)).read()
             if df is None:
                 continue
             dfs.append(self.memory.expand(df=df, streamId=streamId))
+        if len(dfs) == 0:
+            return None
+        if len(dfs) == 1:
+            return dfs[0]
         return self.memory.merge(dfs=dfs, targetColumn=targetColumn)

@@ -68,7 +68,7 @@ class CSVManager(FileManager):
         end: int = None,
     ) -> Union[pd.DataFrame, None]:
         ''' 0-indexed '''
-        end = (end if end > start else None) or start+1
+        end = (end if end is not None and end > start else None) or start+1
         capture = end - start - 1
         try:
             df = self._conformBasic(pd.read_table(

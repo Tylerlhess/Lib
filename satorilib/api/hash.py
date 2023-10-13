@@ -9,7 +9,7 @@ import pandas as pd
 
 def generatePathId(path: str = None, streamId: 'StreamId' = None):
     hasher = hashlib.sha1((path or streamId.idString).encode('utf-8'))
-    removals = r'\/:*?"<>|'
+    removals = r'\/:*?"<>|=-'
     ret = base64.urlsafe_b64encode(hasher.digest())
     ret = ret.decode("utf-8")
     for char in removals:
@@ -18,8 +18,9 @@ def generatePathId(path: str = None, streamId: 'StreamId' = None):
     return ret
 
 
-def historyHashes(df: pd.DataFrame, priorRowHash: str = '') -> pd.DataFrame:
+def historyHashes(df: pd.DataFrame, priorRowHash: str = None) -> pd.DataFrame:
     ''' creates hashes of every row in the dataframe based on prior hash '''
+    priorRowHash = priorRowHash or ''
     rowHashes = []
     for index, row in df.iterrows():
         rowStr = priorRowHash + str(index) + str(row['value'])

@@ -89,3 +89,19 @@ should have been done in the disk module, but was instead done at higher levels:
 #             # save
 #             diskApi.append(msgsToDataframe(msgs))
 #             tellModelsAboutNewHistory()
+
+
+# def compress():
+#                 '''
+#                 compress if the number of incrementals is high
+#                 could make this responsive to /get/stream/cadence if we wanted.
+#                 don't compress if we're currently busy with downloading the ipfs
+#                 compress on multiples of 100, that way everyone might compress
+#                 at the same time and has the same ipfs.
+#                 '''
+#                 disk = Disk(id=observation.key)
+#                 if len(disk.incrementals()) % 3 == 0:
+#                     try:
+#                         disk.compress()
+#                     except Exception as e:
+#                         logging.error('ERROR: unable to compress:', e)
