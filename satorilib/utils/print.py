@@ -25,7 +25,8 @@ def styles():
     return list(_ansiEsacpeCodesStyle.keys())
 
 
-def colored(msg: str, color: str = None, sytle: str = None):
+def colored(msg: str, color: str = None, style: str = None):
+    msg = str(msg)
     reset = "\033[0m"
     if color in _ansiEsacpeCodesColor.keys():
         msg = msg + reset

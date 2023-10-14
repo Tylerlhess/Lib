@@ -37,20 +37,26 @@ def setup(
 
 def _log(fn: Callable, msg: str, *args, **kwargs):
     if kwargs.get('print'):
-        if kwargs.get('print') in colors:
+        if kwargs.get('print') in colors():
+            print('1')
             printMsg = colored(msg, color=kwargs.get('print'))
         elif fn == logging.debug:
+            print('3')
             printMsg = colored(msg, color='magenta')
         elif fn == logging.info:
+            print('4')
             printMsg = colored(msg, color='blue')
         elif fn == logging.warning:
+            print('5')
             printMsg = colored(msg, color='yellow')
         elif fn == logging.error:
+            print('6')
             printMsg = colored(msg, color='red')
         elif fn == logging.critical:
+            print('7')
             printMsg = colored(msg, color='red', style='outlined')
         print(printMsg)
-    return fn(msg=msg, *args, **kwargs)
+    return fn(msg=msg, *args, **{k: v for k, v in kwargs.items() if k != 'print'})
 
 
 def _getMsg(msgs):
