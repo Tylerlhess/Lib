@@ -1,7 +1,8 @@
 
 import sys
 import logging
-from typing import Union
+from typing import Union, Callable
+from satorilib.utils import colored, colors
 
 
 def setup(
@@ -34,9 +35,21 @@ def setup(
     sys.excepthook = log_unhandled_exception
 
 
-def _log(fn, msg, *args, **kwargs):
+def _log(fn: Callable, msg: str, *args, **kwargs):
     if kwargs.get('print'):
-        print(msg)
+        if kwargs.get('print') in colors:
+            printMsg = colored(msg, color=kwargs.get('print'))
+        elif fn == logging.debug:
+            printMsg = colored(msg, color='magenta')
+        elif fn == logging.info:
+            printMsg = colored(msg, color='blue')
+        elif fn == logging.warning:
+            printMsg = colored(msg, color='yellow')
+        elif fn == logging.error:
+            printMsg = colored(msg, color='red')
+        elif fn == logging.critical:
+            printMsg = colored(msg, color='red', style='outlined')
+        print(printMsg)
     return fn(msg=msg, *args, **kwargs)
 
 

@@ -116,31 +116,36 @@ class Disk(ModelDataDiskApi):
             self.clearCache()
             self.updateCacheCount(count)
             if count >= 3:
-                self.cache[df.iloc[0]] = df.iloc[[0]].index.values[0]
-                self.cache[df.iloc[count-1]
-                           ] = df.iloc[[count-1]].index.values[0]
-                self.cache[df.iloc[df.iloc[[
-                    int(count/2)]]]] = df.iloc[[int(count/2)]].index.values[0]
+                # first
+                self.cache[df.iloc[[0]].index.values[0]] = df.iloc[0].name
+                # last
+                self.cache[df.iloc[[count-1]].index.values[0]
+                           ] = df.iloc[count-1].name
+                # middle
+                self.cache[
+                    df.iloc[[int(count/2)]].index.values[0]
+                ] = df.iloc[int(count/2)].name
             i = 4
             while i < int(count/2):
                 x = int(count/i)
-                self.cache[df.iloc[df.iloc[[x]]]
-                           ] = df.iloc[[x]].index.values[0]
-                self.cache[df.iloc[df.iloc[[count-x]]]
-                           ] = df.iloc[[count-x]].index.values[0]
+                # middles
+                self.cache[df.iloc[[x]].index.values[0]
+                           ] = df.iloc[x].name
+                self.cache[df.iloc[[count-x]].index.values[0]
+                           ] = df.iloc[count-x].name
                 i *= 2
         return df
 
     def searchCache(self, time: str) -> tuple[int, int]:
         before = 0
         after = self.cache['count'] * 2
-        for k, v in self.cache.items():
-            if k == time:
-                return v, v
-            if k < time and v > before:
-                before = v
-            if k > time and v < after:
-                after = v
+        for index, rn in self.cache.items():
+            if index == time:
+                return rn, rn
+            if index < time and rn > before:
+                before = rn
+            if index > time and rn < after:
+                after = rn
         return before, after
 
     ### helpers ###
