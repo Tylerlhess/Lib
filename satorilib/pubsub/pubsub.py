@@ -69,7 +69,10 @@ class SatoriPubSubConn(object):
                 # except ConnectionResetError:
                 logging.debug('pubsub broke:', e)
                 break
-            self.router(response)
+            try:
+                self.router(response)
+            except Exception as e:
+                logging.debug('pubsub broke because of router behavior:', e)
         logging.debug('restarting')
         self.restart()
 

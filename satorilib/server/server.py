@@ -57,12 +57,21 @@ class SatoriServerClient(object):
             'disk': 1, 
             'count': 27},
         '''
-        r = requests.post(
-            self.url + '/register/pin',
-            headers=self.wallet.authPayload(asDict=True),
-            json=payload or json.dumps(pin))
-        logging.debug('lib registerPin:', payload or json.dumps(pin), r)
-        r.raise_for_status()
+        authPayload = self.wallet.authPayload(asDict=True)
+        try:
+            r = requests.post(
+                self.url + '/register/pin',
+                headers=authPayload,
+                json=payload or json.dumps(pin))
+            logging.debug('lib server registerPin:',
+                          payload or json.dumps(pin), r)
+            r.raise_for_status()
+        except Exception as e:
+            logging.error(
+                'lib server registerPin error:\n'
+                f'payload or json.dumps(pin): {payload or json.dumps(pin)}\n'
+                f'self.url + /register/pin: {self.url + "/register/pin"}\n'
+                f'authPayload: {authPayload}\n', e)
         return r
 
     def requestPrimary(self):
