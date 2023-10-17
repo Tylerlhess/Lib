@@ -5,7 +5,7 @@ import os
 import pandas as pd
 from satorilib.concepts import StreamId
 from satorilib.api import memory
-from satorilib.api import hash
+from satorilib.api.hash import generatePathId, historyHashes
 from satorilib.api.interfaces.model import ModelDataDiskApi
 from satorilib.api.disk.utils import safetify, safetifyWithResult
 from satorilib.api.disk.model import ModelApi
@@ -171,7 +171,7 @@ class Disk(ModelDataDiskApi):
             self.safetify(
                 os.path.join(
                     self.loc or Disk.config.dataPath(),
-                    hash.generatePathId(streamId=self.id),
+                    generatePathId(streamId=self.id),
                     filename or f'aggregate.{self.ext}')))
 
     def exists(self, filename: str = None):
@@ -179,7 +179,7 @@ class Disk(ModelDataDiskApi):
 
     def hashDataFrame(self, df: pd.DataFrame = None, priorRowHash: str = '') -> pd.DataFrame:
         ''' first we have to flattent the columns, then rename them '''
-        return hash.historyHashes(
+        return historyHashes(
             df=self.csv.conformFlatColumns(self.memory.flatten(df)),
             priorRowHash=priorRowHash)
 
@@ -187,7 +187,7 @@ class Disk(ModelDataDiskApi):
 
     def saveHashes(self, df: pd.DataFrame = None) -> bool:
         ''' saves them all to disk '''
-        return self.write(hash.historyHashes(df or self.read()))
+        return self.write(historyHashes(df or self.read()))
 
     def saveName(self) -> bool:
         ''' writes a readme.md file to disk describing dataset '''
@@ -256,7 +256,7 @@ class Disk(ModelDataDiskApi):
             df = self.read()
             if df is None or df.shape[0] == 0:
                 return None
-            df = hash.historyHashes(df)
+            df = historyHashes(df)
             return df.iloc[df.shape[0]-1].hash
 
         count = self.cache.get('count')

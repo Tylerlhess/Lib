@@ -26,8 +26,8 @@ class SatoriServerClient(object):
 
     def registerStream(self, stream: dict, payload: str = None):
         ''' publish stream {'source': 'test', 'name': 'stream1', 'target': 'target'}'''
-        logging.debug('\nregisterSubscription',
-                      payload or json.dumps(stream))
+        # logging.debug('\nregisterSubscription',
+        #              payload or json.dumps(stream))
         r = requests.post(
             self.url + '/register/stream',
             headers=self.wallet.authPayload(asDict=True),
@@ -37,8 +37,8 @@ class SatoriServerClient(object):
 
     def registerSubscription(self, subscription: dict, payload: str = None):
         ''' subscribe to stream '''
-        logging.debug('\nregisterSubscription',
-                      payload or json.dumps(subscription))
+        # logging.debug('\nregisterSubscription',
+        #              payload or json.dumps(subscription))
         r = requests.post(
             self.url + '/register/subscription',
             headers=self.wallet.authPayload(asDict=True),
@@ -63,8 +63,8 @@ class SatoriServerClient(object):
                 self.url + '/register/pin',
                 headers=authPayload,
                 json=payload or json.dumps(pin))
-            logging.debug('lib server registerPin:',
-                          payload or json.dumps(pin), r)
+            # logging.debug('lib server registerPin:',
+            #              payload or json.dumps(pin), r)
             r.raise_for_status()
         except Exception as e:
             logging.error(
@@ -119,20 +119,20 @@ class SatoriServerClient(object):
         r.raise_for_status()
         j = r.json()
         # use subscriptions to initialize engine
-        # logging.debug('publications.key', j.get('publications.key'))
-        # logging.debug('subscriptions.key', j.get('subscriptions.key'))
+        # # logging.debug('publications.key', j.get('publications.key'))
+        # # logging.debug('subscriptions.key', j.get('subscriptions.key'))
         # use subscriptions to initialize engine
-        logging.debug('subscriptions', j.get('subscriptions'))
+        # logging.debug('subscriptions', j.get('subscriptions'))
         # use publications to initialize engine
-        logging.debug('publications', j.get('publications'))
+        # logging.debug('publications', j.get('publications'))
         # use pins to initialize engine and update any missing data
-        logging.debug('pins', j.get('pins'))
+        # logging.debug('pins', j.get('pins'))
         # use server version to use the correct api
-        logging.debug('server version', j.get('versions', {}).get('server'))
+        # logging.debug('server version', j.get('versions', {}).get('server'))
         # use client version to know when to update the client
-        logging.debug('client version', j.get('versions', {}).get('client'))
+        # logging.debug('client version', j.get('versions', {}).get('client'))
         # from satoricentral.utils import Crypt
-        # logging.debug('key', Crypt().decrypt(
+        # # logging.debug('key', Crypt().decrypt(
         #    toDecrypt=j.get('key'),
         #    key='thiskeyisfromenv',
         #    clean=True))

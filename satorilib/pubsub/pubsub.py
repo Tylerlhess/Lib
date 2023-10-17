@@ -37,14 +37,15 @@ class SatoriPubSubConn(object):
             self.send(then)
 
     def reestablish(self, err: str = '', payload: str = None):
-        logging.debug('connection error', err)
+        # logging.debug('connection error', err)
         time.sleep(3)
         while True:
             try:
-                logging.debug('re-establishing pubsub connection')
+                # logging.debug('re-establishing pubsub connection')
                 self.restart(payload)
             except Exception as e:
-                logging.debug('restarting pubsub connection failed', e)
+                pass
+                # logging.debug('restarting pubsub connection failed', e)
             time.sleep(2)
             if (self.ws.connected):
                 break
@@ -63,17 +64,18 @@ class SatoriPubSubConn(object):
         while True:
             try:
                 response = self.ws.recv()
-                logging.debug('response', response)
+                # logging.debug('response', response)
             except Exception as e:
                 # except WebSocketConnectionClosedException as e:
                 # except ConnectionResetError:
-                logging.debug('pubsub broke:', e)
+                # logging.debug('pubsub broke:', e)
                 break
             try:
                 self.router(response)
             except Exception as e:
-                logging.debug('pubsub broke because of router behavior:', e)
-        logging.debug('restarting')
+                pass
+                # logging.debug('pubsub broke because of router behavior:', e)
+        # logging.debug('restarting')
         self.restart()
 
     def connect(self):
@@ -94,7 +96,7 @@ class SatoriPubSubConn(object):
                 'payload or (title, topic, data) must not be None')
         payload = payload or (
             title + ':' + json.dumps({'topic': topic, 'data': str(data)}))
-        logging.debug('sending:', payload)
+        # logging.debug('sending:', payload)
         try:
             self.ws.send(payload)
         except Exception as e:

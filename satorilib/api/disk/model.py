@@ -3,7 +3,7 @@ import os
 import joblib
 from satorilib import logging
 from satorilib.concepts import StreamId
-from satorilib.api import hash
+from satorilib.api.hash import generatePathId
 from satorilib.api.interfaces.model import ModelDataDiskApi, ModelDiskApi
 from satorilib.api.disk.utils import safetify
 from satorilib.api.disk.wallet import WalletApi
@@ -20,7 +20,7 @@ class ModelApi(ModelDiskApi):
     @staticmethod
     def defaultModelPath(streamId: StreamId):
         return safetify(WalletApi.config.root(
-            '..', 'models', hash.generatePathId(streamId=streamId) + '.joblib'))
+            '..', 'models', generatePathId(streamId=streamId) + '.joblib'))
 
     @staticmethod
     def save(
@@ -39,7 +39,7 @@ class ModelApi(ModelDiskApi):
             return model
 
         modelPath = modelPath or WalletApi.config.modelPath(
-            hash.generatePathId(streamId=streamId))
+            generatePathId(streamId=streamId))
         safetify(modelPath)
         model = appendAttributes(model, hyperParameters, chosenFeatures)
         joblib.dump(model, modelPath)
@@ -47,7 +47,7 @@ class ModelApi(ModelDiskApi):
     @staticmethod
     def load(modelPath: str = None, streamId: StreamId = None):
         modelPath = modelPath or WalletApi.config.modelPath(
-            hash.generatePathId(streamId=streamId))
+            generatePathId(streamId=streamId))
         if os.path.exists(modelPath):
             try:
                 return joblib.load(modelPath)

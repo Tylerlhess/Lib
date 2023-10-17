@@ -73,7 +73,7 @@ class Ipfs(CliCommunicator):
                 r'cd ~\Apps\kubo_v0.17.0\kubo;'
                 r'.\ipfs.exe --version;')
         if os.name == 'posix':
-            logging.debug(
+            logging.warning(
                 'this should be running in a docker container, and ipfs should already be installed. but we will attempt to install it anyway...')
             return self.run(
                 r'wget https://dist.ipfs.tech/kubo/v0.17.0/kubo_v0.17.0_linux-amd64.tar.gz;'
@@ -81,7 +81,7 @@ class Ipfs(CliCommunicator):
                 r'cd kubo && bash install.sh;'
                 r'ipfs --version;')
         else:
-            logging.debug(
+            logging.warning(
                 'unable to install on this platform. install ipfs manually: https://docs.ipfs.tech/install/command-line/#install-official-binary-distributions')
 
     def addIpfsToPath(self):
@@ -95,7 +95,7 @@ class Ipfs(CliCommunicator):
                 r'& $profile;'
                 r'ipfs --version;')
         elif os.name == 'posix':
-            logging.debug('not sure you have to add ipfs to the path')
+            logging.warning('not sure you have to add ipfs to the path')
 
     def addDirectory(self, abspath: str):
         '''all attempts to use the api for this ended in disaster.'''
