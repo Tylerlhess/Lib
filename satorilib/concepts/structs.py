@@ -48,7 +48,7 @@ class StreamId:
     def itemNames():
         return ['source', 'author', 'stream', 'target']
 
-    def topic(self, asJson: bool = True, authorAsPubkey=False):
+    def topic(self, asJson: bool = True, authorAsPubkey=False) -> Union[str, dict[str, str]]:
         '''
         the topic (id) for this stream.
         this is how the pubsub system identifies the stream.
