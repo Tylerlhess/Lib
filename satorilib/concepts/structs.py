@@ -54,12 +54,19 @@ class StreamId:
         this is how the pubsub system identifies the stream.
         '''
         if asJson:
-            return json.dumps(self.topic(asJson=False))
+            return self.topicJson(authorAsPubkey=authorAsPubkey)
         return {
             'source': self.__source,
             'pubkey' if authorAsPubkey else 'author': self.__author,
             'stream': self.__stream,
             'target': self.__target}
+
+    def topicJson(self, authorAsPubkey=False) -> str:
+        '''
+        the topic (id) for this stream.
+        this is how the pubsub system identifies the stream.
+        '''
+        return json.dumps(self.topic(asJson=False, authorAsPubkey=authorAsPubkey))
 
     @property
     def id(self):
