@@ -126,6 +126,7 @@ class Chainable:
 
 class ComplexChainable:
     ''' this version allows you to chain to any arg or kwarg signature. '''
+
     def __init__(self, value):
         self.value = value
 
@@ -148,36 +149,34 @@ class ComplexChainable:
         pass
 
 # Example usage
-
-
-def bind(x, prefix=''):
-    return f"{prefix}bind({x})"
-
-
-def punch(x, y, z, suffix=''):
-    return f"punch({x}, {y}, {z}){suffix}"
-
-
-def append_to_list(item, lst, notify=False):
-    lst.append(item)
-    if notify:
-        print(f"Item {item} added to list.")
-    return lst
-
-
-k = 10
-v = [20, 30]
-socks = []
-
-result = (
-    ComplexChainable(k)
-    .then(bind, ComplexChainable.v, {'prefix': '>>'})
-    .then(punch, ComplexChainable.v, *v, {'suffix': '<<'})
-    .then(append_to_list, ComplexChainable.v, socks, {'notify': True})
-).value
-
-print("Result:", result)
-print("Socks:", socks)
+# def bind(x, prefix=''):
+#    return f"{prefix}bind({x})"
+#
+#
+# def punch(x, y, z, suffix=''):
+#    return f"punch({x}, {y}, {z}){suffix}"
+#
+#
+# def append_to_list(item, lst, notify=False):
+#    lst.append(item)
+#    if notify:
+#        print(f"Item {item} added to list.")
+#    return lst
+#
+#
+# k = 10
+# v = [20, 30]
+# socks = []
+#
+# result = (
+#    ComplexChainable(k)
+#    .then(bind, ComplexChainable.v, {'prefix': '>>'})
+#    .then(punch, ComplexChainable.v, *v, {'suffix': '<<'})
+#    .then(append_to_list, ComplexChainable.v, socks, {'notify': True})
+# ).value
+#
+# print("Result:", result)
+# print("Socks:", socks)
 
 
 class ComplexChainableAsync:
@@ -217,34 +216,33 @@ class ComplexChainableAsync:
         return self
 
 # Example usage
-
-
-def bind(x, prefix=''):
-    return f"{prefix}bind({x})"
-
-
-def punch(x, y, z, suffix=''):
-    return f"punch({x}, {y}, {z}){suffix}"
-
-
-def append_to_list(item, lst, notify=False):
-    lst.append(item)
-    if notify:
-        print(f"Item {item} added to list.")
-    return lst
-
-
-k = 10
-v = [20, 30]
-socks = []
-
-cca = ComplexChainableAsync(k)
-result = (
-    cca
-    .then(bind, cca.v, {'prefix': '>>'})
-    .then(punch, cca.v, *v, {'suffix': '<<'})
-    .then(append_to_list, cca.v, socks, {'notify': True})
-).value
-
-print("Result:", result)
-print("Socks:", socks)
+# def bind(x, prefix=''):
+#    return f"{prefix}bind({x})"
+#
+#
+# def punch(x, y, z, suffix=''):
+#    return f"punch({x}, {y}, {z}){suffix}"
+#
+#
+# def append_to_list(item, lst, notify=False):
+#    lst.append(item)
+#    if notify:
+#        print(f"Item {item} added to list.")
+#    return lst
+#
+#
+# k = 10
+# v = [20, 30]
+# socks = []
+#
+# cca = ComplexChainableAsync(k)
+# result = (
+#    cca
+#    .then(bind, cca.v, {'prefix': '>>'})
+#    .then(punch, cca.v, *v, {'suffix': '<<'})
+#    .then(append_to_list, cca.v, socks, {'notify': True})
+# ).value
+#
+# print("Result:", result)
+# print("Socks:", socks)
+#
