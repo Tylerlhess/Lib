@@ -18,7 +18,7 @@ class SatoriServerClient(object):
 
     def registerWallet(self):
         r = requests.post(
-            self.url + '/register/wallet',
+            self.url + '/register/wallet/',
             headers=self.wallet.authPayload(asDict=True),
             json=self.wallet.registerPayload())
         r.raise_for_status()
@@ -29,7 +29,7 @@ class SatoriServerClient(object):
         # logging.debug('\nregisterSubscription',
         #              payload or json.dumps(stream))
         r = requests.post(
-            self.url + '/register/stream',
+            self.url + '/register/stream/',
             headers=self.wallet.authPayload(asDict=True),
             json=payload or json.dumps(stream))
         r.raise_for_status()
@@ -40,7 +40,7 @@ class SatoriServerClient(object):
         # logging.debug('\nregisterSubscription',
         #              payload or json.dumps(subscription))
         r = requests.post(
-            self.url + '/register/subscription',
+            self.url + '/register/subscription/',
             headers=self.wallet.authPayload(asDict=True),
             json=payload or json.dumps(subscription))
         r.raise_for_status()
@@ -60,7 +60,7 @@ class SatoriServerClient(object):
         authPayload = self.wallet.authPayload(asDict=True)
         try:
             r = requests.post(
-                self.url + '/register/pin',
+                self.url + '/register/pin/',
                 headers=authPayload,
                 json=payload or json.dumps(pin))
             # logging.debug('lib server registerPin:',
@@ -70,14 +70,14 @@ class SatoriServerClient(object):
             logging.error(
                 'lib server registerPin error:\n'
                 f'payload or json.dumps(pin): {payload or json.dumps(pin)}\n'
-                f'self.url + /register/pin: {self.url + "/register/pin"}\n'
+                f'self.url + /register/pin: {self.url + "/register/pin/"}\n'
                 f'authPayload: {authPayload}\n', e)
         return r
 
     def requestPrimary(self):
         ''' subscribe to primary data stream and and publish prediction '''
         r = requests.get(
-            self.url + '/request/primary',
+            self.url + '/request/primary/',
             headers=self.wallet.authPayload(asDict=True))
         r.raise_for_status()
         return r
@@ -85,7 +85,7 @@ class SatoriServerClient(object):
     def getStreams(self, stream: dict, payload: str = None):
         ''' subscribe to primary data stream and and publish prediction '''
         r = requests.post(
-            self.url + '/get/streams',
+            self.url + '/get/streams/',
             headers=self.wallet.authPayload(asDict=True),
             json=payload or json.dumps(stream))
         r.raise_for_status()
@@ -94,7 +94,7 @@ class SatoriServerClient(object):
     def myStreams(self):
         ''' subscribe to primary data stream and and publish prediction '''
         r = requests.post(
-            self.url + '/my/streams',
+            self.url + '/my/streams/',
             headers=self.wallet.authPayload(asDict=True),
             json='{}')
         r.raise_for_status()
@@ -105,7 +105,7 @@ class SatoriServerClient(object):
         if payload is None and stream is None:
             raise ValueError('stream or payload must be provided')
         r = requests.post(
-            self.url + '/remove/stream',
+            self.url + '/remove/stream/',
             headers=self.wallet.authPayload(asDict=True),
             json=payload or json.dumps(stream or {}))
         r.raise_for_status()
@@ -113,11 +113,14 @@ class SatoriServerClient(object):
 
     def checkin(self) -> dict:
         r = requests.post(
-            self.url + '/checkin',
+            self.url + '/checkin/',
             headers=self.wallet.authPayload(asDict=True),
             json=self.wallet.registerPayload())
-        r.raise_for_status()
+        logging.debug('checkin r.status_code', r.status_code, print='magenta')
+        logging.debug('checkin r.text', r.text, print='magenta')
+        # r.raise_for_status()
         j = r.json()
+        print('j', j)
         # use subscriptions to initialize engine
         # # logging.debug('publications.key', j.get('publications.key'))
         # # logging.debug('subscriptions.key', j.get('subscriptions.key'))
