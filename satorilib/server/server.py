@@ -116,11 +116,13 @@ class SatoriServerClient(object):
             self.url + '/checkin/',
             headers=self.wallet.authPayload(asDict=True),
             json=self.wallet.registerPayload())
-        logging.debug('checkin r.status_code', r.status_code, print='magenta')
-        logging.debug('checkin r.text', r.text, print='magenta')
-        # r.raise_for_status()
-        j = r.json()
-        print('j', j)
+        txt = r.text
+        if txt.startswith('unable to verify recent timestamp.'):
+            logging.error('Please sync your system clock.', txt, print='red')
+            # at this time you should have the ability to checkin to a different
+            # endpoint using a prompt rather than a timestamp. requires us to
+            # engineer prompting system to remember what prompt we asked for.
+        r.raise_for_status()
         # use subscriptions to initialize engine
         # # logging.debug('publications.key', j.get('publications.key'))
         # # logging.debug('subscriptions.key', j.get('subscriptions.key'))
