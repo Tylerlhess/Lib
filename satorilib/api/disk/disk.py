@@ -138,19 +138,24 @@ class Disk(ModelDataDiskApi):
         return df
 
     def searchCache(self, time: str) -> tuple[int, int]:
+        count = self.cache.get('count', 0)
         before = 0
-        after = self.cache.get('count', 0) * 2
+        after = count - 1
         logging.debug('time:', time, print='red')
         logging.debug('cache:', self.cache.items(), print='red')
         for index, rn in self.cache.items():
+            if index == 'count':
+                continue
             logging.debug(
                 f'index:{index}, time:{time}, rn, before:{before}, after:{after}', print='red')
             if index == time:
                 return rn, rn
-            if index < time and rn > before:
+            if time > index and rn > before:
                 before = rn
-            if index > time and rn < after:
+            if time < index and rn < after:
                 after = rn
+            if before == after:
+                break
         return before, after
 
     ### helpers ###
@@ -330,6 +335,10 @@ class Disk(ModelDataDiskApi):
             return None
 
         before, after = self.searchCache(time)
+        if before is None and after is None:
+            df = self.read(start=before-1)
+            if df is not None and time in df.index:
+                return df
         if before == after:
             df = self.read(start=before-1)
             if df is not None and time in df.index:
