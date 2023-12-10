@@ -35,7 +35,7 @@ class AsyncThread():
         if isinstance(delay, float):
             await asyncio.sleep(delay)
         try:
-            return await func(*args, **kwargs)
+            return func(*args, **kwargs)
         except Exception as e:
             print(f'Exception in delayedWrapper: {e}')
             raise
