@@ -120,8 +120,8 @@ class Disk(ModelDataDiskApi):
                 # first
                 self.cache[df.iloc[[0]].index.values[0]] = 0  # df.iloc[0].name
                 # last
-                self.cache[df.iloc[[count]].index.values[0]
-                           ] = count   # df.iloc[count-1].name
+                self.cache[df.iloc[[count-1]].index.values[0]
+                           ] = count - 1  # df.iloc[count-1].name
                 # middle
                 middle = int(count/2)
                 self.cache[
