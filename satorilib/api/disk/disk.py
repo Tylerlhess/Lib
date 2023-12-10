@@ -11,6 +11,7 @@ from satorilib.api.disk.utils import safetify, safetifyWithResult
 from satorilib.api.disk.model import ModelApi
 from satorilib.api.disk.wallet import WalletApi
 from satorilib.api.disk.filetypes.csv import CSVManager
+from satorilib import logging
 
 
 class Disk(ModelDataDiskApi):
@@ -142,6 +143,8 @@ class Disk(ModelDataDiskApi):
         for index, rn in self.cache.items():
             if index == time:
                 return rn, rn
+            logging.debug('index, time, rn, before, after', index,
+                          time, rn, before, after, print='red')
             if index < time and rn > before:
                 before = rn
             if index > time and rn < after:
