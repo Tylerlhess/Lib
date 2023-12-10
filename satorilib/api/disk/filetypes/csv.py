@@ -45,7 +45,7 @@ class CSVManager(FileManager):
         return False
 
     def read(self, filePath: str, **kwargs) -> pd.DataFrame:
-        return self._clean(self._conformBasic(pd.read_csv(filePath, index_col=0)))
+        return self._clean(self._conformBasic(pd.read_csv(filePath, index_col=0, header=None)))
 
     def write(self, filePath: str, data: pd.DataFrame) -> bool:
         try:
@@ -75,6 +75,7 @@ class CSVManager(FileManager):
                 filePath,
                 sep=",",
                 index_col=0,
+                header=None,
                 skiprows=start,
                 # skipfooter=end, # slicing is faster; since using c engine
                 # engine='python', # required for skipfooter
