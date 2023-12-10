@@ -103,7 +103,7 @@ class Disk(ModelDataDiskApi):
     def addToCacheCount(self, count: int):
         if 'count' not in self.cache.keys():
             self.cache['count'] = 0
-        self.updateCacheCount(self.cache['count'] + count)
+        self.updateCacheCount(self.cache.get('count') + count)
 
     def updateCacheCount(self, count: int):
         self.cache['count'] = count
@@ -138,7 +138,7 @@ class Disk(ModelDataDiskApi):
 
     def searchCache(self, time: str) -> tuple[int, int]:
         before = 0
-        after = self.cache['count'] * 2
+        after = self.cache.get('count', 0) * 2
         for index, rn in self.cache.items():
             if index == time:
                 return rn, rn
@@ -244,7 +244,7 @@ class Disk(ModelDataDiskApi):
     def getRowCounts(self) -> int:
         ''' returns number of rows in incremental and aggregate tables '''
         if 'count' in self.cache.keys():
-            return self.cache['count']
+            return self.cache.get('count')
         try:
             return self.read().shape[0]
         except Exception as _:
