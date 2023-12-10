@@ -47,7 +47,7 @@ class AsyncThread():
             raise Exception('Event loop is not running.')
         if inspect.iscoroutinefunction(task):
             coroutine = task(*args, **kwargs)
-        elif inspect.isfunction(task):
+        elif inspect.isfunction(task) or inspect.ismethod(task):
             if delay is None:
                 coroutine = self.asyncWrapper(task, *args, **kwargs)
             else:
