@@ -2,6 +2,7 @@ from typing import Union
 import os
 import pandas as pd
 from satorilib.api.interfaces.data import FileManager
+from satorilib import logging
 
 
 class CSVManager(FileManager):
@@ -80,6 +81,10 @@ class CSVManager(FileManager):
                 # skipfooter=end, # slicing is faster; since using c engine
                 # engine='python', # required for skipfooter
             ))
+            logging.debug('df?', type(df), df, print='magenta')
+            logging.debug('df.iloc[[capture]] if capture == 0 else df.iloc[0:capture+1]?', type(df.iloc[[capture]] if capture ==
+                          0 else df.iloc[0:capture+1]), df.iloc[[capture]] if capture == 0 else df.iloc[0:capture+1], print='magenta')
             return df.iloc[[capture]] if capture == 0 else df.iloc[0:capture+1]
-        except Exception as _:
+        except Exception as e:
+            logging.debug('none?', e, print='magenta')
             return None

@@ -309,7 +309,7 @@ class Disk(ModelDataDiskApi):
 
         before, after = self.searchCache(time)
         if before == after:
-            series = self.read(start=before-1).iloc[0]
+            series = self.read(start=before).iloc[0]
             if series is not None and 'hash' in series:
                 return series.hash
         else:
@@ -335,13 +335,11 @@ class Disk(ModelDataDiskApi):
             return None
 
         before, after = self.searchCache(time)
-        if before is None and after is None:
-            df = self.read(start=before-1)
-            if df is not None and time in df.index:
-                return df
         if before == after:
-            df = self.read(start=before-1)
-            if df is not None and time in df.index:
+            logging.debug(f'b4: {before}, after: {after}', print='red')
+            df = self.read(start=before)
+            logging.debug('df', df, print='teal')
+            if df is not None:
                 return df
         else:
             theRow = getTheRow(self.read(start=before, end=after))
