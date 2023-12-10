@@ -118,22 +118,22 @@ class Disk(ModelDataDiskApi):
             self.updateCacheCount(count)
             if count >= 3:
                 # first
-                self.cache[df.iloc[[0]].index.values[0]] = df.iloc[0].name
+                self.cache[df.iloc[[0]].index.values[0]] = 0  # df.iloc[0].name
                 # last
                 self.cache[df.iloc[[count-1]].index.values[0]
-                           ] = df.iloc[count-1].name
+                           ] = count - 1  # df.iloc[count-1].name
                 # middle
+                middle = int(count/2)
                 self.cache[
                     df.iloc[[int(count/2)]].index.values[0]
-                ] = df.iloc[int(count/2)].name
+                ] = middle  # df.iloc[int(count/2)].name
             i = 4
             while i < int(count/2):
                 x = int(count/i)
                 # middles
-                self.cache[df.iloc[[x]].index.values[0]
-                           ] = df.iloc[x].name
+                self.cache[df.iloc[[x]].index.values[0]] = x  # df.iloc[x].name
                 self.cache[df.iloc[[count-x]].index.values[0]
-                           ] = df.iloc[count-x].name
+                           ] = count-x-1  # df.iloc[count-x].name
                 i *= 2
         return df
 
