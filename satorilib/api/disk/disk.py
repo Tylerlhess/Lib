@@ -140,11 +140,13 @@ class Disk(ModelDataDiskApi):
     def searchCache(self, time: str) -> tuple[int, int]:
         before = 0
         after = self.cache.get('count', 0) * 2
+        logging.debug('time:', time, print='red')
+        logging.debug('cache:', self.cache.items(), print='red')
         for index, rn in self.cache.items():
+            logging.debug(
+                f'index:{index}, time:{time}, rn, before:{before}, after:{after}', print='red')
             if index == time:
                 return rn, rn
-            logging.debug('index, time, rn, before, after', index,
-                          time, rn, before, after, print='red')
             if index < time and rn > before:
                 before = rn
             if index > time and rn < after:
