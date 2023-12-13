@@ -141,13 +141,9 @@ class Disk(ModelDataDiskApi):
         count = self.cache.get('count', 0)
         before = 0
         after = count - 1
-        logging.debug('time:', time, print='red')
-        logging.debug('cache:', self.cache.items(), print='red')
         for index, rn in self.cache.items():
             if index == 'count':
                 continue
-            logging.debug(
-                f'index:{index}, time:{time}, rn, before:{before}, after:{after}', print='red')
             if index == time:
                 return rn, rn, index
             if index < time and before < rn:
@@ -309,7 +305,10 @@ class Disk(ModelDataDiskApi):
 
         before, after, index = self.searchCache(time)
         if before == after:
-            series = self.read(start=before).iloc[0]
+            if (before == 0 or index < time):
+                series = self.read(start=before).iloc[0]
+            else:
+                series = self.read(start=before-1).iloc[0]
             if series is not None and 'hash' in series:
                 return series.hash
         else:
@@ -323,7 +322,7 @@ class Disk(ModelDataDiskApi):
 
         def getTheRow(df):
 
-            def getRowBeforeTime(df: pd.DataFrame, targetTime: str) -> Union[pd.Series, None]:
+            def getRowBeforeTime(df: pd.DataFrame, targetTime: str) -> Union[pd.DataFrame, None]:
                 timeBeforeTarget = df[df.index < targetTime].index.max()
                 if timeBeforeTarget is not pd.NaT:
                     return df.loc[[timeBeforeTarget]]
@@ -331,47 +330,15 @@ class Disk(ModelDataDiskApi):
 
             row = getRowBeforeTime(df, time)
             if row is not None:
-                return row.hash
+                return row
             return None
 
         before, after, index = self.searchCache(time)
         if before == after:
-            logging.debug(f'b4: {before}, after: {after}', print='red')
             if (before == 0 or index < time):
                 df = self.read(start=before)
             else:
                 df = self.read(start=before-1)
-            logging.debug('df', df, print='teal')
-            if df is not None:
-                return df
-        else:
-            theRow = getTheRow(self.read(start=before, end=after))
-            if theRow is not None:
-                return theRow
-        return getTheRow(self.read())
-
-    # created this function but it wasn't right, I just want before, not of.
-    def getObservationOfOrBefore(self, time: str) -> Union[pd.DataFrame, None]:
-        ''' gets the observation of or just before a given time '''
-
-        def getTheRow(df):
-
-            def getRowBeforeTime(df: pd.DataFrame, targetTime: str) -> Union[pd.Series, None]:
-                timeBeforeTarget = df[df.index < targetTime].index.max()
-                if timeBeforeTarget is not pd.NaT:
-                    return df.loc[[timeBeforeTarget]]
-                return None
-
-            row = getRowBeforeTime(df, time)
-            if row is not None:
-                return row.hash
-            return None
-
-        before, after = self.searchCache(time)
-        if before == after:
-            logging.debug(f'b4: {before}, after: {after}', print='red')
-            df = self.read(start=before)
-            logging.debug('df', df, print='teal')
             if df is not None:
                 return df
         else:
