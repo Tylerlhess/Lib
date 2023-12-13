@@ -192,7 +192,7 @@ class Disk(ModelDataDiskApi):
 
     def validateAllHashes(self, df: pd.DataFrame = None, priorRowHash: str = '') -> tuple[bool, Union[pd.DataFrame, None]]:
         ''' passthrough for hashing verification '''
-        return verifyHashes(df=df or self.read(), priorRowHash=priorRowHash)
+        return verifyHashes(df=df if isinstance(df, pd.DataFrame) else self.read(), priorRowHash=priorRowHash)
 
     ### write ###
 
