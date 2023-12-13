@@ -21,6 +21,11 @@ class AsyncThread():
         asyncio.set_event_loop(self.loop)
         self.loop.run_forever()
 
+    def cancelTask(self, future):
+        ''' cancels the given asyncio.Future task '''
+        if future is not None and not future.done():
+            future.cancel()
+
     async def asyncWrapper(self, func: callable, *args, **kwargs):
         try:
             return func(*args, **kwargs)
