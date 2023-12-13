@@ -137,10 +137,11 @@ class Disk(ModelDataDiskApi):
                 i *= 2
         return df
 
-    def searchCache(self, time: str) -> tuple[int, int, str]:
+    def searchCache(self, time: str) -> tuple[int, int, Union[str, None]]:
         count = self.cache.get('count', 0)
         before = 0
         after = count - 1
+        index = None
         for index, rn in self.cache.items():
             if index == 'count':
                 continue
@@ -275,7 +276,9 @@ class Disk(ModelDataDiskApi):
 
     def getHashOf(self, time: str) -> Union[str, None]:
         ''' gets the hash of the observation at the given time '''
-        before, after = self.searchCache(time)
+        before, after, index = self.searchCache(time)
+        if index is None:
+            return None
         if before == after:
             series = self.read(start=before).iloc[0]
             if series is not None and 'hash' in series:
@@ -304,6 +307,8 @@ class Disk(ModelDataDiskApi):
             return None
 
         before, after, index = self.searchCache(time)
+        if index is None:
+            return None
         if before == after:
             if (before == 0 or index < time):
                 series = self.read(start=before).iloc[0]
@@ -334,6 +339,8 @@ class Disk(ModelDataDiskApi):
             return None
 
         before, after, index = self.searchCache(time)
+        if index is None:
+            return None
         if before == after:
             if (before == 0 or index < time):
                 df = self.read(start=before)
