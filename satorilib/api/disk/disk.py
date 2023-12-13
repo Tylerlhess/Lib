@@ -5,7 +5,7 @@ import os
 import pandas as pd
 from satorilib.concepts import StreamId
 from satorilib.api import memory
-from satorilib.api.hash import generatePathId, historyHashes
+from satorilib.api.hash import generatePathId, historyHashes, verifyHashes
 from satorilib.api.interfaces.model import ModelDataDiskApi
 from satorilib.api.disk.utils import safetify, safetifyWithResult
 from satorilib.api.disk.model import ModelApi
@@ -190,6 +190,10 @@ class Disk(ModelDataDiskApi):
             df=self.csv.conformFlatColumns(self.memory.flatten(df)),
             priorRowHash=priorRowHash)
 
+    def validateAllHashes(self, df: pd.DataFrame = None, priorRowHash: str = '') -> tuple[bool, Union[pd.DataFrame, None]]:
+        ''' passthrough for hashing verification '''
+        return verifyHashes(df=df or self.read(), priorRowHash=priorRowHash)
+
     ### write ###
 
     def saveHashes(self, df: pd.DataFrame = None) -> bool:
@@ -225,11 +229,11 @@ class Disk(ModelDataDiskApi):
             return False
         # assumes no duplicates...
         self.addToCacheCount(df.shape[0])
+        if 'hash' in dataframe.columns:
+            return self.csv.append(filePath=self.path(), data=df)
         return self.csv.append(
             filePath=self.path(),
-            data=self.hashDataFrame(
-                df=df,
-                priorRowHash=self.getLastHash()))
+            data=self.hashDataFrame(df=df, priorRowHash=self.getLastHash()))
 
     def remove(self) -> Union[bool, None]:
         self.csv.remove(filePath=self.path())
