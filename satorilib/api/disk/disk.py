@@ -229,11 +229,11 @@ class Disk(ModelDataDiskApi):
             return False
         # assumes no duplicates...
         self.addToCacheCount(df.shape[0])
-        if 'hash' in dataframe.columns:
-            return self.csv.append(filePath=self.path(), data=df)
         return self.csv.append(
             filePath=self.path(),
-            data=self.hashDataFrame(df=df, priorRowHash=self.getLastHash()))
+            data=(
+                df if 'hash' in df.columns else
+                self.hashDataFrame(df=df, priorRowHash=self.getLastHash())))
 
     def remove(self) -> Union[bool, None]:
         self.csv.remove(filePath=self.path())
