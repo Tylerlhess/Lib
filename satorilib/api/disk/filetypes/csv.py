@@ -50,7 +50,7 @@ class CSVManager(FileManager):
 
     def write(self, filePath: str, data: pd.DataFrame) -> bool:
         try:
-            data.to_csv(filePath)
+            data.to_csv(filePath, header=False)
             return True
         except Exception as _:
             return False

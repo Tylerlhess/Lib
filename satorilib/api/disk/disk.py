@@ -226,18 +226,20 @@ class Disk(ModelDataDiskApi):
     def write(self, df: pd.DataFrame) -> bool:
         return self.csv.write(
             filePath=self.path(),
-            data=self.updateCache(self.hashDataFrame(df)))
+            data=self.updateCache(self.hashDataFrame(df.sort_index())))
 
     def append(self, df: pd.DataFrame) -> bool:
+        ''' appends to the end of the file while also hashing '''
         if df.shape[0] == 0:
             return False
         # assumes no duplicates...
+        df = df.sort_index()
         self.addToCacheCount(df.shape[0])
+        if 'hash' in df.columns:
+            return self.csv.append(filePath=self.path(), data=df)
         return self.csv.append(
             filePath=self.path(),
-            data=(
-                df if 'hash' in df.columns else
-                self.hashDataFrame(df=df, priorRowHash=self.getLastHash())))
+            data=(self.hashDataFrame(df=df, priorRowHash=self.getHashBefore(df.index[0]))))
 
     def remove(self) -> Union[bool, None]:
         self.csv.remove(filePath=self.path())
@@ -308,7 +310,7 @@ class Disk(ModelDataDiskApi):
                     return df.loc[timeBeforeTarget]
                 return None
 
-            if df is not None and 'hash' not in df:
+            if df is not None:
                 row = getRowBeforeTime(df, time)
                 if row is not None:
                     return row.hash
