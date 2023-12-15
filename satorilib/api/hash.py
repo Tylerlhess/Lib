@@ -18,17 +18,21 @@ def generatePathId(path: str = None, streamId: 'StreamId' = None):
     return ret
 
 
+def hashIt(string: str) -> str:
+    # return hashlib.sha256(rowStr.encode()).hexdigest() # 74mb
+    # return hashlib.md5(rowStr.encode()).hexdigest() # 42mb
+    return hashlib.blake2s(
+        string.encode(),
+        digest_size=8).hexdigest()  # 27mb / million rows
+
+
 def historyHashes(df: pd.DataFrame, priorRowHash: str = None) -> pd.DataFrame:
     ''' creates hashes of every row in the dataframe based on prior hash '''
     priorRowHash = priorRowHash or ''
     rowHashes = []
     for index, row in df.iterrows():
         rowStr = priorRowHash + str(index) + str(row['value'])
-        # rowHash = hashlib.sha256(rowStr.encode()).hexdigest() # 74mb
-        # rowHash = hashlib.md5(rowStr.encode()).hexdigest() # 42mb
-        rowHash = hashlib.blake2s(
-            rowStr.encode(),
-            digest_size=8).hexdigest()  # 27mb / million rows
+        rowHash = hashIt(rowStr)
         rowHashes.append(rowHash)
         priorRowHash = rowHash
     df['hash'] = rowHashes
@@ -47,15 +51,43 @@ def verifyHashes(df: pd.DataFrame, priorRowHash: str = None) -> tuple[bool, Unio
     priorRowHash = priorRowHash or ''
     for index, row in df.iterrows():
         rowStr = priorRowHash + str(index) + str(row['value'])
-        # rowHash = hashlib.sha256(rowStr.encode()).hexdigest() # 74mb
-        # rowHash = hashlib.md5(rowStr.encode()).hexdigest() # 42mb
-        rowHash = hashlib.blake2s(
-            rowStr.encode(),
-            digest_size=8).hexdigest()  # 27mb / million rows
+        rowHash = hashIt(rowStr)
         if rowHash != row['hash']:
-            print(f'rowHash: {rowHash}')
             return False, row.to_frame().T
         priorRowHash = rowHash
     return True, None
-# verifyHashes(df)
-# df = pd.DataFrame({'value':[1,2,3,4,5,6], 'hash':['ce8efc6eeb9fc30b','e2cc1a4e70bdba14','42359a663f6c3e30','6278827c73894e0c','c7a6682880ee6f8d','d607268c4f2e75ed']})
+
+# verifyHashes(pd.DataFrame({'value':[1,2,3,4,5,6], 'hash':['ce8efc6eeb9fc30b','e2cc1a4e70bdba14','42359a663f6c3e30','6278827c73894e0c','c7a6682880ee6f8d','d607268c4f2e75ed']}, index=[0,1,2,3,4,9,5]))
+
+
+def cleanHashes(df: pd.DataFrame) -> tuple[bool, Union[pd.DataFrame, None]]:
+    '''
+    returns success flag and the cleaned DataFrame or None
+    success is true if the first hash is the first value plus ''.
+    if it is able to create a dataframe of all the other hashes from there and
+    that dataframe is different than the input dataframe, it returns it. if it's
+    unable to make a new dataframe or the one it makes matches the input, it 
+    returns None.
+    '''
+    priorRowHash = ''
+    i = 0
+    success = False
+    rows = []
+    for index, row in df.iterrows():
+        rowStr = priorRowHash + str(index) + str(row['value'])
+        rowHash = hashIt(rowStr)
+        if i == 0 and row['hash'] == rowHash:
+            success = True
+        i += 1
+        if rowHash != row['hash']:
+            # skip this row
+            continue
+        rows.append(row)
+        priorRowHash = rowHash
+    dfReturn = pd.DataFrame(rows, columns=df.columns)
+    if dfReturn.equals(df):
+        return success, None
+    return success, dfReturn
+
+# cleanHashes(pd.DataFrame({'value':[1,2,3,4,5,6], 'hash':['ce8efc6eeb9fc30b','e2cc1a4e70bdba14','42359a663f6c3e30','6278827c73894e0c','c7a6682880ee6f8d','d607268c4f2e75ed']}, index=[0,1,2,3,4,9,5]))
+# cleanHashes(pd.DataFrame({'value':[1,2,3,4,5,9,6], 'hash':['ce8efc6eeb9fc30b','e2cc1a4e70bdba14','42359a663f6c3e30','6278827c73894e0c','c7a6682880ee6f8d','erroneous row','d607268c4f2e75ed']}, index=[0,1,2,3,4,9,5]))

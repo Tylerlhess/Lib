@@ -194,6 +194,10 @@ class Disk(ModelDataDiskApi):
         ''' passthrough for hashing verification '''
         return verifyHashes(df=df if isinstance(df, pd.DataFrame) else self.read(), priorRowHash=priorRowHash)
 
+    def cleanByHashes(self, df: pd.DataFrame = None) -> tuple[bool, Union[pd.DataFrame, None]]:
+        ''' passthrough for hash cleaning '''
+        return cleanHashes(df=df if isinstance(df, pd.DataFrame) else self.read())
+
     ### write ###
 
     def saveHashes(self, df: pd.DataFrame = None) -> bool:
