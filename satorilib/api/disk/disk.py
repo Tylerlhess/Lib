@@ -5,7 +5,7 @@ import os
 import pandas as pd
 from satorilib.concepts import StreamId
 from satorilib.api import memory
-from satorilib.api.hash import generatePathId, historyHashes, verifyHashes
+from satorilib.api.hash import generatePathId, historyHashes, verifyHashes, cleanHashes
 from satorilib.api.interfaces.model import ModelDataDiskApi
 from satorilib.api.disk.utils import safetify, safetifyWithResult
 from satorilib.api.disk.model import ModelApi
