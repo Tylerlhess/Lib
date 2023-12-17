@@ -73,7 +73,9 @@ def cleanHashes(df: pd.DataFrame) -> tuple[bool, Union[pd.DataFrame, None]]:
     i = 0
     success = False
     rows = []
+    logging.debug('cleanHahes df:', df, print='teal')
     for index, row in df.iterrows():
+        logging.debug('cleanHahes row:', row, print='teal')
         rowStr = priorRowHash + str(index) + str(row['value'])
         rowHash = hashIt(rowStr)
         if i == 0 and row['hash'] == rowHash:
