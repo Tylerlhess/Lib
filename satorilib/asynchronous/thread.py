@@ -34,6 +34,20 @@ class AsyncThread():
             print(f'Exception in asyncWrapper: {e}')
             raise
 
+    async def repeatWrapper(self, func: callable, interval: float, *args, **kwargs):
+        if isinstance(interval, int):
+            interval = float(interval)
+        while True:
+            try:
+                await asyncio.sleep(interval)
+                await self.asyncWrapper(func, *args, **kwargs)
+            except asyncio.CancelledError:
+                # Handle cancellation
+                break
+            except Exception as e:
+                # Handle or log the exception
+                print(f'Exception in repeatWrapper: {e}')
+
     async def delayedWrapper(self, func: callable, delay: float, *args, **kwargs):
         if isinstance(delay, int):
             delay = float(delay)
@@ -45,7 +59,7 @@ class AsyncThread():
             print(f'Exception in delayedWrapper: {e}')
             raise
 
-    def _preRun(self, task: callable = None, delay: float = None, *args, **kwargs):
+    def _preRun(self, task: callable = None, delay: float = None, interval: float = None, *args, **kwargs):
         if self.loop is None:
             self._runForever()
         if self.loop is None:
@@ -53,10 +67,12 @@ class AsyncThread():
         if inspect.iscoroutinefunction(task):
             coroutine = task(*args, **kwargs)
         elif inspect.isfunction(task) or inspect.ismethod(task):
-            if delay is None:
-                coroutine = self.asyncWrapper(task, *args, **kwargs)
-            else:
+            if delay is not None:
                 coroutine = self.delayedWrapper(task, delay, *args, **kwargs)
+            elif interval is not None:
+                coroutine = self.repeatWrapper(task, interval, *args, **kwargs)
+            else:
+                coroutine = self.asyncWrapper(task, *args, **kwargs)
         else:
             raise TypeError('Task must be an async or a regular function.')
         return coroutine
@@ -68,6 +84,9 @@ class AsyncThread():
     def delayedRun(self, task: callable = None, delay: float = 5, *args, **kwargs):
         ''' submits async tasks to the event loop with a delay '''
         return self._runAsync(self._preRun(task, delay, *args, **kwargs))
+
+    def repeatRun(self, task: callable, interval: float = 60, *args, **kwargs):
+        return self._runAsync(self._preRun(task, interval=interval, *args, **kwargs))
 
     def _runAsync(self, coroutine: callable):
         ''' submits async task or function to the event loop '''
