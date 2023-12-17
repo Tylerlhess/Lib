@@ -198,6 +198,14 @@ class Disk(ModelDataDiskApi):
         ''' passthrough for hash cleaning '''
         return cleanHashes(df=df if isinstance(df, pd.DataFrame) else self.read())
 
+    def isARoot(self, df: pd.DataFrame) -> bool:
+        ''' checks if the dataframe is a root '''
+        return self.cleanHashes(df)[0]
+
+    def matchesRoot(self, df: pd.DataFrame, localDf: pd.DataFrame = None) -> bool:
+        ''' checks if the dataframe is a root '''
+        return df.iloc[0].hash == (localDf or self.read()).iloc[0].hash
+
     ### write ###
 
     def saveHashes(self, df: pd.DataFrame = None) -> bool:
@@ -243,6 +251,10 @@ class Disk(ModelDataDiskApi):
 
     def remove(self) -> Union[bool, None]:
         self.csv.remove(filePath=self.path())
+
+    def removeItAndBeforeIt(self, timestamp) -> Union[bool, None]:
+        df = self.read()
+        self.csv.write(df[df.index > targetTime])
 
     ### read ###
 
