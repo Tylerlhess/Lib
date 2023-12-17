@@ -204,7 +204,9 @@ class Disk(ModelDataDiskApi):
 
     def matchesRoot(self, df: pd.DataFrame, localDf: pd.DataFrame = None) -> bool:
         ''' checks if the dataframe is a root '''
-        return df.iloc[0].hash == (localDf or self.read()).iloc[0].hash
+        return df.iloc[0].hash == (
+            localDf if localDf is not None else self.read()
+        ).iloc[0].hash
 
     ### write ###
 
