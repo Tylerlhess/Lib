@@ -26,8 +26,7 @@ class CSVManager(FileManager):
         return self._sort(self._dedupe(df))
 
     def _sort(self, df: pd.DataFrame) -> pd.DataFrame:
-        df.sort_index(inplace=True)
-        return df
+        return df.sort_index()
 
     def _dedupe(self, df: pd.DataFrame) -> pd.DataFrame:
         return df[~df.index.duplicated(keep='last')]
