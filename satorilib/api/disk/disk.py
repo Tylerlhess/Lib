@@ -256,10 +256,6 @@ class Disk(ModelDataDiskApi):
 
     def removeItAndBeforeIt(self, timestamp) -> Union[bool, None]:
         df = self.read()
-        logging.debug(f'removing {df[df.index <= timestamp].shape[0]} rows', df, type(
-            df[df.index <= timestamp]), print='red')
-        logging.debug(
-            f'removing {df[[df.index <= timestamp]].shape[0]} rows', df, print='red')
         self.csv.write(
             filePath=self.path(),
             data=df[df.index > timestamp])
