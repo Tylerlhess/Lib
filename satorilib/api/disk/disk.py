@@ -268,8 +268,11 @@ class Disk(ModelDataDiskApi):
         if start == None:
             df = self.csv.read(filePath=self.path())
             self.updateCache(df)
+            df.sort_index(inplace=True)
             return df
-        return self.csv.readLines(filePath=self.path(), start=start, end=end)
+        df = self.csv.readLines(filePath=self.path(), start=start, end=end)
+        df.sort_index(inplace=True)
+        return df
 
     def timeExistsInAggregate(self, time: str) -> bool:
         return time in self.cache.keys() or time in self.read().index
