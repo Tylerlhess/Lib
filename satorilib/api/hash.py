@@ -1,6 +1,7 @@
 # mainly used for generating unique ids for data and model paths since they must be short
 
 from typing import Union
+from satoriLib import logging
 import base64
 import hashlib
 import pandas as pd
