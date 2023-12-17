@@ -254,7 +254,7 @@ class Disk(ModelDataDiskApi):
 
     def removeItAndBeforeIt(self, timestamp) -> Union[bool, None]:
         df = self.read()
-        self.csv.write(df[df.index > targetTime])
+        self.csv.write(df[df.index > timestamp])
 
     ### read ###
 
