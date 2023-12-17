@@ -200,7 +200,7 @@ class Disk(ModelDataDiskApi):
 
     def isARoot(self, df: pd.DataFrame) -> bool:
         ''' checks if the dataframe is a root '''
-        return self.cleanHashes(df)[0]
+        return cleanHashes(df)[0]
 
     def matchesRoot(self, df: pd.DataFrame, localDf: pd.DataFrame = None) -> bool:
         ''' checks if the dataframe is a root '''
