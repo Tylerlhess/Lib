@@ -5,7 +5,7 @@ import os
 import pandas as pd
 from satorilib.concepts import StreamId
 from satorilib.api import memory
-from satorilib.api.hash import generatePathId, historyHashes, verifyHashes, cleanHashes
+from satorilib.api.hash import generatePathId, historyHashes, verifyHashes, cleanHashes, verifyRoot
 from satorilib.api.interfaces.model import ModelDataDiskApi
 from satorilib.api.disk.utils import safetify, safetifyWithResult
 from satorilib.api.disk.model import ModelApi
@@ -202,6 +202,9 @@ class Disk(ModelDataDiskApi):
         ''' checks if the dataframe is a root '''
         return cleanHashes(df)[0]
 
+    def hasRoot(self, df: pd.DataFrame) -> bool:
+        return verifyRoot(df=df if isinstance(df, pd.DataFrame) else self.read())
+
     def matchesRoot(self, df: pd.DataFrame, localDf: pd.DataFrame = None) -> bool:
         ''' checks if the dataframe is a root '''
         return df.iloc[0].hash == (
@@ -268,11 +271,9 @@ class Disk(ModelDataDiskApi):
         if start == None:
             df = self.csv.read(filePath=self.path())
             self.updateCache(df)
-            df.sort_index(inplace=True)
+            df = df.sort_index()
             return df
-        df = self.csv.readLines(filePath=self.path(), start=start, end=end)
-        df.sort_index(inplace=True)
-        return df
+        return self.csv.readLines(filePath=self.path(), start=start, end=end).sort_index()
 
     def timeExistsInAggregate(self, time: str) -> bool:
         return time in self.cache.keys() or time in self.read().index

@@ -39,6 +39,17 @@ def historyHashes(df: pd.DataFrame, priorRowHash: str = None) -> pd.DataFrame:
     return df
 
 
+def verifyRoot(df: pd.DataFrame) -> bool:
+    ''' returns true if root hash is empty string plus the first row '''
+    for index, row in df.iterrows():
+        rowStr = '' + str(index) + str(row['value'])
+        rowHash = hashIt(rowStr)
+        if rowHash == row['hash']:
+            return True
+        return False
+    return False
+
+
 def verifyHashes(df: pd.DataFrame, priorRowHash: str = None) -> tuple[bool, Union[pd.DataFrame, None]]:
     '''
     returns success flag and the first row as DataFrame that doesn't pass the 
