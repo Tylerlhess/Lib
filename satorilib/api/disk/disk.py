@@ -3,6 +3,7 @@
 from typing import Union
 import os
 import pandas as pd
+from satorilib import logging
 from satorilib.concepts import StreamId
 from satorilib.api import memory
 from satorilib.api.hash import generatePathId, historyHashes, verifyHashes, cleanHashes, verifyRoot
@@ -11,7 +12,6 @@ from satorilib.api.disk.utils import safetify, safetifyWithResult
 from satorilib.api.disk.model import ModelApi
 from satorilib.api.disk.wallet import WalletApi
 from satorilib.api.disk.filetypes.csv import CSVManager
-from satorilib import logging
 
 
 class Disk(ModelDataDiskApi):
@@ -252,11 +252,19 @@ class Disk(ModelDataDiskApi):
         # assumes no duplicates...
         df = df.sort_index()
         self.addToCacheCount(df.shape[0])
+        logging.debug('validating after append -0- ',
+                      df.index[0], self.getHashBefore(df.index[0]), print='red')
         if 'hash' in df.columns:
-            return self.csv.append(filePath=self.path(), data=df)
-        return self.csv.append(
-            filePath=self.path(),
-            data=(self.hashDataFrame(df=df, priorRowHash=self.getHashBefore(df.index[0]))))
+            result = self.csv.append(filePath=self.path(), data=df)
+        else:
+            result = self.csv.append(
+                filePath=self.path(),
+                data=self.hashDataFrame(
+                    df=df,
+                    priorRowHash=self.getHashBefore(df.index[0])))
+        logging.debug('validating after append --- ',
+                      self.validateAllHashes(self.read()), print='red')
+        return result
 
     def remove(self) -> Union[bool, None]:
         self.csv.remove(filePath=self.path())
@@ -323,38 +331,42 @@ class Disk(ModelDataDiskApi):
             return df.loc[time].hash
         return None
 
-    def getHashBefore(self, time: str) -> Union[str, None]:
+    def getHashBefore(self, time: str, df: pd.DataFrame = None) -> Union[str, None]:
         ''' gets the hash of the observation just before a given time '''
-
-        def getTheHash(df):
-
-            def getRowBeforeTime(df: pd.DataFrame, targetTime: str) -> Union[pd.Series, None]:
-                timeBeforeTarget = df[df.index < targetTime].index.max()
-                if timeBeforeTarget is not pd.NaT:
-                    return df.loc[timeBeforeTarget]
-                return None
-
-            if df is not None:
-                row = getRowBeforeTime(df, time)
-                if row is not None:
-                    return row.hash
-            return None
-
-        before, after, index = self.searchCache(time)
-        if index is None:
-            return None
-        if before == after:
-            if (before == 0 or index < time):
-                series = self.read(start=before).iloc[0]
-            else:
-                series = self.read(start=before-1).iloc[0]
-            if series is not None and 'hash' in series:
-                return series.hash
-        else:
-            theHash = getTheHash(self.read(start=before, end=after))
-            if theHash is not None:
-                return theHash
-        return getTheHash(self.read())
+        df = df if df is None else self.read()
+        x = df[df.index < targetTime]
+        if x.empty:
+            return ''
+        return x['hash'].values[-1]
+    #    def getTheHash(df):
+    #
+    #        def getRowBeforeTime(df: pd.DataFrame, targetTime: str) -> Union[pd.Series, None]:
+    #            timeBeforeTarget = df[df.index < targetTime].index.max()
+    #            if timeBeforeTarget is not pd.NaT:
+    #                return df.loc[timeBeforeTarget]
+    #            return None
+    #
+    #        if df is not None:
+    #            row = getRowBeforeTime(df, time)
+    #            if row is not None:
+    #                return row.hash
+    #        return None
+    #
+    #    before, after, index = self.searchCache(time)
+    #    if index is None:
+    #        return None
+    #    if before == after:
+    #        if (before == 0 or index < time):
+    #            series = self.read(start=before).iloc[0]
+    #        else:
+    #            series = self.read(start=before-1).iloc[0]
+    #        if series is not None and 'hash' in series:
+    #            return series.hash
+    #    else:
+    #        theHash = getTheHash(self.read(start=before, end=after))
+    #        if theHash is not None:
+    #            return theHash
+    #    return getTheHash(self.read())
 
     def getObservationAfter(self, time: str) -> Union[pd.DataFrame, None]:
         ''' gets the observation just after a given time '''
