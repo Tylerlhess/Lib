@@ -252,19 +252,13 @@ class Disk(ModelDataDiskApi):
         # assumes no duplicates...
         df = df.sort_index()
         self.addToCacheCount(df.shape[0])
-        logging.debug('validating after append -0- ',
-                      df.index[0], self.getHashBefore(df.index[0]), print='red')
         if 'hash' in df.columns:
-            result = self.csv.append(filePath=self.path(), data=df)
-        else:
-            result = self.csv.append(
-                filePath=self.path(),
-                data=self.hashDataFrame(
-                    df=df,
-                    priorRowHash=self.getHashBefore(df.index[0])))
-        logging.debug('validating after append --- ',
-                      self.validateAllHashes(self.read()), print='red')
-        return result
+            return self.csv.append(filePath=self.path(), data=df)
+        return self.csv.append(
+            filePath=self.path(),
+            data=self.hashDataFrame(
+                df=df,
+                priorRowHash=self.getHashBefore(df.index[0])))
 
     def remove(self) -> Union[bool, None]:
         self.csv.remove(filePath=self.path())
@@ -377,8 +371,6 @@ class Disk(ModelDataDiskApi):
 
             def getRowAfterTime(df: pd.DataFrame, targetTime: str) -> Union[pd.DataFrame, None]:
                 timeAfterTarget = df[df.index > targetTime].index.max()
-                logging.debug('GOA 2', timeAfterTarget, type(
-                    timeAfterTarget), print='green')
                 # not np.nan which is a float
                 if timeAfterTarget is not pd.NaT and isinstance(timeAfterTarget, str):
                     return df.loc[[timeAfterTarget]]
@@ -389,9 +381,7 @@ class Disk(ModelDataDiskApi):
                 return row
             return None
 
-        logging.debug('GOA 0', time, print='red')
         before, after, index = self.searchCache(time)
-        logging.debug('GOA 1', before, after, index, print='red')
         if index is None:
             return None
         if before == after:
