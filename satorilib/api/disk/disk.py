@@ -336,7 +336,7 @@ class Disk(ModelDataDiskApi):
         df = df if df is not None else self.read()
         if df is None or df.shape[0] == 0:
             return ''
-        x = df[df.index < targetTime]
+        x = df[df.index < time]
         if x.empty:
             return ''
         return x['hash'].values[-1]
