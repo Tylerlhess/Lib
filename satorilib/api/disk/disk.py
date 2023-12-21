@@ -333,7 +333,9 @@ class Disk(ModelDataDiskApi):
 
     def getHashBefore(self, time: str, df: pd.DataFrame = None) -> Union[str, None]:
         ''' gets the hash of the observation just before a given time '''
-        df = df if df is None else self.read()
+        df = df if df is not None else self.read()
+        if df is None or df.shape[0] == 0:
+            return ''
         x = df[df.index < targetTime]
         if x.empty:
             return ''
