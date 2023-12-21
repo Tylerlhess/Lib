@@ -372,14 +372,16 @@ class Disk(ModelDataDiskApi):
                 return row
             return None
 
+        logging.debug('GOA 0', time, print='red')
         before, after, index = self.searchCache(time)
+        logging.debug('GOA 1', before, after, index, print='red')
         if index is None:
             return None
         if before == after:
             if (before == 0 or index < time):
-                df = self.read(start=before)
+                df = self.read(start=after, end=after+2)
             else:
-                df = self.read(start=before-1)
+                df = self.read(start=after, end=after+2)
             if df is not None:
                 return df
         else:
