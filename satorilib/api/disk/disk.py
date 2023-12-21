@@ -207,13 +207,21 @@ class Disk(ModelDataDiskApi):
         return cleanHashes(df)[0]
 
     def hasRoot(self, df: pd.DataFrame) -> bool:
+        if df is None or (isinstance(df, pd.DataFrame) and df.empty):
+            return False
         return verifyRoot(df=df if isinstance(df, pd.DataFrame) else self.read())
 
     def matchesRoot(self, df: pd.DataFrame, localDf: pd.DataFrame = None) -> bool:
         ''' checks if the dataframe is a root '''
-        return df.iloc[0].hash == (
-            localDf if localDf is not None else self.read()
-        ).iloc[0].hash
+        localDf = localDf if localDf is not None else self.read()
+        if (
+            df is None or 
+            (isinstance(df, pd.DataFrame) and df.empty) or 
+            localDf is None or 
+            (isinstance(localDf, pd.DataFrame) and localDf.empty)
+        ):
+            return False
+        return df.iloc[0].hash == localDf.iloc[0].hash
 
     ### write ###
 
