@@ -363,7 +363,10 @@ class Disk(ModelDataDiskApi):
 
             def getRowAfterTime(df: pd.DataFrame, targetTime: str) -> Union[pd.DataFrame, None]:
                 timeAfterTarget = df[df.index > targetTime].index.max()
-                if timeAfterTarget is not pd.NaT:
+                logging.debug('GOA 2', timeAfterTarget, type(
+                    timeAfterTarget), print='green')
+                # not np.nan which is a float
+                if timeAfterTarget is not pd.NaT and isinstance(timeAfterTarget, str):
                     return df.loc[[timeAfterTarget]]
                 return None
 
@@ -385,7 +388,7 @@ class Disk(ModelDataDiskApi):
             if df is not None:
                 return df
         else:
-            theRow = getTheRow(self.read(start=before, end=after))
+            theRow = getTheRow(self.read(start=before, end=after+2))
             if theRow is not None:
                 return theRow
         return getTheRow(self.read())
