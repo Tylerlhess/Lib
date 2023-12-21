@@ -4,11 +4,18 @@ import datetime as dt
 def datetimeToString(time: dt.datetime) -> str:
     return time.strftime('%Y-%m-%d %H:%M:%S.%f')
 
-def datetimeFromString(time: str)-> dt.datetime:
+
+def datetimeFromString(time: str) -> dt.datetime:
     return dt.datetime.strptime(time, '%Y-%m-%d %H:%M:%S.%f')
+
+
+def earliestDate() -> dt.datetime:
+    return dt.datetime(1, 1, 1)
+
 
 def now() -> dt.datetime:
     return dt.datetime.utcnow()
+
 
 def timeIt(fn) -> float:
     import time

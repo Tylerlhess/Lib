@@ -60,6 +60,27 @@ def verifyHashes(df: pd.DataFrame, priorRowHash: str = None) -> tuple[bool, Unio
     data was found before it, all the hashes change.
     '''
     priorRowHash = priorRowHash or ''
+    priorRow = None
+    for index, row in df.iterrows():
+        rowStr = priorRowHash + str(index) + str(row['value'])
+        rowHash = hashIt(rowStr)
+        if rowHash != row['hash']:
+            return False, priorRow.to_frame().T if isinstance(priorRow, pd.Series) else None
+        priorRowHash = rowHash
+        priorRow = row
+    return True, None
+
+
+def verifyHashesReturnError(df: pd.DataFrame, priorRowHash: str = None) -> tuple[bool, Union[pd.DataFrame, None]]:
+    '''
+    returns success flag and the first row as DataFrame that doesn't pass the 
+    hash check or None
+    priorRowHash isn't usually passed in because we do the verification on the
+    entire dataframe, so by default the first priorRowHash is assumed to be an
+    empty string because it's the first peice of data that was recorded. if new
+    data was found before it, all the hashes change.
+    '''
+    priorRowHash = priorRowHash or ''
     for index, row in df.iterrows():
         rowStr = priorRowHash + str(index) + str(row['value'])
         rowHash = hashIt(rowStr)

@@ -194,6 +194,10 @@ class Disk(ModelDataDiskApi):
         ''' passthrough for hashing verification '''
         return verifyHashes(df=df if isinstance(df, pd.DataFrame) else self.read(), priorRowHash=priorRowHash)
 
+    def validateAllHashesReturnError(self, df: pd.DataFrame = None, priorRowHash: str = '') -> tuple[bool, Union[pd.DataFrame, None]]:
+        ''' passthrough for hashing verification '''
+        return verifyHashesReturnError(df=df if isinstance(df, pd.DataFrame) else self.read(), priorRowHash=priorRowHash)
+
     def cleanByHashes(self, df: pd.DataFrame = None) -> tuple[bool, Union[pd.DataFrame, None]]:
         ''' passthrough for hash cleaning '''
         return cleanHashes(df=df if isinstance(df, pd.DataFrame) else self.read())
@@ -351,6 +355,38 @@ class Disk(ModelDataDiskApi):
             if theHash is not None:
                 return theHash
         return getTheHash(self.read())
+
+    def getObservationAfter(self, time: str) -> Union[pd.DataFrame, None]:
+        ''' gets the observation just after a given time '''
+
+        def getTheRow(df):
+
+            def getRowAfterTime(df: pd.DataFrame, targetTime: str) -> Union[pd.DataFrame, None]:
+                timeAfterTarget = df[df.index > targetTime].index.max()
+                if timeAfterTarget is not pd.NaT:
+                    return df.loc[[timeAfterTarget]]
+                return None
+
+            row = getRowAfterTime(df, time)
+            if row is not None:
+                return row
+            return None
+
+        before, after, index = self.searchCache(time)
+        if index is None:
+            return None
+        if before == after:
+            if (before == 0 or index < time):
+                df = self.read(start=before)
+            else:
+                df = self.read(start=before-1)
+            if df is not None:
+                return df
+        else:
+            theRow = getTheRow(self.read(start=before, end=after))
+            if theRow is not None:
+                return theRow
+        return getTheRow(self.read())
 
     def getObservationBefore(self, time: str) -> Union[pd.DataFrame, None]:
         ''' gets the observation just before a given time '''
