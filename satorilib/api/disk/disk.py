@@ -6,7 +6,7 @@ import pandas as pd
 from satorilib import logging
 from satorilib.concepts import StreamId
 from satorilib.api import memory
-from satorilib.api.hash import generatePathId, historyHashes, verifyHashes, cleanHashes, verifyRoot
+from satorilib.api.hash import generatePathId, historyHashes, verifyHashes, cleanHashes, verifyRoot, verifyHashesReturnError
 from satorilib.api.interfaces.model import ModelDataDiskApi
 from satorilib.api.disk.utils import safetify, safetifyWithResult
 from satorilib.api.disk.model import ModelApi
@@ -215,9 +215,9 @@ class Disk(ModelDataDiskApi):
         ''' checks if the dataframe is a root '''
         localDf = localDf if localDf is not None else self.read()
         if (
-            df is None or 
-            (isinstance(df, pd.DataFrame) and df.empty) or 
-            localDf is None or 
+            df is None or
+            (isinstance(df, pd.DataFrame) and df.empty) or
+            localDf is None or
             (isinstance(localDf, pd.DataFrame) and localDf.empty)
         ):
             return False

@@ -19,7 +19,6 @@ class Memory(ModelMemoryApi, DiskMemory):
         datasets into one multi-columned dataframe, so we need to flatten the
         dataframe before saving to disk
         '''
-
         if isinstance(df.columns, pd.MultiIndex):
             df.columns = df.columns.droplevel()  # source
         if isinstance(df.columns, pd.MultiIndex):
