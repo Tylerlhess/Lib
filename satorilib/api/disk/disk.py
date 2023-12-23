@@ -36,7 +36,6 @@ class Disk(ModelDataDiskApi):
         self.memory = memory.Memory
         self.csv = CSVManager()
         self.setAttributes(df=df, id=id, loc=loc, ext=ext, **kwargs)
-        self.cache: dict[str, int] = {}  # cache of index to row number
 
     def setAttributes(
         self,
@@ -95,65 +94,6 @@ class Disk(ModelDataDiskApi):
     @staticmethod
     def getModelSize(modelPath: str = None):
         return ModelApi.getModelSize(modelPath)
-
-    ### cache ###
-
-    def clearCache(self):
-        self.cache = {}
-
-    def addToCacheCount(self, count: int):
-        if 'count' not in self.cache.keys():
-            self.cache['count'] = 0
-        self.updateCacheCount(self.cache.get('count') + count)
-
-    def updateCacheCount(self, count: int):
-        self.cache['count'] = count
-
-    def updateCache(self, df: pd.DataFrame):
-        if df is None:
-            return
-        count = df.shape[0]
-        if self.cache.get('count') != count:
-            self.clearCache()
-            self.updateCacheCount(count)
-            if count >= 3:
-                # first
-                self.cache[df.iloc[[0]].index.values[0]] = 0  # df.iloc[0].name
-                # last
-                self.cache[df.iloc[[count-1]].index.values[0]
-                           ] = count - 1  # df.iloc[count-1].name
-                # middle
-                middle = int(count/2)
-                self.cache[
-                    df.iloc[[int(count/2)]].index.values[0]
-                ] = middle  # df.iloc[int(count/2)].name
-            i = 4
-            while i < int(count/2):
-                x = int(count/i)
-                # middles
-                self.cache[df.iloc[[x]].index.values[0]] = x  # df.iloc[x].name
-                self.cache[df.iloc[[count-x]].index.values[0]
-                           ] = count-x  # df.iloc[count-x].name
-                i *= 2
-        return df
-
-    def searchCache(self, time: str) -> tuple[int, int, Union[str, None]]:
-        count = self.cache.get('count', 0)
-        before = 0
-        after = count - 1
-        index = None
-        for index, rn in self.cache.items():
-            if index == 'count':
-                continue
-            if index == time:
-                return rn, rn, index
-            if index < time and before < rn:
-                before = rn
-            if time < index and rn < after:
-                after = rn
-            if before == after:
-                break
-        return before, after, index
 
     ### helpers ###
 
@@ -288,35 +228,6 @@ class Disk(ModelDataDiskApi):
             df = df.sort_index()
             return df
         return self.csv.readLines(filePath=self.path(), start=start, end=end).sort_index()
-
-    def timeExistsInAggregate(self, time: str) -> bool:
-        return time in self.cache.keys() or time in self.read().index
-
-    def getRowCounts(self) -> int:
-        ''' returns number of rows in incremental and aggregate tables '''
-        if 'count' in self.cache.keys():
-            return self.cache.get('count')
-        try:
-            return self.read().shape[0]
-        except Exception as _:
-            return 0
-
-    def getLastHash(self) -> Union[str, None]:
-        ''' gets the hash of the observation at the given time '''
-        def getLastHashFromFull():
-            df = self.read()
-            if df is None or df.shape[0] == 0:
-                return None
-            df = historyHashes(df)
-            return df.iloc[df.shape[0]-1].hash
-
-        count = self.cache.get('count')
-        if count is None:
-            return getLastHashFromFull()
-        df = self.read(start=count-1)
-        if df is not None and 'hash' in df:
-            return df.hash.values[0]
-        return getLastHashFromFull()
 
     def getHashOf(self, time: str) -> Union[str, None]:
         ''' gets the hash of the observation at the given time '''

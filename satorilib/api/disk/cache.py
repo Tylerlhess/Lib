@@ -116,7 +116,7 @@ class Cache(Disk):
         return (
             self.safetify(
                 os.path.join(
-                    self.loc or Disk.config.dataPath(),
+                    self.loc or Cache.config.dataPath(),
                     generatePathId(streamId=self.id),
                     filename or f'aggregate.{self.ext}')))
 
@@ -291,7 +291,7 @@ class Cache(Disk):
                     if len(self.df.columns.levels) == 4 else None))]
         dfs = []
         for streamId in streamIds:
-            df = (self if streamId == self.id else Disk(id=streamId)).read()
+            df = (self if streamId == self.id else Cache(id=streamId)).read()
             if df is None:
                 continue
             dfs.append(self.memory.expand(df=df, streamId=streamId))

@@ -25,8 +25,9 @@ class AsyncThread():
         ''' cancels the given asyncio.Future task '''
         if future is not None and not future.done():
             future.cancel()
+        # AttributeError: 'function' object has no attribute 'done'
 
-    async def asyncWrapper(self, func: callable, *args, **kwargs):
+    async def asyncWrapper(self, *args, func: callable, **kwargs):
         try:
             return func(*args, **kwargs)
         except Exception as e:
@@ -34,13 +35,13 @@ class AsyncThread():
             print(f'Exception in asyncWrapper: {e}')
             raise
 
-    async def repeatWrapper(self, func: callable, interval: float, *args, **kwargs):
+    async def repeatWrapper(self, *args, func: callable, interval: float, **kwargs):
         if isinstance(interval, int):
             interval = float(interval)
         while True:
             try:
                 await asyncio.sleep(interval)
-                await self.asyncWrapper(func, *args, **kwargs)
+                await self.asyncWrapper(*args, func=func, **kwargs)
             except asyncio.CancelledError:
                 # Handle cancellation
                 break
@@ -48,7 +49,7 @@ class AsyncThread():
                 # Handle or log the exception
                 print(f'Exception in repeatWrapper: {e}')
 
-    async def delayedWrapper(self, func: callable, delay: float, *args, **kwargs):
+    async def delayedWrapper(self, *args, func: callable, delay: float, **kwargs):
         if isinstance(delay, int):
             delay = float(delay)
         if isinstance(delay, float):
@@ -59,7 +60,7 @@ class AsyncThread():
             print(f'Exception in delayedWrapper: {e}')
             raise
 
-    def _preRun(self, task: callable = None, delay: float = None, interval: float = None, *args, **kwargs):
+    def _preRun(self, *args, task: callable = None, delay: float = None, interval: float = None,  **kwargs):
         if self.loop is None:
             self._runForever()
         if self.loop is None:
@@ -68,25 +69,27 @@ class AsyncThread():
             coroutine = task(*args, **kwargs)
         elif inspect.isfunction(task) or inspect.ismethod(task):
             if delay is not None:
-                coroutine = self.delayedWrapper(task, delay, *args, **kwargs)
+                coroutine = self.delayedWrapper(
+                    *args, func=task, delay=delay, **kwargs)
             elif interval is not None:
-                coroutine = self.repeatWrapper(task, interval, *args, **kwargs)
+                coroutine = self.repeatWrapper(
+                    *args, func=task, interval=interval, **kwargs)
             else:
-                coroutine = self.asyncWrapper(task, *args, **kwargs)
+                coroutine = self.asyncWrapper(*args, func=task, **kwargs)
         else:
             raise TypeError('Task must be an async or a regular function.')
         return coroutine
 
-    def runAsync(self, task: callable = None, *args, **kwargs):
+    def runAsync(self, *args, task: callable = None, **kwargs):
         ''' submits async task or function to the event loop '''
-        return self._runAsync(self._preRun(task, *args, **kwargs))
+        return self._runAsync(self._preRun(*args, task=task, **kwargs))
 
-    def delayedRun(self, task: callable = None, delay: float = 5, *args, **kwargs):
+    def delayedRun(self, *args, task: callable = None, delay: float = 5, **kwargs):
         ''' submits async tasks to the event loop with a delay '''
-        return self._runAsync(self._preRun(task, delay, *args, **kwargs))
+        return self._runAsync(self._preRun(*args, task=task, delay=delay, **kwargs))
 
-    def repeatRun(self, task: callable, interval: float = 60, *args, **kwargs):
-        return self._runAsync(self._preRun(task, interval=interval, *args, **kwargs))
+    def repeatRun(self, *args, task: callable, interval: float = 60,  **kwargs):
+        return self._runAsync(self._preRun(*args, task=task, interval=interval, **kwargs))
 
     def _runAsync(self, coroutine: callable):
         ''' submits async task or function to the event loop '''
@@ -113,3 +116,10 @@ class AsyncThread():
 
 # Optional: wait for the task to complete, or you can continue with your main program
 # result = future.result()
+
+# # manual test:
+# import thread
+# at = thread.AsyncThread()
+#
+# at.repeatRun(task=print, interval=3, x='hello')
+# at.repeatRun(task=print, interval=2, x='world')
