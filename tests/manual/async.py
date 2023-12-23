@@ -1,5 +1,6 @@
 import time
-import thread
+# import thread
+from satorilib.asynchronous import thread
 at = thread.AsyncThread()
 
 

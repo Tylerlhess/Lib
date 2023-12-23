@@ -7,6 +7,7 @@ dedicated thread just for that.
 import inspect
 import asyncio
 import threading
+from satorilib import logging
 
 
 class AsyncThread():
@@ -32,7 +33,7 @@ class AsyncThread():
             return func(*args, **kwargs)
         except Exception as e:
             # Handle or log the exception as needed
-            print(f'Exception in asyncWrapper: {e}')
+            logging.error(f'Exception in asyncWrapper: {e}', print=True)
             raise
 
     async def repeatWrapper(self, *args, func: callable, interval: float, **kwargs):
@@ -47,7 +48,7 @@ class AsyncThread():
                 break
             except Exception as e:
                 # Handle or log the exception
-                print(f'Exception in repeatWrapper: {e}')
+                logging.error(f'Exception in repeatWrapper: {e}', print=True)
 
     async def delayedWrapper(self, *args, func: callable, delay: float, **kwargs):
         if isinstance(delay, int):
@@ -57,7 +58,7 @@ class AsyncThread():
         try:
             return func(*args, **kwargs)
         except Exception as e:
-            print(f'Exception in delayedWrapper: {e}')
+            logging.error(f'Exception in delayedWrapper: {e}', print=True)
             raise
 
     def _preRun(self, *args, task: callable = None, delay: float = None, interval: float = None,  **kwargs):
