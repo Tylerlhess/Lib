@@ -67,17 +67,21 @@ class Cache(Disk):
         common = self.df.columns.intersection(prior.columns).tolist()
         logging.debug('merging', self.df.tail(3), self.df.dtypes,
                       prior.tail(3), prior.dtypes, print='green')
+        # Reset index and include it as a column for both DataFrames
+        dfIndexed = self.df.reset_index()
+        priorIndexed = prior.reset_index()
         merged = pd.merge(
-            self.df,
-            prior,
+            dfIndexed,
+            priorIndexed,
             how='outer',
             on=common,
             validate=None,
             indicator=True)
-        differences = merged[merged['_merge'] != 'both']
-        logging.debug('difference', differences.drop(
-            columns=['_merge']), differences.drop(columns=['_merge']).dtypes, print='green')
-        return differences.drop(columns=['_merge'])
+        differences = merged[merged['_merge'] != 'both'].drop(columns=['_merge']).set_index(
+            'index')  # Replace 'index' with the actual name of your index column
+        logging.debug('difference', differences,
+                      differences.dtypes, print='green')
+        return differences
 
     def search(
         self,
