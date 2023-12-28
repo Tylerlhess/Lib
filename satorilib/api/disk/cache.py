@@ -60,7 +60,8 @@ class Cache(Disk):
         return self.df
 
     def updateCacheShowDifference(self, df: pd.DataFrame) -> pd.DataFrame:
-        logging.debug('updateCacheShowDifference', df.tail(3), print='green')
+        logging.debug('updateCacheShowDifference',
+                      df.tail(3), df.dtypes, print='green')
         prior = self.df.copy()
         self.updateCache(df)
         common = self.df.columns.intersection(prior.columns).tolist()
@@ -204,14 +205,18 @@ class Cache(Disk):
         if df is None or df.shape[0] == 0 or len(df.columns) > 2:
             return False
         # assumes no duplicates...
+        logging.debug('df1:', df, df.dtypes, print='teal')
         df = df.sort_index()
         if 'hash' not in df.columns:
             df = self.hashDataFrame(
                 df=df,
                 priorRowHash=self.getHashBefore(df.index[0]))
+        logging.debug('df2:', df, df.dtypes, print='teal')
+        combined = pd.concat([self.df, df])
+        logging.debug('df3:', combined, combined.dtypes, print='teal')
         return self.csv.append(
             filePath=self.path(),
-            data=self.updateCacheShowDifference(pd.concat([self.df, df])))
+            data=self.updateCacheShowDifference(combined))
 
     def remove(self) -> Union[bool, None]:
         self.csv.remove(filePath=self.path())
