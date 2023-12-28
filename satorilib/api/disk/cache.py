@@ -64,12 +64,12 @@ class Cache(Disk):
                       df.tail(3), df.dtypes, print='green')
         prior = self.df.copy()
         self.updateCache(df)
-        common = self.df.columns.intersection(prior.columns).tolist()
+        name = self.df.index.name or 'index'
         logging.debug('merging', self.df.tail(3), self.df.dtypes,
                       prior.tail(3), prior.dtypes, print='green')
-        # Reset index and include it as a column for both DataFrames
         dfIndexed = self.df.reset_index()
         priorIndexed = prior.reset_index()
+        common = dfIndexed.columns.intersection(priorIndexed.columns).tolist()
         merged = pd.merge(
             dfIndexed,
             priorIndexed,
@@ -77,8 +77,9 @@ class Cache(Disk):
             on=common,
             validate=None,
             indicator=True)
+        logging.debug('merged:', merged, print='green')
         differences = merged[merged['_merge'] != 'both'].drop(columns=['_merge']).set_index(
-            'index')  # Replace 'index' with the actual name of your index column
+            name)  # Replace 'index' with the actual name of your index column
         logging.debug('difference', differences,
                       differences.dtypes, print='green')
         return differences
