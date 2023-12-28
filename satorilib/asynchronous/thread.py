@@ -41,8 +41,8 @@ class AsyncThread():
             interval = float(interval)
         while True:
             try:
-                await asyncio.sleep(interval)
                 await self.asyncWrapper(*args, func=func, **kwargs)
+                await asyncio.sleep(interval)
             except asyncio.CancelledError:
                 # Handle cancellation
                 break
