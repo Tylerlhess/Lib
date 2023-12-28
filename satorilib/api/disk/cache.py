@@ -60,9 +60,11 @@ class Cache(Disk):
         return self.df
 
     def updateCacheShowDifference(self, df: pd.DataFrame) -> pd.DataFrame:
+        logging.debug('updateCacheShowDifference', df.tail(3), print='green')
         prior = self.df.copy()
         self.updateCache(df)
         common = self.df.columns.intersection(prior.columns).tolist()
+        logging.debug('merging', self.df.tail(3), prior.tail(3) print='green')
         merged = pd.merge(
             self.df,
             prior,
