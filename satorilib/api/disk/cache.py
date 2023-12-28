@@ -64,7 +64,8 @@ class Cache(Disk):
         prior = self.df.copy()
         self.updateCache(df)
         common = self.df.columns.intersection(prior.columns).tolist()
-        logging.debug('merging', self.df.tail(3), prior.tail(3), print='green')
+        logging.debug('merging', self.df.tail(3), self.df.dtypes,
+                      prior.tail(3), prior.dtypes, print='green')
         merged = pd.merge(
             self.df,
             prior,
@@ -73,6 +74,8 @@ class Cache(Disk):
             validate=None,
             indicator=True)
         differences = merged[merged['_merge'] != 'both']
+        logging.debug('difference', differences.drop(
+            columns=['_merge']), differences.drop(columns=['_merge']).dtypes, print='green')
         return differences.drop(columns=['_merge'])
 
     def search(
