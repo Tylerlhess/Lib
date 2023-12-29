@@ -6,7 +6,8 @@ import pandas as pd
 from satorilib import logging
 from satorilib.concepts import StreamId
 from satorilib.api import memory
-from satorilib.api.hash import generatePathId, historyHashes, verifyHashes, cleanHashes, verifyRoot, verifyHashesReturnError
+from satorilib.api.time import datetimeToString, now
+from satorilib.api.hash import hashIt, generatePathId, historyHashes, verifyHashes, cleanHashes, verifyRoot, verifyHashesReturnError
 from satorilib.api.disk import Disk
 from satorilib.api.disk.utils import safetify, safetifyWithResult
 from satorilib.api.disk.model import ModelApi
@@ -93,7 +94,7 @@ class Cache(Disk):
     ) -> pd.DataFrame:
         if (
             not isinstance(time, str) or
-            not all([before, after, exact]) or
+            not any([before, after, exact]) or
             self.df is None
         ):
             return None
@@ -223,6 +224,26 @@ class Cache(Disk):
             filePath=self.path(),
             data=self.updateCacheShowDifference(combined))
 
+    def appendByAttributes(
+        self, value: str, timestamp: str = None, observationHash: str = None
+    ) -> tuple[bool, str, str]:
+        '''
+        appends to the end of the file while also hashing, 
+        returns success and timestamp and observationHash
+        '''
+        timestamp = timestamp or datetimeToString(now())
+        observationHash = observationHash or hashIt(
+            self.getHashBefore(timestamp) + str(timestamp) + str(value))
+        df = pd.DataFrame(
+            {'value': [value], 'hash': [observationHash]},
+            index=[timestamp])
+        return (
+            self.csv.append(
+                filePath=self.path(),
+                data=self.updateCacheShowDifference(pd.concat([self.df, df]))),
+            timestamp,
+            observationHash)
+
     def remove(self) -> Union[bool, None]:
         self.csv.remove(filePath=self.path())
         self.clearCache()
@@ -271,7 +292,7 @@ class Cache(Disk):
     def getHashBefore(self, time: str) -> str:
         ''' gets the hash of the observation just before a given time '''
         rows = self.search(time, before=True)
-        if rows.empty:
+        if rows is None or rows.empty:
             return ''
         return rows.iloc[-1].hash
 

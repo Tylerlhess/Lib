@@ -2,10 +2,10 @@ import pandas as pd
 import hashlib
 import base64
 from typing import Union
-from satorilib.api.disk import Disk
+from satorilib.api.disk import Cache
 from satorilib.concepts import StreamId
 from satorineuron import config
-Disk.setConfig(config)
+Cache.setConfig(config)
 streams = [
     {"source": "satori", "author": "021bd7999774a59b6d0e40d650c2ed24a49a54bdb0b46c922fd13afe8a4f3e4aeb",
         "stream": "coinbaseADA-USD", "target": "data.rates.ADA"},
@@ -25,12 +25,12 @@ streams = [
 stream = {"source": "satori", "author": "021bd7999774a59b6d0e40d650c2ed24a49a54bdb0b46c922fd13afe8a4f3e4aeb",
           "stream": "coinbaseADA-USD", "target": "data.rates.ADA"}
 s = StreamId.fromMap(stream)
-disk = Disk(id=s)
+disk = Cache(id=s)
 df = disk.read()
 disk.write(disk.hashDataFrame(df))
 
 for stream in streams:
-    disk = Disk(id=StreamId.fromMap(stream))
+    disk = Cache(id=StreamId.fromMap(stream))
     disk.write(disk.hashDataFrame(disk.read()))
 
 time = '2023-10-12 20:02:50.637233'

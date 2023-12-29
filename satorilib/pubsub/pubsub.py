@@ -89,13 +89,21 @@ class SatoriPubSubConn(object):
         self,
         payload: str = None,
         title: str = None,
-        topic=None, data=None
+        topic: str = None,
+        data: str = None,
+        time: str = None,
+        observationHash: str = None,
     ):
         if payload is None and title is None and topic is None and data is None:
             raise ValueError(
                 'payload or (title, topic, data) must not be None')
         payload = payload or (
-            title + ':' + json.dumps({'topic': topic, 'data': str(data)}))
+            title + ':' + json.dumps({
+                'topic': topic,
+                'time': str(time),
+                'data': str(data),
+                'hash': str(observationHash),
+            }))
         # logging.debug('sending:', payload)
         try:
             self.ws.send(payload)
@@ -105,8 +113,9 @@ class SatoriPubSubConn(object):
             # WebSocketTimeoutException
             self.reestablish(e, payload)
 
-    def publish(self, topic, data):
-        self.send(title='publish', topic=topic, data=data)
+    def publish(self, topic: str, data: str, time: str, observationHash: str):
+        self.send(title='publish', topic=topic, data=data,
+                  time=time, observationHash=observationHash)
 
     def disconnect(self):
         self.listening = False

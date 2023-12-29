@@ -372,9 +372,10 @@ class Observation:
         self.raw = raw
         self.value: Union[str, None] = None
         self.data: Union[dict, None] = None
+        self.hash: Union[dict, None] = None
         self.time: Union[str, None] = None
         self.streamId: Union[StreamId, None] = None
-        self.observationId: Union[int, None] = None
+        self.observationHash: Union[int, None] = None
         self.df: pd.Union[DataFrame, None] = None
         self.observationTime: Union[str, None] = None
         self.target: Union[str, None] = None
@@ -386,10 +387,13 @@ class Observation:
         if (isinstance(raw, dict) and
             'topic' in raw.keys() and
             'data' in raw.keys()
+            # 'hash' in raw.keys() and 'time' in row.keys() # should be required
             ) or (
             isinstance(raw, str) and
             '"topic":' in raw and
             '"data":' in raw
+            # '"hash":' in raw and '"time":' in row # should be required
+
         ):
             return Observation.fromTopic(raw)
         return Observation.fromGuess(raw)
@@ -399,7 +403,8 @@ class Observation:
         '''
         this is the structur that hte Satori PubSub delivers data in: {
             'topic': '{"source": "satori", "author": "02a85fb71485c6d7c62a3784c5549bd3849d0afa3ee44ce3f9ea5541e4c56402d8", "stream": "WeatherBerlin", "target": "temperature"}',
-            'data': 4.2}
+            'data': 4.2,
+            'hash': 'abc'}
         '''
         if isinstance(raw, str):
             j = json.loads(raw)
@@ -408,7 +413,7 @@ class Observation:
         topic = j.get('topic', None)
         streamId = StreamId.fromTopic(topic)
         observedTime = j.get('time', str(dt.datetime.utcnow()))
-        observationId = j.get('observation', None)
+        observationHash = j.get('observationHash', None)
         value = j.get('data', None)
         target = None
         df = pd.DataFrame(
@@ -419,15 +424,22 @@ class Observation:
                     streamId.stream,
                     streamId.target):
                 [value] + (
-                    [('StreamObservationId', observationId)]
-                    if observationId is not None else [])},
+                    [('StreamObservationId', observationHash)]
+                    if observationHash is not None else [])},
             index=[observedTime])
+        # I don't understand whey we still have a StreamObservationId
+        # or the multicolumn identifier... maybe it's for the engine?
+        # I think we should just save it to disk like this:
+        # observationHash = j.get('hash', None)
+        # df = pd.DataFrame(
+        #    {'value': [value],  'hash': [observationHash]},
+        #    index=[observedTime])
         return Observation(
             raw=raw,
             topic=topic,
             streamId=streamId,
             observedTime=observedTime,
-            observationId=observationId,
+            observationHash=observationHash,
             value=value,
             target=target,
             df=df)
@@ -457,7 +469,7 @@ class Observation:
         else:
             j = raw
         observedTime = j.get('time', str(dt.datetime.utcnow()))
-        observationId = j.get('observation', None)
+        observationHash = j.get('observationHash', None)
         content = j.get('content', {})
         streamId = StreamId(
             source=j.get('source', None),
@@ -478,8 +490,8 @@ class Observation:
                         target): values
                     for target, values in list(
                         content.items()) + (
-                            [('StreamObservationId', observationId)]
-                            if observationId is not None else [])},
+                            [('StreamObservationId', observationHash)]
+                            if observationHash is not None else [])},
                 index=[observedTime])
         # todo: handle list
             # elif isinstance(content, list): ...
@@ -492,14 +504,14 @@ class Observation:
                     streamId.stream,
                     None): [
                     content] + (
-                        [('StreamObservationId', observationId)]
-                        if observationId is not None else [])},
+                        [('StreamObservationId', observationHash)]
+                        if observationHash is not None else [])},
                 index=[observedTime])
         return Observation(
             raw=raw,
             content=content,
             observedTime=observedTime,
-            observationId=observationId,
+            observationHash=observationHash,
             streamId=streamId,
             value=value,
             df=df)
