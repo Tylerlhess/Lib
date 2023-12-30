@@ -120,7 +120,7 @@ class SatoriServerClient(object):
             logging.error(
                 'Please sync your system clock. '
                 'Attempting again with server time.',
-                r.text, print='red')
+                r.text, color='red')
             # poor man's solution for getting a prompt from the server:
             # use server's time, that way it doesn't have to remember which
             # prompt it gave to who and we can continue to use the time

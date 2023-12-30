@@ -2,7 +2,37 @@
 import sys
 import logging
 from typing import Union, Callable
-from satorilib.utils import colored, colors
+from satorilib.utils import colored, colors, styles
+
+
+class ColoredFormatter(logging.Formatter):
+    DEFAULT_COLOR_MAP = {
+        logging.DEBUG: 'magenta',
+        logging.INFO: 'blue',
+        logging.WARNING: 'yellow',
+        logging.ERROR: 'red',
+        logging.CRITICAL: 'red',
+    }
+    DEFAULT_STYLE_MAP = {
+        logging.DEBUG: None,
+        logging.INFO: None,
+        logging.WARNING: None,
+        logging.ERROR: None,
+        logging.CRITICAL: 'outlined',
+    }
+
+    def format(self, record):
+        print('record?', hasattr(record, 'color'))
+        message = super(ColoredFormatter, self).format(record)
+        return colored(
+            message,
+            color=getattr(
+                record,
+                'color',
+                self.DEFAULT_COLOR_MAP.get(record.levelno, 'white')),
+            style=getattr(
+                record,
+                'style', self.DEFAULT_STYLE_MAP.get(record.levelno)))
 
 
 def setup(
@@ -11,22 +41,38 @@ def setup(
     format: str = None,
     stdoutAndFile: bool = False,
 ):
-    format = format or '%(asctime)s - %(levelname)s - %(message)s'
-    kwargs = {'level': level, 'format': format}
+    formatter = ColoredFormatter(
+        format or '%(asctime)s - %(levelname)s - %(message)s')
     if file is not None:
-        if stdoutAndFile:
-            file_handler = logging.FileHandler(file)
-            file_handler.setLevel(level)
-            # file_handler.setFormatter(format)
-            stream_handler = logging.StreamHandler(sys.stdout)
-            stream_handler.setLevel(level)
-            # stream_handler.setFormatter(format)
-            kwargs = {'handlers': [file_handler, stream_handler], **kwargs}
-        else:
-            kwargs = {'filename': file, **kwargs}
+        file_handler = logging.FileHandler(file)
+        file_handler.setLevel(level)
+        file_handler.setFormatter(formatter)
+        stream_handler = logging.StreamHandler(sys.stdout)
+        stream_handler.setLevel(level)
+        stream_handler.setFormatter(formatter)
+        handlers = [file_handler, stream_handler] if stdoutAndFile else [
+            file_handler]
     else:
-        kwargs = {'stream': sys.stdout, **kwargs}
-    logging.basicConfig(**kwargs)
+        stream_handler = logging.StreamHandler(sys.stdout)
+        stream_handler.setLevel(level)
+        stream_handler.setFormatter(formatter)
+        handlers = [stream_handler]
+    logging.basicConfig(handlers=handlers)
+    # kwargs = {'level': level, 'format': format}
+    #    if file is not None:
+    #        if stdoutAndFile:
+    #            file_handler = logging.FileHandler(file)
+    #            file_handler.setLevel(level)
+    #            # file_handler.setFormatter(format)
+    #            stream_handler = logging.StreamHandler(sys.stdout)
+    #            stream_handler.setLevel(level)
+    #            # stream_handler.setFormatter(format)
+    #            kwargs = {'handlers': [file_handler, stream_handler], **kwargs}
+    #        else:
+    #            kwargs = {'filename': file, **kwargs}
+    #    else:
+    #        kwargs = {'stream': sys.stdout, **kwargs}
+    # logging.basicConfig(**kwargs)
 
     # Add excepthook to capture unhandled exceptions
     def log_unhandled_exception(exc_type, exc_value, exc_traceback):
@@ -35,22 +81,56 @@ def setup(
     sys.excepthook = log_unhandled_exception
 
 
-def _log(fn: Callable, msg: str, *args, **kwargs):
-    if kwargs.get('print'):
-        if kwargs.get('print') in colors():
-            printMsg = colored(msg, color=kwargs.get('print'))
+def _log(fn: Callable, msg: str, color=None, style=None, *args, **kwargs):
+    if color is not None or style is not None or kwargs.get('print'):
+        if color in colors():
+            printMsg = colored(
+                msg,
+                color=color,
+                style=style if style in styles() else None)
         elif fn == logging.debug:
-            printMsg = colored(msg, color='magenta')
+            printMsg = colored(
+                msg,
+                color='magenta',
+                style=style if style in styles() else None)
         elif fn == logging.info:
-            printMsg = colored(msg, color='blue')
+            printMsg = colored(
+                msg,
+                color='blue',
+                style=style if style in styles() else None)
         elif fn == logging.warning:
-            printMsg = colored(msg, color='yellow')
+            printMsg = colored(
+                msg,
+                color='yellow',
+                style=style if style in styles() else None)
         elif fn == logging.error:
-            printMsg = colored(msg, color='red')
+            printMsg = colored(
+                msg,
+                color='red',
+                style=style if style in styles() else None)
         elif fn == logging.critical:
-            printMsg = colored(msg, color='red', style='outlined')
+            printMsg = colored(
+                msg,
+                color='red',
+                style=style if style in styles() else 'outlined')
         print(printMsg)
-    return fn(msg=msg, *args, **{k: v for k, v in kwargs.items() if k != 'print'})
+    return fn(msg=msg, *args, **kwargs)
+# def _log(fn: Callable, msg: str, *args, **kwargs):
+#    if kwargs.get('print'):
+#        if kwargs.get('print') in colors():
+#            printMsg = colored(msg, color=kwargs.get('print'))
+#        elif fn == logging.debug:
+#            printMsg = colored(msg, color='magenta')
+#        elif fn == logging.info:
+#            printMsg = colored(msg, color='blue')
+#        elif fn == logging.warning:
+#            printMsg = colored(msg, color='yellow')
+#        elif fn == logging.error:
+#            printMsg = colored(msg, color='red')
+#        elif fn == logging.critical:
+#            printMsg = colored(msg, color='red', style='outlined')
+#        print(printMsg)
+#    return fn(msg=msg, *args, **{k: v for k, v in kwargs.items() if k != 'print'})
 
 
 def _getMsg(msgs):
@@ -64,26 +144,26 @@ def _getArgsKwargs(kwargs):
     return args, kwargs
 
 
-def debug(*msgs, **kwargs):
+def debug(*msgs, color=None, style=None, **kwargs):
     args, kwargs = _getArgsKwargs(kwargs)
-    return _log(logging.debug, _getMsg(msgs), *args, **kwargs)
+    return _log(logging.debug, _getMsg(msgs), *args, color=color, style=style, **kwargs)
 
 
-def info(*msgs, **kwargs):
+def info(*msgs, color=None, style=None, **kwargs):
     args, kwargs = _getArgsKwargs(kwargs)
-    return _log(logging.info, _getMsg(msgs), *args, **kwargs)
+    return _log(logging.info, _getMsg(msgs), *args, color=color, style=style, **kwargs)
 
 
-def warning(*msgs, **kwargs):
+def warning(*msgs, color=None, style=None, **kwargs):
     args, kwargs = _getArgsKwargs(kwargs)
-    return _log(logging.warning, _getMsg(msgs), *args, **kwargs)
+    return _log(logging.warning, _getMsg(msgs), *args, color=color, style=style, **kwargs)
 
 
-def error(*msgs, **kwargs):
+def error(*msgs, color=None, style=None, **kwargs):
     args, kwargs = _getArgsKwargs(kwargs)
-    return _log(logging.error, _getMsg(msgs), *args, **kwargs)
+    return _log(logging.error, _getMsg(msgs), *args, color=color, style=style, **kwargs)
 
 
-def critical(*msgs, **kwargs):
+def critical(*msgs, color=None, style=None, **kwargs):
     args, kwargs = _getArgsKwargs(kwargs)
-    return _log(logging.critical, _getMsg(msgs), *args, **kwargs)
+    return _log(logging.critical, _getMsg(msgs), *args, color=color, style=style, **kwargs)
