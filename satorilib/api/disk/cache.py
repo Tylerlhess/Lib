@@ -37,6 +37,9 @@ class Cache(Disk):
         super().__init__(df=df, id=id, loc=loc, ext=ext, **kwargs)
         self.loadCache()
 
+    def __str__(self):
+        return f'Cache({self.id}, {self.df.tail()})'
+
     ### passthru ###
 
     def clearCache(self):
@@ -350,16 +353,26 @@ class Cached:
 
     @property
     def disk(self):
-        if not hasattr(self, '_disk'):
+        if not hasattr(self, '_disk') or self._disk is None or self.streamId != self._disk.id:
             # circular import if outside this function. but it's ok here because
             # we take care to never call this function on imports or inits. and
             # this class is only used outside satorilib, such as in satorineuron
             # and satoriengine (which shouldn't import from neuron either, but
             # must in order to get the start singleton).
             from satorineuron.init.start import getStart
+            logging.debug('getting disk for', self.streamId, print='yellow')
             self._disk = getStart().cacheOf(self.streamId)
+            logging.debug('got disk', self._disk, print='yellow')
         return self._disk
 
     @property
     def data(self) -> pd.DataFrame:
         return self.disk.cache
+
+    @property
+    def streamId(self) -> StreamId:
+        return self._streamId
+
+    @streamId.setter
+    def streamId(self, value: StreamId):
+        self._streamId = value
