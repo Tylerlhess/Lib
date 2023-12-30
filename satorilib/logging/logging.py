@@ -58,23 +58,7 @@ def setup(
         stream_handler.setFormatter(formatter)
         handlers = [stream_handler]
     logging.basicConfig(handlers=handlers)
-    # kwargs = {'level': level, 'format': format}
-    #    if file is not None:
-    #        if stdoutAndFile:
-    #            file_handler = logging.FileHandler(file)
-    #            file_handler.setLevel(level)
-    #            # file_handler.setFormatter(format)
-    #            stream_handler = logging.StreamHandler(sys.stdout)
-    #            stream_handler.setLevel(level)
-    #            # stream_handler.setFormatter(format)
-    #            kwargs = {'handlers': [file_handler, stream_handler], **kwargs}
-    #        else:
-    #            kwargs = {'filename': file, **kwargs}
-    #    else:
-    #        kwargs = {'stream': sys.stdout, **kwargs}
-    # logging.basicConfig(**kwargs)
 
-    # Add excepthook to capture unhandled exceptions
     def log_unhandled_exception(exc_type, exc_value, exc_traceback):
         logging.critical("Unhandled exception", exc_info=(
             exc_type, exc_value, exc_traceback))
@@ -114,23 +98,7 @@ def _log(fn: Callable, msg: str, color=None, style=None, *args, **kwargs):
                 color='red',
                 style=style if style in styles() else 'outlined')
         print(printMsg)
-    return fn(msg=msg, *args, **kwargs)
-# def _log(fn: Callable, msg: str, *args, **kwargs):
-#    if kwargs.get('print'):
-#        if kwargs.get('print') in colors():
-#            printMsg = colored(msg, color=kwargs.get('print'))
-#        elif fn == logging.debug:
-#            printMsg = colored(msg, color='magenta')
-#        elif fn == logging.info:
-#            printMsg = colored(msg, color='blue')
-#        elif fn == logging.warning:
-#            printMsg = colored(msg, color='yellow')
-#        elif fn == logging.error:
-#            printMsg = colored(msg, color='red')
-#        elif fn == logging.critical:
-#            printMsg = colored(msg, color='red', style='outlined')
-#        print(printMsg)
-#    return fn(msg=msg, *args, **{k: v for k, v in kwargs.items() if k != 'print'})
+    return fn(msg=msg, *args, **{k: v for k, v in kwargs.items() if k != 'print'})
 
 
 def _getMsg(msgs):
