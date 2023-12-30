@@ -64,13 +64,9 @@ class Cache(Disk):
         return self.df
 
     def updateCacheShowDifference(self, df: pd.DataFrame) -> pd.DataFrame:
-        logging.debug('updateCacheShowDifference',
-                      df.tail(3), df.dtypes, print='green')
         prior = self.df.copy()
         self.updateCache(df)
         name = self.df.index.name or 'index'
-        logging.debug('merging', self.df.tail(3), self.df.dtypes,
-                      prior.tail(3), prior.dtypes, print='green')
         dfIndexed = self.df.reset_index()
         priorIndexed = prior.reset_index()
         common = dfIndexed.columns.intersection(priorIndexed.columns).tolist()
@@ -81,11 +77,10 @@ class Cache(Disk):
             on=common,
             validate=None,
             indicator=True)
-        logging.debug('merged:', merged, print='green')
-        differences = merged[merged['_merge'] != 'both'].drop(columns=['_merge']).set_index(
-            name)  # Replace 'index' with the actual name of your index column
-        logging.debug('difference', differences,
-                      differences.dtypes, print='green')
+        differences = (
+            merged[merged['_merge'] != 'both']
+            .drop(columns=['_merge'])
+            .set_index(name))
         return differences
 
     def search(
@@ -214,15 +209,12 @@ class Cache(Disk):
         if df is None or df.shape[0] == 0 or len(df.columns) > 2:
             return False
         # assumes no duplicates...
-        logging.debug('df1:', df, df.dtypes, print='teal')
         df = df.sort_index()
         if 'hash' not in df.columns:
             df = self.hashDataFrame(
                 df=df,
                 priorRowHash=self.getHashBefore(df.index[0]))
-        logging.debug('df2:', df, df.dtypes, print='teal')
         combined = pd.concat([self.df, df])
-        logging.debug('df3:', combined, combined.dtypes, print='teal')
         return self.csv.append(
             filePath=self.path(),
             data=self.updateCacheShowDifference(combined))
@@ -360,9 +352,7 @@ class Cached:
             # and satoriengine (which shouldn't import from neuron either, but
             # must in order to get the start singleton).
             from satorineuron.init.start import getStart
-            logging.debug('getting disk for', self.streamId, print='yellow')
             self._disk = getStart().cacheOf(self.streamId)
-            logging.debug('got disk', self._disk, print='yellow')
         return self._disk
 
     @property
