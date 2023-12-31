@@ -7,6 +7,7 @@ dedicated thread just for that.
 import inspect
 import asyncio
 import threading
+import datetime as dt
 from satorilib import logging
 
 
@@ -36,20 +37,6 @@ class AsyncThread():
             logging.error(f'Exception in asyncWrapper: {e}', print=True)
             raise
 
-    async def repeatWrapper(self, *args, func: callable, interval: float, **kwargs):
-        if isinstance(interval, int):
-            interval = float(interval)
-        while True:
-            try:
-                await self.asyncWrapper(*args, func=func, **kwargs)
-                await asyncio.sleep(interval)
-            except asyncio.CancelledError:
-                # Handle cancellation
-                break
-            except Exception as e:
-                # Handle or log the exception
-                logging.error(f'Exception in repeatWrapper: {e}', print=True)
-
     async def delayedWrapper(self, *args, func: callable, delay: float, **kwargs):
         if isinstance(delay, int):
             delay = float(delay)
@@ -61,7 +48,48 @@ class AsyncThread():
             logging.error(f'Exception in delayedWrapper: {e}', print=True)
             raise
 
-    def _preRun(self, *args, task: callable = None, delay: float = None, interval: float = None,  **kwargs):
+    async def repeatWrapper(self, *args, func: callable, interval: float, **kwargs):
+        if isinstance(interval, int):
+            interval = float(interval)
+        while True:
+            try:
+                await self.asyncWrapper(*args, func=func, **kwargs)
+                await asyncio.sleep(interval)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logging.error(f'Exception in repeatWrapper: {e}', print=True)
+
+    async def dailyWrapper(self, *args, func: callable, times: list[str], **kwargs):
+        while True:
+            now = dt.datetime.now()
+            nextRunTime = None
+            for timeString in times:
+                runTime = (
+                    dt.datetime.strptime(timeString, '%H:%M:%S')
+                    .replace(year=now.year, month=now.month, day=now.day))
+                if runTime < now:
+                    runTime += dt.timedelta(days=1)
+                if nextRunTime is None or runTime < nextRunTime:
+                    nextRunTime = runTime
+            delay = (nextRunTime - now).total_seconds()
+            await asyncio.sleep(delay)
+            try:
+                await self.asyncWrapper(*args, func=func, **kwargs)
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logging.error(f'Exception in dailyWrapper: {e}', print=True)
+
+    def _preRun(
+        self,
+        *args,
+        task: callable = None,
+        delay: float = None,
+        interval: float = None,
+        times: list[str] = None,
+        **kwargs
+    ):
         if self.loop is None:
             self._runForever()
         if self.loop is None:
@@ -75,6 +103,9 @@ class AsyncThread():
             elif interval is not None:
                 coroutine = self.repeatWrapper(
                     *args, func=task, interval=interval, **kwargs)
+            elif times is not None:
+                coroutine = self.dailyWrapper(
+                    *args, func=task, times=times, **kwargs)
             else:
                 coroutine = self.asyncWrapper(*args, func=task, **kwargs)
         else:
@@ -89,8 +120,11 @@ class AsyncThread():
         ''' submits async tasks to the event loop with a delay '''
         return self._runAsync(self._preRun(*args, task=task, delay=delay, **kwargs))
 
-    def repeatRun(self, *args, task: callable, interval: float = 60,  **kwargs):
+    def repeatRun(self, *args, task: callable, interval: float = 60, **kwargs):
         return self._runAsync(self._preRun(*args, task=task, interval=interval, **kwargs))
+
+    def dailyRun(self, *args, task: callable, times: list[str], **kwargs):
+        return self._runAsync(self._preRun(*args, task=task, times=times, **kwargs))
 
     def _runAsync(self, coroutine: callable):
         ''' submits async task or function to the event loop '''
