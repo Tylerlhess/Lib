@@ -112,7 +112,6 @@ class SatoriServerClient(object):
         return r
 
     def checkin(self) -> dict:
-        import time
         # r = requests.post(
         #    self.url + '/checkin',
         #    headers=self.wallet.authPayload(asDict=True),
@@ -128,16 +127,11 @@ class SatoriServerClient(object):
         # verification system we have.
         # how it's the default way:
         challenge = requests.get(self.url + '/time').text
-        logging.debug('challenge', challenge, color='magenta')
-        logging.debug('json', self.wallet.registerPayload(
-            challenge=challenge), color='magenta')
-        time.sleep(1)
         r = requests.post(
             self.url + '/checkin',
             headers=self.wallet.authPayload(asDict=True, challenge=challenge),
             json=self.wallet.registerPayload(
                 challenge=challenge))
-        logging.debug('r.text', r.text, color='magenta')
         r.raise_for_status()
         # use subscriptions to initialize engine
         # # logging.debug('publications.key', j.get('publications.key'))
