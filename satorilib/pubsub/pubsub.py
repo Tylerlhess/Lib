@@ -81,9 +81,17 @@ class SatoriPubSubConn(object):
     def connect(self):
         import websocket
         ws = websocket.WebSocket()
-        ws.connect(f'{self.url}?uid={self.uid}')
-        assert (ws.connected == True)
-        return ws
+        while not ws.connected:
+            try:
+                ws.connect(f'{self.url}?uid={self.uid}')
+                return ws
+            except Exception as e:
+                # except OSError as e:
+                # OSError: [Errno 99] Cannot assign requested address
+                # pubsub server went down
+                logging.error(
+                    e, 'failed to connect to pubsub server, retrying...', print=True)
+                time.sleep(30)
 
     def send(
         self,
