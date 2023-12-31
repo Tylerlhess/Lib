@@ -131,11 +131,10 @@ class SatoriServerClient(object):
         logging.debug('challenge', challenge, color='magenta')
         logging.debug('json', self.wallet.registerPayload(
             challenge=challenge), color='magenta')
-
         time.sleep(1)
         r = requests.post(
             self.url + '/checkin',
-            headers=self.wallet.authPayload(asDict=True),
+            headers=self.wallet.authPayload(asDict=True, challenge=challenge),
             json=self.wallet.registerPayload(
                 challenge=challenge))
         logging.debug('r.text', r.text, color='magenta')
