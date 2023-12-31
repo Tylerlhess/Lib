@@ -63,7 +63,6 @@ class AsyncThread():
     async def dailyWrapper(self, *args, func: callable, times: list[str], **kwargs):
         while True:
             now = dt.datetime.utcnow()
-            logging.debug('utcnow', now, color='magenta')
             nextRunTime = None
             for timeString in times:
                 runTime = (
@@ -73,9 +72,7 @@ class AsyncThread():
                     runTime += dt.timedelta(days=1)
                 if nextRunTime is None or runTime < nextRunTime:
                     nextRunTime = runTime
-            logging.debug('nextRunTime', nextRunTime, color='magenta')
             delay = (nextRunTime - now).total_seconds()
-            logging.debug('delay', delay, color='magenta')
             await asyncio.sleep(delay)
             try:
                 await self.asyncWrapper(*args, func=func, **kwargs)
