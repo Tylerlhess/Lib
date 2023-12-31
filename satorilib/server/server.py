@@ -136,6 +136,8 @@ class SatoriServerClient(object):
             headers=self.wallet.authPayload(asDict=True),
             json=self.wallet.registerPayload(
                 challenge=challenge))
+        logging.debug('json', self.wallet.registerPayload(
+            challenge=challenge), color='magenta')
         logging.debug('r.text', r.text, color='magenta')
         r.raise_for_status()
         # use subscriptions to initialize engine
