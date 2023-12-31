@@ -22,7 +22,6 @@ class ColoredFormatter(logging.Formatter):
     }
 
     def format(self, record):
-        print('record?', hasattr(record, 'color'))
         message = super(ColoredFormatter, self).format(record)
         return colored(
             message,
