@@ -129,6 +129,8 @@ class SatoriServerClient(object):
         # how it's the default way:
         challenge = requests.get(self.url + '/time').text
         logging.debug('challenge', challenge, color='magenta')
+        logging.debug('json', self.wallet.registerPayload(
+            challenge=challenge), color='magenta')
 
         time.sleep(1)
         r = requests.post(
@@ -136,8 +138,6 @@ class SatoriServerClient(object):
             headers=self.wallet.authPayload(asDict=True),
             json=self.wallet.registerPayload(
                 challenge=challenge))
-        logging.debug('json', self.wallet.registerPayload(
-            challenge=challenge), color='magenta')
         logging.debug('r.text', r.text, color='magenta')
         r.raise_for_status()
         # use subscriptions to initialize engine
