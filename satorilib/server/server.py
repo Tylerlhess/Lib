@@ -112,24 +112,25 @@ class SatoriServerClient(object):
         return r
 
     def checkin(self) -> dict:
+        # r = requests.post(
+        #    self.url + '/checkin',
+        #    headers=self.wallet.authPayload(asDict=True),
+        #    json=self.wallet.registerPayload())
+        # if r.text.startswith('unable to verify recent timestamp.'):
+        #    logging.error(
+        #        'Please sync your system clock. '
+        #        'Attempting again with server time.',
+        #        r.text, color='red')
+        # poor man's solution for getting a prompt from the server:
+        # use server's time, that way it doesn't have to remember which
+        # prompt it gave to who and we can continue to use the time
+        # verification system we have.
+        # how it's the default way:
         r = requests.post(
             self.url + '/checkin',
             headers=self.wallet.authPayload(asDict=True),
-            json=self.wallet.registerPayload())
-        if r.text.startswith('unable to verify recent timestamp.'):
-            logging.error(
-                'Please sync your system clock. '
-                'Attempting again with server time.',
-                r.text, color='red')
-            # poor man's solution for getting a prompt from the server:
-            # use server's time, that way it doesn't have to remember which
-            # prompt it gave to who and we can continue to use the time
-            # verification system we have.
-            r = requests.post(
-                self.url + '/checkin',
-                headers=self.wallet.authPayload(asDict=True),
-                json=self.wallet.registerPayload(
-                    challenge=requests.get(self.url + '/time').text))
+            json=self.wallet.registerPayload(
+                challenge=requests.get(self.url + '/time').text))
         r.raise_for_status()
         # use subscriptions to initialize engine
         # # logging.debug('publications.key', j.get('publications.key'))
