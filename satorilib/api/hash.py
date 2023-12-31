@@ -18,6 +18,21 @@ def generatePathId(path: str = None, streamId: 'StreamId' = None):
     return ret
 
 
+def generateCheckinTime(streamId: 'StreamId'):
+    def moduloDay(integer: int):
+        return integer % (60 * 60 * 24)
+
+    def generateRandomInteger(string: str):
+        return int(hashlib.sha256(string.encode()).hexdigest(), 16)
+
+    def convertSecondToTimeOfDay(second: int):
+        return f'{(second // 3600):02d}:{((second % 3600) // 60):02d}:{(second % 60):02d}'
+    return convertSecondToTimeOfDay(
+        moduloDay(
+            generateRandomInteger(
+                streamId.idString)))
+
+
 def hashIt(string: str) -> str:
     # return hashlib.sha256(rowStr.encode()).hexdigest() # 74mb
     # return hashlib.md5(rowStr.encode()).hexdigest() # 42mb

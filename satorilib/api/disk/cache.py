@@ -52,6 +52,7 @@ class Cache(Disk):
         return self.df
 
     def updateCache(self, df: pd.DataFrame) -> pd.DataFrame:
+        logging.debug('updateCache:', df, color='yellow')
         if df is None:
             return self.clearCache()
         name = df.index.name or 'index'
@@ -61,10 +62,13 @@ class Cache(Disk):
             .drop_duplicates(subset=[name], keep='last')
             .set_index(name)
             .sort_index())
+        logging.debug('updateCache ret:', self.df, color='yellow')
         return self.df
 
     def updateCacheShowDifference(self, df: pd.DataFrame) -> pd.DataFrame:
+        logging.debug('combine:', df, color='yellow')
         prior = self.df.copy()
+        logging.debug('prior:', prior, color='yellow')
         self.updateCache(df)
         name = self.df.index.name or 'index'
         dfIndexed = self.df.reset_index()
