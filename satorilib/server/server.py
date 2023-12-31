@@ -112,6 +112,7 @@ class SatoriServerClient(object):
         return r
 
     def checkin(self) -> dict:
+        import time
         # r = requests.post(
         #    self.url + '/checkin',
         #    headers=self.wallet.authPayload(asDict=True),
@@ -128,6 +129,7 @@ class SatoriServerClient(object):
         # how it's the default way:
         challenge = requests.get(self.url + '/time').text
         logging.debug('challenge', challenge, color='magenta')
+
         time.sleep(1)
         r = requests.post(
             self.url + '/checkin',
