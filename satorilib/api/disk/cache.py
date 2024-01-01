@@ -71,8 +71,6 @@ class Cache(Disk):
                 return x
 
         logging.debug('updateCacheShowDifference: df', df, color='magenta')
-        if self.df.empty:
-            self.loadCache()
         prior = self.df.copy()
         if df is not None:
             self.updateCache(df)
@@ -245,6 +243,10 @@ class Cache(Disk):
 
     def append(self, df: pd.DataFrame) -> bool:
         ''' appends to the end of the file while also hashing '''
+        if self.df.empty:
+            self.loadCache()
+            if self.df.empty:
+                return self.write(df)
         if df is None or df.shape[0] == 0 or len(df.columns) > 2:
             return False
         if all([i in self.df.index for i in df.index]):
@@ -276,6 +278,10 @@ class Cache(Disk):
         df = pd.DataFrame(
             {'value': [value], 'hash': [observationHash]},
             index=[timestamp])
+        if self.df.empty:
+            self.loadCache()
+            if self.df.empty:
+                return (self.write(df), timestamp, observationHash)
         logging.debug('appendByAttributes:', df, color='yellow')
         logging.debug('appendByAttributes: CONAT ',
                       pd.concat([self.df, df]), color='yellow')
