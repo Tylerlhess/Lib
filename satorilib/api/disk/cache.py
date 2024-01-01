@@ -86,6 +86,10 @@ class Cache(Disk):
                       prior.dtypes, color='magenta')
         logging.debug('updateCacheShowDifference: dfIndexed types',
                       dfIndexed.dtypes, color='magenta')
+        if priorIndex.value.dtype == 'float64' and dfIndexed.value.dtype != 'float64':
+            dfIndexed['value'] = dfIndexed['value'].astype(float)
+        elif priorIndex.value.dtype != 'float64' and dfIndexed.value.dtype == 'float64':
+            priorIndex['value'] = priorIndex['value'].astype(float)
         try:
             merged = pd.merge(
                 dfIndexed,
