@@ -81,7 +81,7 @@ class Cache(Disk):
                       priorIndexed.tail(2), color='magenta')
         common = dfIndexed.columns.intersection(priorIndexed.columns).tolist()
         logging.debug('updateCacheShowDifference: common',
-                      common.tail(2), color='magenta')
+                      common, color='magenta')
         merged = pd.merge(
             dfIndexed,
             priorIndexed,
@@ -95,6 +95,8 @@ class Cache(Disk):
             merged[merged['_merge'] != 'both']
             .drop(columns=['_merge'])
             .set_index(name))
+        logging.debug('updateCacheShowDifference: differences',
+                      differences, color='magenta')
         return differences
 
     def search(
