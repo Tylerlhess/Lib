@@ -71,8 +71,11 @@ class Cache(Disk):
                 return x
 
         logging.debug('updateCacheShowDifference: df', df, color='magenta')
+        if self.df.empty:
+            self.loadCache()
         prior = self.df.copy()
-        self.updateCache(df)
+        if df is not None:
+            self.updateCache(df)
         logging.debug('updateCacheShowDifference: prior',
                       prior.tail, color='magenta')
         logging.debug('updateCacheShowDifference: self.df.tail',
