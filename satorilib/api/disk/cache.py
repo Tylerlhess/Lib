@@ -52,7 +52,6 @@ class Cache(Disk):
         return self.df
 
     def updateCache(self, df: pd.DataFrame) -> pd.DataFrame:
-        logging.debug('updateCache:', df, color='yellow')
         if df is None:
             return self.clearCache()
         name = df.index.name or 'index'
@@ -62,13 +61,10 @@ class Cache(Disk):
             .drop_duplicates(subset=[name], keep='last')
             .set_index(name)
             .sort_index())
-        logging.debug('updateCache ret:', self.df, color='yellow')
         return self.df
 
     def updateCacheShowDifference(self, df: pd.DataFrame) -> pd.DataFrame:
-        logging.debug('combine:', df, color='yellow')
         prior = self.df.copy()
-        logging.debug('prior:', prior, color='yellow')
         self.updateCache(df)
         name = self.df.index.name or 'index'
         dfIndexed = self.df.reset_index()
@@ -338,14 +334,13 @@ class Cache(Disk):
 
 
 class Cached:
-    '''
-    requires self.streamId attribute, for example:
+    '''requires self.streamId attribute to be set'''
 
-    @property
-    def streamId(self) -> StreamId: 
-        return self.id
-
-    '''
+    def diskOf(self, streamId: StreamId) -> Cache:
+        if not hasattr(self, '_diskOf') or self._diskOf is None or streamId != self._diskOf.id:
+            from satorineuron.init.start import getStart
+            self._diskOf = getStart().cacheOf(streamId)
+        return self._diskOf
 
     @property
     def disk(self):

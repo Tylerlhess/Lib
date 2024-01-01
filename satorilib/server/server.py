@@ -127,11 +127,11 @@ class SatoriServerClient(object):
         # verification system we have.
         # how it's the default way:
         challenge = requests.get(self.url + '/time').text
+        logging.info('outgoing Satori server message: <checkin>', print=True)
         r = requests.post(
             self.url + '/checkin',
             headers=self.wallet.authPayload(asDict=True, challenge=challenge),
-            json=self.wallet.registerPayload(
-                challenge=challenge))
+            json=self.wallet.registerPayload(challenge=challenge))
         r.raise_for_status()
         # use subscriptions to initialize engine
         # # logging.debug('publications.key', j.get('publications.key'))
@@ -151,4 +151,5 @@ class SatoriServerClient(object):
         #    toDecrypt=j.get('key'),
         #    key='thiskeyisfromenv',
         #    clean=True))
+        logging.info('incoming Satori server message:', r.json(), print=True)
         return r.json()
