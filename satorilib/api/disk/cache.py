@@ -208,7 +208,8 @@ class Cache(Disk):
         ''' appends to the end of the file while also hashing '''
         if df is None or df.shape[0] == 0 or len(df.columns) > 2:
             return False
-        # assumes no duplicates...
+        if all([i in self.df.index for i in df.index]):
+            return False
         df = df.sort_index()
         if 'hash' not in df.columns:
             df = self.hashDataFrame(
@@ -227,11 +228,16 @@ class Cache(Disk):
         returns success and timestamp and observationHash
         '''
         timestamp = timestamp or datetimeToString(now())
+        if timestamp in self.df.index:
+            return (False, timestamp, observationHash)
         observationHash = observationHash or hashIt(
             self.getHashBefore(timestamp) + str(timestamp) + str(value))
+        logging.debug(
+            f'appendByAttributes: {self.id} {timestamp} {value} {observationHash}', color='yellow')
         df = pd.DataFrame(
             {'value': [value], 'hash': [observationHash]},
             index=[timestamp])
+        logging.debug('appendByAttributes:', df, color='yellow')
         return (
             self.csv.append(
                 filePath=self.path(),

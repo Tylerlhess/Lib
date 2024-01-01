@@ -519,3 +519,7 @@ class Observation:
     @property
     def key(self):
         return self.streamId
+
+    @property
+    def timestamp(self):
+        return self.observedTime
