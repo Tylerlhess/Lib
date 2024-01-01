@@ -64,8 +64,13 @@ class Cache(Disk):
         return self.df
 
     def updateCacheShowDifference(self, df: pd.DataFrame) -> pd.DataFrame:
+        logging.debug('updateCacheShowDifference: df', df, color='magenta')
         prior = self.df.copy()
         self.updateCache(df)
+        logging.debug('updateCacheShowDifference: prior',
+                      prior.tail, color='magenta')
+        logging.debug('updateCacheShowDifference: self.df.tail',
+                      self.df.tail, color='magenta')
         name = self.df.index.name or 'index'
         dfIndexed = self.df.reset_index()
         priorIndexed = prior.reset_index()
@@ -77,10 +82,14 @@ class Cache(Disk):
             on=common,
             validate=None,
             indicator=True)
+        logging.debug('updateCacheShowDifference: merged',
+                      merged, color='magenta')
         differences = (
             merged[merged['_merge'] != 'both']
             .drop(columns=['_merge'])
             .set_index(name))
+        logging.debug('updateCacheShowDifference: differences',
+                      differnces, color='magenta')
         return differences
 
     def search(
@@ -238,6 +247,10 @@ class Cache(Disk):
             {'value': [value], 'hash': [observationHash]},
             index=[timestamp])
         logging.debug('appendByAttributes:', df, color='yellow')
+        logging.debug('appendByAttributes: CONAT ',
+                      pd.concat([self.df, df]), color='yellow')
+        logging.debug('appendByAttributes: update ', self.updateCacheShowDifference(
+            pd.concat([self.df, df])), color='yellow')
         return (
             self.csv.append(
                 filePath=self.path(),
