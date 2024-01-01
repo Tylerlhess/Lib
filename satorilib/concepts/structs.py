@@ -412,7 +412,7 @@ class Observation:
             j = raw
         topic = j.get('topic', None)
         streamId = StreamId.fromTopic(topic)
-        observedTime = j.get('time', str(dt.datetime.utcnow()))
+        observationTime = j.get('time', str(dt.datetime.utcnow()))
         observationHash = j.get('observationHash', None)
         value = j.get('data', None)
         target = None
@@ -426,19 +426,19 @@ class Observation:
                 [value] + (
                     [('StreamObservationId', observationHash)]
                     if observationHash is not None else [])},
-            index=[observedTime])
+            index=[observationTime])
         # I don't understand whey we still have a StreamObservationId
         # or the multicolumn identifier... maybe it's for the engine?
         # I think we should just save it to disk like this:
         # observationHash = j.get('hash', None)
         # df = pd.DataFrame(
         #    {'value': [value],  'hash': [observationHash]},
-        #    index=[observedTime])
+        #    index=[observationTime])
         return Observation(
             raw=raw,
             topic=topic,
             streamId=streamId,
-            observedTime=observedTime,
+            observationTime=observationTime,
             observationHash=observationHash,
             value=value,
             target=target,
@@ -468,7 +468,7 @@ class Observation:
                 j[k] = v
         else:
             j = raw
-        observedTime = j.get('time', str(dt.datetime.utcnow()))
+        observationTime = j.get('time', str(dt.datetime.utcnow()))
         observationHash = j.get('observationHash', None)
         content = j.get('content', {})
         streamId = StreamId(
@@ -492,7 +492,7 @@ class Observation:
                         content.items()) + (
                             [('StreamObservationId', observationHash)]
                             if observationHash is not None else [])},
-                index=[observedTime])
+                index=[observationTime])
         # todo: handle list
             # elif isinstance(content, list): ...
         else:
@@ -506,11 +506,11 @@ class Observation:
                     content] + (
                         [('StreamObservationId', observationHash)]
                         if observationHash is not None else [])},
-                index=[observedTime])
+                index=[observationTime])
         return Observation(
             raw=raw,
             content=content,
-            observedTime=observedTime,
+            observationTime=observationTime,
             observationHash=observationHash,
             streamId=streamId,
             value=value,
@@ -522,4 +522,4 @@ class Observation:
 
     @property
     def timestamp(self):
-        return self.observedTime
+        return self.observationTime

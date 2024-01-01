@@ -47,13 +47,13 @@ class Cache(Disk):
 
     def updateCacheSimple(self, df: pd.DataFrame) -> pd.DataFrame:
         if df is None:
-            return self.clearCache()
+            return self.df
         self.df = df
         return self.df
 
     def updateCache(self, df: pd.DataFrame) -> pd.DataFrame:
         if df is None:
-            return self.clearCache()
+            return self.df
         name = df.index.name or 'index'
         self.df = (
             df
@@ -70,33 +70,13 @@ class Cache(Disk):
             except ValueError:
                 return x
 
-        logging.debug('updateCacheShowDifference: df', df, color='magenta')
         prior = self.df.copy()
         if df is not None:
             self.updateCache(df)
-        logging.debug('updateCacheShowDifference: prior',
-                      prior.tail, color='magenta')
-        logging.debug('updateCacheShowDifference: self.df.tail',
-                      self.df.tail, color='magenta')
         name = self.df.index.name or 'index'
-        logging.debug('updateCacheShowDifference: NAME', name, color='magenta')
         dfIndexed = self.df.reset_index()
-        logging.debug('updateCacheShowDifference: dfIndexed',
-                      dfIndexed.tail(2), color='magenta')
         priorIndexed = prior.reset_index()
-        logging.debug('updateCacheShowDifference: priorIndexed',
-                      priorIndexed.tail(2), color='magenta')
         common = dfIndexed.columns.intersection(priorIndexed.columns).tolist()
-        logging.debug('updateCacheShowDifference: common',
-                      common, color='magenta')
-        logging.debug('updateCacheShowDifference: priorIndexed types',
-                      priorIndexed.dtypes, color='magenta')
-        logging.debug('updateCacheShowDifference: dfIndexed types',
-                      dfIndexed.dtypes, color='magenta')
-        # if priorIndexed.value.dtype == 'float64' and dfIndexed.value.dtype != 'float64':
-        #    dfIndexed['value'] = dfIndexed['value'].astype(float)
-        # elif priorIndexed.value.dtype != 'float64' and dfIndexed.value.dtype == 'float64':
-        #    priorIndexed['value'] = priorIndexed['value'].astype(float)
         try:
             dfIndexed['value'] = dfIndexed['value'].apply(safeFloatConvert)
             priorIndexed['value'] = priorIndexed['value'].apply(
@@ -110,14 +90,10 @@ class Cache(Disk):
                 indicator=True)
         except Exception as e:
             logging.error('merge error', e, color='red')
-        logging.debug('updateCacheShowDifference: merged',
-                      merged, color='magenta')
         differences = (
             merged[merged['_merge'] != 'both']
             .drop(columns=['_merge'])
             .set_index(name))
-        logging.debug('updateCacheShowDifference: differences',
-                      differences, color='magenta')
         return differences
 
     def search(
@@ -273,8 +249,6 @@ class Cache(Disk):
             return (False, timestamp, observationHash)
         observationHash = observationHash or hashIt(
             self.getHashBefore(timestamp) + str(timestamp) + str(value))
-        logging.debug(
-            f'appendByAttributes: {self.id} {timestamp} {value} {observationHash}', color='yellow')
         df = pd.DataFrame(
             {'value': [value], 'hash': [observationHash]},
             index=[timestamp])
@@ -282,9 +256,6 @@ class Cache(Disk):
             self.loadCache()
             if self.df.empty:
                 return (self.write(df), timestamp, observationHash)
-        logging.debug('appendByAttributes:', df, color='yellow')
-        logging.debug('appendByAttributes: CONAT ',
-                      pd.concat([self.df, df]), color='yellow')
         return (
             self.csv.append(
                 filePath=self.path(),
@@ -308,6 +279,8 @@ class Cache(Disk):
 
     @property
     def cache(self) -> pd.DataFrame:
+        if self.df.empty:
+            self.loadCache()
         return self.df
 
     def loadCache(self) -> pd.DataFrame:
