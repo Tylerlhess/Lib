@@ -82,5 +82,5 @@ class CSVManager(FileManager):
             ))
             return df.iloc[[capture]] if capture == 0 else df.iloc[0:capture+1]
         except Exception as e:
-            logging.error('unable to get data', e, color='magenta')
+            logging.error('unable to get data', e, print=True)
             return None
