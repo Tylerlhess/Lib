@@ -82,13 +82,16 @@ class Cache(Disk):
         common = dfIndexed.columns.intersection(priorIndexed.columns).tolist()
         logging.debug('updateCacheShowDifference: common',
                       common, color='magenta')
-        merged = pd.merge(
-            dfIndexed,
-            priorIndexed,
-            how='outer',
-            on=common,
-            validate=None,
-            indicator=True)
+        try:
+            merged = pd.merge(
+                dfIndexed,
+                priorIndexed,
+                how='outer',
+                on=common,
+                validate=None,
+                indicator=True)
+        except Exception as e:
+            logging.error('merge error', e, color='red')
         logging.debug('updateCacheShowDifference: merged',
                       merged, color='magenta')
         differences = (
