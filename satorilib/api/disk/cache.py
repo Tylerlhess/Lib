@@ -88,8 +88,6 @@ class Cache(Disk):
             merged[merged['_merge'] != 'both']
             .drop(columns=['_merge'])
             .set_index(name))
-        logging.debug('updateCacheShowDifference: differences',
-                      differnces, color='magenta')
         return differences
 
     def search(
