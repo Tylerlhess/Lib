@@ -82,6 +82,10 @@ class Cache(Disk):
         common = dfIndexed.columns.intersection(priorIndexed.columns).tolist()
         logging.debug('updateCacheShowDifference: common',
                       common, color='magenta')
+        logging.debug('updateCacheShowDifference: prior types',
+                      prior.dtypes, color='magenta')
+        logging.debug('updateCacheShowDifference: dfIndexed types',
+                      dfIndexed.dtypes, color='magenta')
         try:
             merged = pd.merge(
                 dfIndexed,
