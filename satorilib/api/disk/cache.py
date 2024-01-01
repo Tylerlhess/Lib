@@ -64,6 +64,12 @@ class Cache(Disk):
         return self.df
 
     def updateCacheShowDifference(self, df: pd.DataFrame) -> pd.DataFrame:
+        def safeConvertToFloat(x):
+            try:
+                return float(x)
+            except ValueError:
+                return x
+
         logging.debug('updateCacheShowDifference: df', df, color='magenta')
         prior = self.df.copy()
         self.updateCache(df)
@@ -86,10 +92,13 @@ class Cache(Disk):
                       priorIndexed.dtypes, color='magenta')
         logging.debug('updateCacheShowDifference: dfIndexed types',
                       dfIndexed.dtypes, color='magenta')
-        if priorIndexed.value.dtype == 'float64' and dfIndexed.value.dtype != 'float64':
-            dfIndexed['value'] = dfIndexed['value'].astype(float)
-        elif priorIndexed.value.dtype != 'float64' and dfIndexed.value.dtype == 'float64':
-            priorIndexed['value'] = priorIndexed['value'].astype(float)
+        # if priorIndexed.value.dtype == 'float64' and dfIndexed.value.dtype != 'float64':
+        #    dfIndexed['value'] = dfIndexed['value'].astype(float)
+        # elif priorIndexed.value.dtype != 'float64' and dfIndexed.value.dtype == 'float64':
+        #    priorIndexed['value'] = priorIndexed['value'].astype(float)
+        dfIndexed['value'] = dfIndexed['value'].applymap(safe_convert_to_float)
+        priorIndexed['value'] = priorIndexed['value'].applymap(
+            safe_convert_to_float)
         try:
             merged = pd.merge(
                 dfIndexed,
