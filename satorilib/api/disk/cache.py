@@ -96,8 +96,8 @@ class Cache(Disk):
         #    dfIndexed['value'] = dfIndexed['value'].astype(float)
         # elif priorIndexed.value.dtype != 'float64' and dfIndexed.value.dtype == 'float64':
         #    priorIndexed['value'] = priorIndexed['value'].astype(float)
-        dfIndexed['value'] = dfIndexed['value'].applymap(safeFloatConvert)
-        priorIndexed['value'] = priorIndexed['value'].applymap(
+        dfIndexed['value'] = dfIndexed['value'].apply(safeFloatConvert)
+        priorIndexed['value'] = priorIndexed['value'].apply(
             safeFloatConvert)
         try:
             merged = pd.merge(
