@@ -72,9 +72,16 @@ class Cache(Disk):
         logging.debug('updateCacheShowDifference: self.df.tail',
                       self.df.tail, color='magenta')
         name = self.df.index.name or 'index'
+        logging.debug('updateCacheShowDifference: NAME', name, color='magenta')
         dfIndexed = self.df.reset_index()
+        logging.debug('updateCacheShowDifference: dfIndexed',
+                      dfIndexed.tail(2), color='magenta')
         priorIndexed = prior.reset_index()
+        logging.debug('updateCacheShowDifference: priorIndexed',
+                      priorIndexed.tail(2), color='magenta')
         common = dfIndexed.columns.intersection(priorIndexed.columns).tolist()
+        logging.debug('updateCacheShowDifference: common',
+                      common.tail(2), color='magenta')
         merged = pd.merge(
             dfIndexed,
             priorIndexed,
