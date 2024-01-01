@@ -276,8 +276,6 @@ class Cache(Disk):
         logging.debug('appendByAttributes:', df, color='yellow')
         logging.debug('appendByAttributes: CONAT ',
                       pd.concat([self.df, df]), color='yellow')
-        logging.debug('appendByAttributes: update ', self.updateCacheShowDifference(
-            pd.concat([self.df, df])), color='yellow')
         return (
             self.csv.append(
                 filePath=self.path(),
