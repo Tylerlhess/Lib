@@ -50,7 +50,7 @@ class CSVManager(FileManager):
         except Exception as e:
             with open(filePath, mode='r') as f:
                 x = f.read()
-            if x == '' or x == None or x == ' ' or x == '\n':
+            if x != None and x != '' and x != ' ' and x != '\n':
                 logging.info(f'unable to read file: {filePath}', e, print=True)
             return None
 
