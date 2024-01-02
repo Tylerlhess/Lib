@@ -48,7 +48,11 @@ class CSVManager(FileManager):
         try:
             return self._clean(self._conformBasic(pd.read_csv(filePath, index_col=0, header=None)))
         except Exception as e:
-            logging.error(f'unable to read file: {filePath}', e, print=True)
+            with open(filePath, mode='r') as f:
+                x = f.read()
+            if x == '' or x == None or x == ' ' or x == '\n':
+                logging.info(f'unable to read file: {filePath}', e, print=True)
+            return None
 
     def write(self, filePath: str, data: pd.DataFrame) -> bool:
         try:
