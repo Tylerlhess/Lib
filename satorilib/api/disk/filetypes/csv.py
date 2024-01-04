@@ -42,7 +42,6 @@ class CSVManager(FileManager):
             return None
         except Exception as _:
             return False
-        return False
 
     def read(self, filePath: str, **kwargs) -> pd.DataFrame:
         try:

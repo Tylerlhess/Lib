@@ -10,6 +10,7 @@
 # since the engine will not even be started until after the router is complete,
 # and all messages saved to the disk, this should be fine.
 
+from typing import Union
 import json
 import time
 import threading
@@ -18,9 +19,11 @@ from satorilib import logging
 
 class SatoriPubSubConn(object):
     def __init__(
-            self, uid: str, payload: dict, url: str = None,
-            router: 'function' = None, listening: bool = True, then: str = None,
-            command: str = 'key', *args, **kwargs):
+        self, uid: str, payload: Union[dict, str], url: Union[str, None] = None,
+        router: Union['function', None] = None, listening: bool = True,
+        then: Union[str, None] = None, command: str = 'key',
+        *args, **kwargs
+    ):
         super(SatoriPubSubConn, self).__init__(*args, **kwargs)
         self.uid = uid
         self.url = url or 'ws://satorinet.io:3000'
@@ -43,7 +46,7 @@ class SatoriPubSubConn(object):
             try:
                 # logging.debug('re-establishing pubsub connection')
                 self.restart(payload)
-            except Exception as e:
+            except Exception as _:
                 pass
                 # logging.debug('restarting pubsub connection failed', e)
             time.sleep(2)
@@ -65,7 +68,7 @@ class SatoriPubSubConn(object):
             try:
                 response = self.ws.recv()
                 # logging.debug('response', response)
-            except Exception as e:
+            except Exception as _:
                 # except WebSocketConnectionClosedException as e:
                 # except ConnectionResetError:
                 # logging.debug('pubsub broke:', e)
@@ -95,12 +98,12 @@ class SatoriPubSubConn(object):
 
     def send(
         self,
-        payload: str = None,
-        title: str = None,
-        topic: str = None,
-        data: str = None,
-        time: str = None,
-        observationHash: str = None,
+        payload: Union[str, None] = None,
+        title: Union[str, None] = None,
+        topic: Union[str, None] = None,
+        data: Union[str, None] = None,
+        time: Union[str, None] = None,
+        observationHash: Union[str, None] = None,
     ):
         if payload is None and title is None and topic is None and data is None:
             raise ValueError(
@@ -127,7 +130,7 @@ class SatoriPubSubConn(object):
 
     def disconnect(self):
         self.listening = False
-        self.send(title='notify', topic='connection', data=False)
+        self.send(title='notify', topic='connection', data='False')
         self.ws.close()  # server should detect we closed the connection
         assert (self.ws.connected == False)
 
