@@ -6,7 +6,7 @@ import pandas as pd
 from satorilib import logging
 from satorilib.concepts import StreamId
 from satorilib.api import memory
-from satorilib.api.time import datetimeToString, now
+from satorilib.api.time import datetimeToTimestamp, now
 from satorilib.api.hash import hashIt, generatePathId, historyHashes, verifyHashes, cleanHashes, verifyRoot, verifyHashesReturnError
 from satorilib.api.disk import Disk
 from satorilib.api.disk.utils import safetify, safetifyWithResult
@@ -244,7 +244,7 @@ class Cache(Disk):
         appends to the end of the file while also hashing, 
         returns success and timestamp and observationHash
         '''
-        timestamp = timestamp or datetimeToString(now())
+        timestamp = timestamp or datetimeToTimestamp(now())
         if timestamp in self.df.index:
             return (False, timestamp, observationHash)
         observationHash = observationHash or hashIt(

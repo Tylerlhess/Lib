@@ -20,7 +20,7 @@ a response with the observation. if there is no observation, NONE is returned:
 
 '''
 import datetime as dt
-from satorilib.api.time import datetimeToString, datetimeFromString, now
+from satorilib.api.time import datetimeToTimestamp, timestampToDatetime, now
 
 
 class UDPProtocol():
@@ -56,7 +56,7 @@ class UDPProtocol():
     @staticmethod
     def requestObservationBefore(time: dt.datetime) -> bytes:
         if isinstance(time, dt.datetime):
-            time = datetimeToString(time)
+            time = datetimeToTimestamp(time)
         if isinstance(time, str):
             time = time.encode()
         return UDPProtocol.requestPrefix() + b'|' + time
@@ -66,7 +66,7 @@ class UDPProtocol():
         if isinstance(data, str):
             data = data.encode()
         if isinstance(time, dt.datetime):
-            time = datetimeToString(time)
+            time = datetimeToTimestamp(time)
         if isinstance(time, str):
             time = time.encode()
         return UDPProtocol.respondPrefix() + b'|' + time + b'|' + data

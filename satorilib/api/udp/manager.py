@@ -11,7 +11,7 @@ from typing import Union
 import datetime as dt
 from satorilib.api.udp.rendezvous import UDPRendezvousConnection, UDPRendezvousMessage, UDPRendezvousProtocol
 from satorilib.api.udp.client import UDPConnection, UDPMessage, UDPProtocol
-from satorilib.api.time import datetimeToString, now
+from satorilib.api.time import datetimeToTimestamp, now
 from satorilib.concepts import StreamId
 from satorilib.api.disk.disk import Disk
 
@@ -89,7 +89,7 @@ class UDPChannel():
         returns the observation prior to the time of the most recent observation
         '''
         if isinstance(time, dt.datetime):
-            time = datetimeToString(time)
+            time = datetimeToTimestamp(time)
         observation = self.disk.lastRowStringBefore(timestap=time)
         if observation is None:
             self.send(UDPProtocol.respondNoObservation())

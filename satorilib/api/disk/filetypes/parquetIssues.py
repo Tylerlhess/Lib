@@ -74,7 +74,7 @@ should have been done in the disk module, but was instead done at higher levels:
 #                     else:
 #                         msgsToSave.append(msg)
 #             msg = topic.getOneObservation(
-#                 time=datetimeFromString(msg.observationTime))
+#                 time=timestampToDatetime(msg.observationTime))
 #         return msgsToSave
 
 #     def findTopic():

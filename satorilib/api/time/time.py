@@ -1,12 +1,28 @@
 import datetime as dt
 
 
-def datetimeToString(time: dt.datetime) -> str:
+def datetimeToTimestamp(time: dt.datetime) -> str:
     return time.strftime('%Y-%m-%d %H:%M:%S.%f')
 
 
-def datetimeFromString(time: str) -> dt.datetime:
+def timestampToDatetime(time: str) -> dt.datetime:
     return dt.datetime.strptime(time, '%Y-%m-%d %H:%M:%S.%f')
+
+
+def datetimeToSeconds(time: dt.datetime) -> float:
+    return time.replace(tzinfo=dt.timezone.utc).timestamp()
+
+
+def secondsToDatetime(time: float) -> dt.datetime:
+    return dt.datetime.fromtimestamp(time, tz=dt.timezone.utc)
+
+
+def timestampToSeconds(time: str) -> float:
+    return datetimeToSeconds(timestampToDatetime(time))
+
+
+def secondsToTimestamp(time: float) -> str:
+    return datetimeToTimestamp(secondsToDatetime(time))
 
 
 def earliestDate() -> dt.datetime:
