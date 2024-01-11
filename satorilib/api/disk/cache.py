@@ -149,7 +149,8 @@ class Cache(Disk):
     def hashDataFrame(self, df: pd.DataFrame = None, priorRowHash: str = '') -> pd.DataFrame:
         ''' first we have to flattent the columns, then rename them '''
         return historyHashes(
-            df=self.csv.conformFlatColumns(self.memory.flatten(df)),
+            df=self.csv.conformFlatColumns(self.memory.flatten(
+                df if isinstance(df, pd.DataFrame) else self.df)),
             priorRowHash=priorRowHash)
 
     def validateAllHashes(self, df: pd.DataFrame = None, priorRowHash: str = '') -> tuple[bool, Union[pd.DataFrame, None]]:
@@ -216,6 +217,23 @@ class Cache(Disk):
             filePath=self.path(),
             data=self.updateCache(self.hashDataFrame(
                 self.updateCache(df) if df is not None else self.df)))
+
+    def merge(self, df: pd.DataFrame) -> bool:
+        ''' appends to the end of the file while also hashing '''
+        if df is None or df.shape[0] == 0 or 'value' not in df.columns:
+            return False
+        if 'index' in df.columns:
+            df = df.set_index('index')
+        df = df.sort_index()
+        if 'hash' not in df.columns:
+            df['hash'] = ''
+        if self.df.empty:
+            self.loadCache()
+            if self.df.empty:
+                return self.write(df)
+        self.df.update(df)  # update existing entries
+        self.df = self.df.combine_first(df)  # add rows that are not in self.df
+        return self.write(self.df)
 
     def append(self, df: pd.DataFrame) -> bool:
         ''' appends to the end of the file while also hashing '''
