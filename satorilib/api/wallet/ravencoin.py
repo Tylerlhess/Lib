@@ -55,7 +55,14 @@ class RavencoinWallet(Wallet):
     def get(self, allWalletInfo=False):
         ''' gets data from the blockchain, saves to attributes '''
         # x = Ravencoin(self.address, self.scripthash, config.electrumxServers())
-        x = Ravencoin(self.address, self.scripthash, ['moontree.com:50002'])
+        # todo: this list of servers should be parameterized from configuration
+        x = Ravencoin(self.address, self.scripthash, [
+            'moontree.com:50002',
+            'rvn4lyfe.com:50002',
+            'ravennode-01.beep.pw:50002',
+            'ravennode-02.beep.pw:50002',
+            'electrum-rvn.dnsalias.net:50002',
+        ])
         # todo:
         # on connect ask for peers, add each to our list of electrumxServers
         # if unable to connect, remove that server from our list
@@ -69,7 +76,7 @@ class RavencoinWallet(Wallet):
         self.transactions = x.transactions or []
         self.unspentRvn = x.unspentRvn
         self.unspentAssets = x.unspentAssets
-        self.baseVouts = x.baseVouts
+        self.baseVouts = x.rvnVouts
         self.assetVouts = x.assetVouts
 
     def satoriTransaction(self, amountByAddress: dict):

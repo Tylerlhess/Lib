@@ -20,6 +20,7 @@ psutil==5.9.0 #5.8.0
 
 ## needed for wallet
 python-ravencoinlib==0.2.2
+python-evrmorelib
 mnemonic==0.20
 base58==2.1.1
 #qrcode==7.3.1

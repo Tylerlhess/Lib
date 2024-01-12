@@ -5,7 +5,7 @@ it returns a key you use to make a websocket connection with the pubsub server.
 import json
 import requests
 from satorilib import logging
-from satorilib.api.wallet import Wallet
+from satorilib.api.wallet import RavencoinWallet
 
 
 class SatoriServerClient(object):

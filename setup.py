@@ -38,6 +38,9 @@ setup(
     long_description_content_type="text/markdown",
     packages=[f'{get_name()}.{p}' for p in find_packages(where=get_name())],
     install_requires=get_requirements(),
+    dependency_links=[
+        'git+https://github.com/SatoriNetwork/python-evrmorelib.git#egg=python-evrmorelib'
+    ],
     python_requires='>=3.9.5',
     author='Jordan Miller',
     author_email="jordan@satorinet.io",

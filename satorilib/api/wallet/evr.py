@@ -72,7 +72,22 @@ class EvrmoreWallet(Wallet):
     def get(self, allWalletInfo=False):
         ''' gets data from the blockchain, saves to attributes '''
         # x = Evrmore(self.address, self.scripthash, config.electrumxServers())
-        x = Evrmore(self.address, self.scripthash, ['moontree.com:50002'])
+        # todo: this list of servers should be parameterized from configuration
+        x = Evrmore(self.address, self.scripthash, [
+            'moontree.com:50022',  # mainnet ssl evr
+            'electrum1-mainnet.evrmorecoin.org:50002',  # ssl
+            'electrum2-mainnet.evrmorecoin.org:50002',  # ssl
+            # 'electrum1-mainnet.evrmorecoin.org:50001',  # tcp
+            # 'electrum2-mainnet.evrmorecoin.org:50001',  # tcp
+            # 'moontree.com:50021',  # mainnet tcp evr
+            # 'moontree.com:50031', # testnet tcp evr
+            # 'moontree.com:50032', # testnet ssl evr
+            # 'electrum1-mainnet.evrmorecoin.org:50004', # wss
+            # 'electrum2-mainnet.evrmorecoin.org:50004', # wss
+            # 'electrum1-testnet.evrmorecoin.org:50001', # tcp
+            # 'electrum1-testnet.evrmorecoin.org:50002', # ssl
+            # 'electrum1-testnet.evrmorecoin.org:50004', # wss
+        ])
         # todo:
         # on connect ask for peers, add each to our list of electrumxServers
         # if unable to connect, remove that server from our list
@@ -81,12 +96,12 @@ class EvrmoreWallet(Wallet):
         self.balance = x.balance
         self.stats = x.stats
         self.banner = x.banner
-        self.rvn = x.rvn
+        self.base = x.evr
         self.transactionHistory = x.transactionHistory
         self.transactions = x.transactions or []
         self.unspentRvn = x.unspentRvn
         self.unspentAssets = x.unspentAssets
-        self.rvnVouts = x.rvnVouts
+        self.baseVouts = x.evrVouts
         self.assetVouts = x.assetVouts
 
     def satoriTransaction(self, amountByAddress: dict):
