@@ -9,6 +9,7 @@ from satorilib.api.wallet.wallet import Wallet
 class EvrmoreWallet(Wallet):
 
     def __init__(self, walletPath, temporary=False):
+        walletPath = walletPath.replace('.yaml', '-evr.yaml')
         super().__init__(walletPath, temporary)
 
     def __repr__(self):
@@ -99,7 +100,7 @@ class EvrmoreWallet(Wallet):
         self.base = x.evr
         self.transactionHistory = x.transactionHistory
         self.transactions = x.transactions or []
-        self.unspentRvn = x.unspentRvn
+        self.unspentEvr = x.unspentEvr
         self.unspentAssets = x.unspentAssets
         self.baseVouts = x.evrVouts
         self.assetVouts = x.assetVouts
@@ -115,21 +116,16 @@ class EvrmoreWallet(Wallet):
 
         assert (len(amountByAddress) > 0)
         # sum total amounts and other variables
-        unspentRvn = [x for x in self.unspentRvn if x.get('value') > 0]
+        unspentEvr = [x for x in self.unspentEvr if x.get('value') > 0]
         unspentSatori = [x for x in self.unspentAssets if x.get(
             'name') == 'SATORI' and x.get('value') > 0]
-        haveRvn = sum([x.get('value') for x in unspentRvn])
+        haveEvr = sum([x.get('value') for x in unspentEvr])
         haveSatori = sum([x.get('value') for x in unspentSatori])
         sendSatori = sum(amountByAddress.values())
         assert (haveSatori >= sendSatori > 0)
-        assert (haveRvn >= 300000000)  # maintain minimum 3 RVN at all times
+        assert (haveEvr >= 300000000)  # maintain minimum 3 RVN at all times
 
-        # # TODO: sub optimal, if you're sending from one address (not HDWallet)
-        # # why not order by size, take the ones just big enough and minimize
-        # # the number of inputs, and therefore the fee? just replace the whole
-        # # thing with HD wallet and optimize everything eventually.
-        # loop until gathered > total
-        #   gather satori utxos at random
+        # gather satori utxos at random
         gatheredSatori = 0
         gatheredSatoriUnspents = []
         while gatheredSatori < sendSatori:
@@ -146,9 +142,62 @@ class EvrmoreWallet(Wallet):
             gatheredRvn < estimatedFee(
                 inputCount=len(gatheredSatoriUnspents)+len(gatheredRvnUnspents))
         ):
-            randomUnspent = unspentRvn.pop(randrange(len(unspentRvn)))
+            randomUnspent = unspentEvr.pop(randrange(len(unspentEvr)))
             gatheredRvnUnspents.append(randomUnspent)
             gatheredRvn += randomUnspent.get('value')
+
+        # see https://github.com/sphericale/python-ravencoinlib/blob/master/examples/spend-p2pkh-txout.py
+        from ravencoin.wallet import CRavencoinAddress, CRavencoinSecret
+        from ravencoin.core.scripteval import VerifyScript, SCRIPT_VERIFY_P2SH
+        from ravencoin.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, SignatureHash, SIGHASH_ALL
+        from ravencoin.core import b2x, lx, COIN, COutPoint, CMutableTxOut, CMutableTxIn, CMutableTransaction, Hash160
+
+        txins = []
+        for utxo in gatheredRvnUnspents:
+            txin = CMutableTxIn(
+                COutPoint(lx(utxo.get('tx_hash')), utxo.get('tx_pos')))
+            txin_scriptPubKey = CScript([OP_DUP, OP_HASH160, Hash160(
+                self.publicKey), OP_EQUALVERIFY, OP_CHECKSIG])
+            sighash = SignatureHash(txin_scriptPubKey, tx, 0, SIGHASH_ALL)
+            sig = seckey.sign(sighash) + bytes([SIGHASH_ALL])
+            txin.scriptSig = CScript([sig, seckey.pub])
+            txins.append(txin)
+        for utxo in gatheredSatoriUnspents:
+            txin = CMutableTxIn(
+                COutPoint(lx(utxo.get('tx_hash')), utxo.get('tx_pos')))
+            txin_scriptPubKey = CScript([OP_DUP, OP_HASH160, Hash160(
+                self.publicKey), OP_EQUALVERIFY, OP_CHECKSIG])
+            sighash = SignatureHash(txin_scriptPubKey, tx, 0, SIGHASH_ALL)
+            sig = seckey.sign(sighash) + bytes([SIGHASH_ALL])
+            txin.scriptSig = CScript([sig, seckey.pub])
+            txins.append(txin)
+        txouts = []
+        for address, amount in amountByAddress.items():
+            txout = CMutableTxOut(
+                amount*COIN, CRavencoinAddress(address).to_scriptPubKey())
+            txouts.append(txout)
+        tx = CMutableTransaction(txins, txouts)
+        # assumes 1 input, 1 output to verify?
+        # VerifyScript(txin.scriptSig, txin_scriptPubKey, tx, 0, (SCRIPT_VERIFY_P2SH,))
+        print(b2x(tx.serialize()))
+        # in theory we can send the serialized tx to the blockchain through electrumx
+        x = Evrmore(self.address, self.scripthash, [
+            'moontree.com:50022',  # mainnet ssl evr
+            'electrum1-mainnet.evrmorecoin.org:50002',  # ssl
+            'electrum2-mainnet.evrmorecoin.org:50002',  # ssl
+        ])
+        x.broadcast(b2x(tx.serialize()))
+
+        # add all inputs and outputs to transaction
+        # ?? txbuilder
+        # ?? see python-ravencoinlib examples
+        # sign all inputs
+        # ?? see python-ravencoinlib
+        # ?? if asset input use (get the self.assetVouts corresponding to the
+        # ?? unspent).vout.scriptPubKey.hex.hexBytes
+        # send
+        # ?? use blockchain.transaction.broadcast raw_tx put function in
+        # ?? Ravencoin object since that's our connection object
 
     def sign(self, message: str):
         return evrmore.signMessage(self._privateKeyObj, message)
