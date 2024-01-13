@@ -2,6 +2,7 @@ import os
 import json
 import mnemonic
 from satoriwallet.lib import connection
+from satoriwallet import utils as transactionUtils
 from satorilib import logging
 from satorilib.api import system
 from satorilib.api.disk.wallet import WalletApi
@@ -166,6 +167,11 @@ class Wallet():
 
     def _generateAddress(self):
         ''' returns an address object '''
+
+    @property
+    def reserve(self) -> int:
+        ''' maintain minimum amount of currency at all times to cover fees '''
+        return transactionUtils.asSats(3)
 
     def showStats(self):
         ''' returns a string of stats properly formatted '''
