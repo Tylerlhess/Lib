@@ -110,10 +110,129 @@ class EvrmoreWallet(Wallet):
         # self.baseVouts = x.evrVouts
         # self.assetVouts = x.assetVouts
 
+    def estimatedFee(inputCount: int = 0, outputCount: int = 0):
+        # TODO: sub optimal, replace when we have a lot of users
+        feeRate = 150000  # 0.00150000 rvn per item as simple over-estimate
+        return (inputCount + outputCount) * feeRate
+
+    def baseToSats(self, amount: float) -> int:
+        from evrmore.core import COIN
+        return int(amount * COIN)
+
+    def intToLittleEndianHex(self, number: int) -> str:
+        '''
+        100000000 -> "00e1f50500000000"
+        # Example
+        number = 100000000
+        little_endian_hex = intToLittleEndianHex(number)
+        print(little_endian_hex)
+        '''
+        # Convert to hexadecimal and remove the '0x' prefix
+        hexNumber = hex(number)[2:]
+        # Ensure the hex number is of even length
+        if len(hexNumber) % 2 != 0:
+            hexNumber = '0' + hexNumber
+        # Reverse the byte order
+        littleEndianHex = ''.join(
+            reversed([hexNumber[i:i+2] for i in range(0, len(hexNumber), 2)]))
+        return littleEndianHex
+
+    def padHexStringTo8Bytes(self, hexString: str) -> str:
+        '''
+        # Example usage
+        hex_string = "00e1f505"
+        padded_hex_string = pad_hex_string_to_8_bytes(hex_string)
+        print(padded_hex_string)
+        '''
+        # Each byte is represented by 2 hexadecimal characters
+        targetLength = 16  # 8 bytes * 2 characters per byte
+        return hexString.ljust(targetLength, '0')
+
+    def addressToH160Bytes(self, address)->bytes:
+        '''
+        address = "RXBurnXXXXXXXXXXXXXXXXXXXXXXWUo9FV"
+        h160 = address_to_h160(address)
+        print(h160)
+        print(h160.hex()) 'f05325e90d5211def86b856c9569e54808201290'
+        '''
+        import base58
+        decoded = base58.b58decode(address)
+        h160 = decoded[1:-4]
+        return h160
+
+    @property
+    def reserve(self) -> int:
+        ''' maintain minimum amount of currency at all times to cover fees '''
+        return self.baseToSats(3)
+
     # for neuron
-    def ravenTransaction(self, amount: int, address: str):
+    def evrmoreTransaction(self, amount: float, address: str):
         ''' creates a transaction to just send rvn '''
-        return amount, address
+        assert (amount > 0 and len(address) == 34)
+        sats = self.baseToSats(amount)
+        unspentEvr = [x for x in self.unspentEvr if x.get('value') > 0]
+        unspentEvr = sorted(unspentEvr, key=lambda x: x['value'])
+        haveEvr = sum([x.get('value') for x in unspentEvr])
+        assert (haveEvr >= sats + self.reserve)
+        # gather rvn utxos smallest to largest
+        gatheredRvn = 0
+        gatheredRvnUnspents = []
+        while (
+            gatheredRvn < sats + self.estimatedFee(
+                inputCount=len(gatheredRvnUnspents),
+                outputCount=2)
+        ):
+            smallestUnspent = unspentEvr.pop(0)
+            gatheredRvnUnspents.append(smallestUnspent)
+            gatheredRvn += smallestUnspent.get('value')
+        # make transaction
+        # see https://github.com/sphericale/python-evrmorelib/blob/master/examples/spend-p2pkh-txout.py
+        from evrmore.wallet import CRavencoinAddress, CRavencoinSecret
+        from evrmore.core.scripteval import VerifyScript, SCRIPT_VERIFY_P2SH
+        from evrmore.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, SignatureHash, SIGHASH_ALL
+        from evrmore.core import b2x, lx, COIN, COutPoint, CMutableTxOut, CMutableTxIn, CMutableTransaction, Hash160
+        # vins
+        txins = []
+        txinScripts = []
+        for utxo in gatheredRvnUnspents:
+            txin = CMutableTxIn(
+                COutPoint(lx(utxo.get('tx_hash')), utxo.get('tx_pos')))
+            txin_scriptPubKey = CScript([OP_DUP, OP_HASH160, Hash160(
+                self.publicKey.encode()), OP_EQUALVERIFY, OP_CHECKSIG])
+            txins.append(txin)
+            txinScripts.append(txin_scriptPubKey)
+        # vouts
+        txouts = [
+            CMutableTxOut(sats, CRavencoinAddress(address).to_scriptPubKey())]
+        # change
+        change = gatheredRvn - sats - self.estimatedFee(
+            inputCount=len(gatheredRvnUnspents),
+            outputCount=2)
+        txouts.append(CMutableTxOut(change, self.address.to_scriptPubKey()))
+        # create transaction
+        tx = CMutableTransaction(txins, txouts)
+        for i, (txin, txin_scriptPubKey) in enumerate(zip(txins, txinScripts)):
+            sighash = SignatureHash(txin_scriptPubKey, tx, i, SIGHASH_ALL)
+            sig = self.privateKey.sign(sighash) + bytes([SIGHASH_ALL])
+            txin.scriptSig = CScript([sig, self.privateKey.pub])
+            VerifyScript(txin.scriptSig, txin_scriptPubKey,
+                         tx, i, (SCRIPT_VERIFY_P2SH,))
+        txToBroadcast = b2x(tx.serialize())
+        print(txToBroadcast)
+        # in theory we can send the serialized tx to the blockchain through electrumx
+        result = None
+        if self.conn.connected():
+            result = self.conn.broadcast(txToBroadcast)
+        else:
+            # this is dumb, fix it.
+            x = Evrmore(self.address, self.scripthash, [
+                'moontree.com:50022',  # mainnet ssl evr
+                'electrum1-mainnet.evrmorecoin.org:50002',  # ssl
+                'electrum2-mainnet.evrmorecoin.org:50002',  # ssl
+            ])
+            self.conn = x
+            result = x.broadcast(b2x(tx.serialize()))
+        return result
 
     # for neuron
     def satoriTransaction(self, amount: int, address: str):
@@ -123,6 +242,25 @@ class EvrmoreWallet(Wallet):
     # for server
     def satoriDistribution(self, amountByAddress: dict):
         ''' creates a transaction '''
+
+        def estimatedFeeRecursive(txToBroadcast: str):
+            '''
+            this assumes you've already created a transaction with the and can
+            inspect the size of it to estimate the fee, therere it implies a 
+            recursive opperation to create the transaction, because the fee must
+            be chosen before the transaction is created. so you would build the
+            transaction at least twice, but the fee can be much more optimized.
+            1.1 standard * 1000 * 192 bytes = 211,200 sats == 0.00211200 rvn
+            see example transaction: https://rvn.cryptoscope.io/tx/?txid=
+            3a880d09258075635e1565c06dce3f0091a67da987a63140a60f1d8f80a6625a
+            we could even base this off of some reasonable upper bound and the 
+            minimum relay fee specified by the electurmx server using 
+            blockchain.relayfee(). however, since I'm not willing to write the
+            recursive process we're not going to use this function yet.
+            '''
+            txSizeInBytes = len(txToBroadcast) / 2
+            feeRate = 1100  # 0.00001100 rvn per byte
+            return txSizeInBytes * feeRate
 
         def estimatedFee(inputCount: int = 0):
             # TODO: sub optimal, replace when we have a lot of users
@@ -155,23 +293,38 @@ class EvrmoreWallet(Wallet):
         gatheredRvn = 0
         gatheredRvnUnspents = []
         while (
-            gatheredRvn < estimatedFee(
-                inputCount=len(gatheredSatoriUnspents)+len(gatheredRvnUnspents))
+            gatheredRvn < self.estimatedFee(
+                inputCount=len(gatheredSatoriUnspents) +
+                len(gatheredRvnUnspents),
+                outputCount=len(amountByAddress) + 2)
         ):
             randomUnspent = unspentEvr.pop(randrange(len(unspentEvr)))
             gatheredRvnUnspents.append(randomUnspent)
             gatheredRvn += randomUnspent.get('value')
 
         # see https://github.com/sphericale/python-evrmorelib/blob/master/examples/spend-p2pkh-txout.py
-        from evrmore.wallet import CRavencoinAddress, CRavencoinSecret
+        from evrmore.wallet import CEvrmoreAddress, CEvrmoreSecret
         from evrmore.core.scripteval import VerifyScript, SCRIPT_VERIFY_P2SH
-        from evrmore.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, SignatureHash, SIGHASH_ALL
+        from evrmore.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, SignatureHash, SIGHASH_ALL, OP_EVR_ASSET, CScriptOp, OP_DROP
         from evrmore.core import b2x, lx, COIN, COutPoint, CMutableTxOut, CMutableTxIn, CMutableTransaction, Hash160
 
         # how do I specify an asset output? this doesn't seem right for that:
-
+        #         OP_DUP  OP_HASH160 3d5143a9336eaf44990a0b4249fcb823d70de52c OP_EQUALVERIFY OP_CHECKSIG OP_RVN_ASSET 0c72766e6f075341544f524921 75
+        #         OP_DUP  OP_HASH160 3d5143a9336eaf44990a0b4249fcb823d70de52c OP_EQUALVERIFY OP_CHECKSIG 0c(OP_RVN_ASSET) 72766e(rvn) 74(t) 07(length) 5341544f524921(SATORI) 00e1f50500000000(padded little endian hex of 100000000) 75(drop)
+        #         OP_DUP  OP_HASH160 3d5143a9336eaf44990a0b4249fcb823d70de52c OP_EQUALVERIFY OP_CHECKSIG 0c(OP_RVN_ASSET) 72766e(rvn) 74(t) 07(length) 5341544f524921(SATORI) 00e1f50500000000(padded little endian hex of 100000000) 75(drop)
+        #         OP_DUP  OP_HASH160 3d5143a9336eaf44990a0b4249fcb823d70de52c OP_EQUALVERIFY OP_CHECKSIG 0c(OP_RVN_ASSET) 14(20 bytes length of asset information) 657672(evr) 74(t) 07(length of asset name) 5341544f524921(SATORI is asset name) 00e1f50500000000(padded little endian hex of 100000000) 75(drop)
+        #         OP_DUP  OP_HASH160 3d5143a9336eaf44990a0b4249fcb823d70de52c OP_EQUALVERIFY OP_CHECKSIG 0c1465767274075341544f52492100e1f5050000000075
+        # CScript([OP_DUP, OP_HASH160, Hash160(self.publicKey.encode()), OP_EQUALVERIFY, OP_CHECKSIG ])
+        # CScript([OP_DUP, OP_HASH160, Hash160(self.publicKey.encode()), OP_EQUALVERIFY, OP_CHECKSIG OP_EVR_ASSET 0c ])
+        assetInfoLen = '14'
+        evr = '657672'
+        t = '74'
+        assetNameLen = '07'
+        assetName = '5341544f524921'
+        drop = '75'
         txins = []
         txinScripts = []
+
         for utxo in gatheredRvnUnspents:
             txin = CMutableTxIn(
                 COutPoint(lx(utxo.get('tx_hash')), utxo.get('tx_pos')))
@@ -183,20 +336,30 @@ class EvrmoreWallet(Wallet):
             txin = CMutableTxIn(
                 COutPoint(lx(utxo.get('tx_hash')), utxo.get('tx_pos')))
             txin_scriptPubKey = CScript([OP_DUP, OP_HASH160, Hash160(
-                self.publicKey.encode()), OP_EQUALVERIFY, OP_CHECKSIG])  # publicKey string to bytes            sighash = SignatureHash(txin_scriptPubKey, tx, 0, SIGHASH_ALL)
+                self.publicKey.encode()), OP_EQUALVERIFY, OP_CHECKSIG])
             txins.append(txin)
             txinScripts.append(txin_scriptPubKey)
         txouts = []
         amountOut = 0
         for address, amount in amountByAddress.items():
+            # for asset transfer...? perfect?
+            #   >>> Hash160(CRavencoinAddress(address).to_scriptPubKey())
+            #   b'\xc2\x0e\xdf\x8cG\xd7\x8d\xac\x052\x03\xddC<0\xdd\x00\x91\xd9\x19'
+            #   >>> Hash160(CRavencoinAddress(address))
+            #   b'!\x8d"6\xcf\xe8\xf6W4\x830\x85Y\x06\x01J\x82\xc4\x87p' <- looks like what we get with self.pubkey.encode()
+            # https://ravencoin.org/assets/
+            # https://rvn.cryptoscope.io/api/getrawtransaction/?txid=bae95f349f15effe42e75134ee7f4560f53462ddc19c47efdd03f85ef4ab8f40&decode=1
             txout = CMutableTxOut(
-                amount*COIN,
-                CRavencoinAddress(address).to_scriptPubKey())
+                0,
+                CScript([OP_DUP, OP_HASH160, self.addressToH160Bytes(address), OP_EQUALVERIFY, OP_CHECKSIG, OP_EVR_ASSET, bytes.fromhex(evr + t + assetNameLen + assetName +
+                        self.padHexStringTo8Bytes(self.intToLittleEndianHex(amount*COIN))), OP_DROP]))
             amountOut += amount*COIN
             txouts.append(txout)
         # change
         assetChange = gatheredSatori - sendSatori
-        baseChange = gatheredRvn - amountOut
+        baseChange = gatheredRvn - amountOut - self.estimatedFee(
+            inputCount=len(gatheredSatoriUnspents)+len(gatheredRvnUnspents),
+            outputCount=len(amountByAddress) + 2)
         txouts.append(
             CMutableTxOut(assetChange, self.address.to_scriptPubKey()))
         txouts.append(

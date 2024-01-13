@@ -82,11 +82,81 @@ class RavencoinWallet(Wallet):
         self.unspentAssets = x.unspentAssets
         # self.baseVouts = x.rvnVouts
         # self.assetVouts = x.assetVouts
-        
+
+    def estimatedFee(inputCount: int = 0, outputCount: int = 0):
+        # TODO: sub optimal, replace when we have a lot of users
+        feeRate = 150000  # 0.00150000 rvn per item as simple over-estimate
+        return (inputCount + outputCount) * feeRate
+
+    def baseToSats(self, amount: float) -> int:
+        from evrmore.core import COIN
+        return int(amount * COIN)
+
     # for neuron
-    def ravenTransaction(self, amount: int, address: str):
+    def ravenTransaction(self, amount: float, address: str):
         ''' creates a transaction to just send rvn '''
-        return amount, address
+        assert (amount > 0 and len(address) == 34)
+        sats = self.baseToSats(amount)
+        unspentEvr = [x for x in self.unspentEvr if x.get('value') > 0]
+        unspentEvr = sorted(unspentEvr, key=lambda x: x['value'])
+        haveEvr = sum([x.get('value') for x in unspentEvr])
+        assert (haveEvr >= sats + self.reserve)
+        # gather rvn utxos smallest to largest
+        gatheredRvn = 0
+        gatheredRvnUnspents = []
+        while (
+            gatheredRvn < sats + self.estimatedFee(
+                inputCount=len(gatheredRvnUnspents),
+                outputCount=2)
+        ):
+            smallestUnspent = unspentEvr.pop(0)
+            gatheredRvnUnspents.append(smallestUnspent)
+            gatheredRvn += smallestUnspent.get('value')
+        # make transaction
+        # see https://github.com/sphericale/python-evrmorelib/blob/master/examples/spend-p2pkh-txout.py
+        from evrmore.wallet import CRavencoinAddress, CRavencoinSecret
+        from evrmore.core.scripteval import VerifyScript, SCRIPT_VERIFY_P2SH
+        from evrmore.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, SignatureHash, SIGHASH_ALL
+        from evrmore.core import b2x, lx, COIN, COutPoint, CMutableTxOut, CMutableTxIn, CMutableTransaction, Hash160
+        # vins
+        txins = []
+        txinScripts = []
+        for utxo in gatheredRvnUnspents:
+            txin = CMutableTxIn(
+                COutPoint(lx(utxo.get('tx_hash')), utxo.get('tx_pos')))
+            txin_scriptPubKey = CScript([OP_DUP, OP_HASH160, Hash160(
+                self.publicKey.encode()), OP_EQUALVERIFY, OP_CHECKSIG])
+            txins.append(txin)
+            txinScripts.append(txin_scriptPubKey)
+        # vouts
+        txouts = [
+            CMutableTxOut(sats, CRavencoinAddress(address).to_scriptPubKey())]
+        # change
+        change = gatheredRvn - sats - self.estimatedFee(
+            inputCount=len(gatheredRvnUnspents),
+            outputCount=2)
+        txouts.append(CMutableTxOut(change, self.address.to_scriptPubKey()))
+        # create transaction
+        tx = CMutableTransaction(txins, txouts)
+        for i, (txin, txin_scriptPubKey) in enumerate(zip(txins, txinScripts)):
+            sighash = SignatureHash(txin_scriptPubKey, tx, i, SIGHASH_ALL)
+            sig = self.privateKey.sign(sighash) + bytes([SIGHASH_ALL])
+            txin.scriptSig = CScript([sig, self.privateKey.pub])
+            VerifyScript(txin.scriptSig, txin_scriptPubKey,
+                         tx, i, (SCRIPT_VERIFY_P2SH,))
+        txToBroadcast = b2x(tx.serialize())
+        print(txToBroadcast)
+        # in theory we can send the serialized tx to the blockchain through electrumx
+        result = None
+        if self.conn.connected():
+            result = self.conn.broadcast(txToBroadcast)
+        else:
+            # this is dumb, fix it.
+            x = Ravencoin(self.address, self.scripthash,
+                          ['moontree.com:50002'])
+            self.conn = x
+            result = x.broadcast(b2x(tx.serialize()))
+        return result
 
     # for neuron
     def satoriTransaction(self, amount: int, address: str):
@@ -128,8 +198,10 @@ class RavencoinWallet(Wallet):
         gatheredRvn = 0
         gatheredRvnUnspents = []
         while (
-            gatheredRvn < estimatedFee(
-                inputCount=len(gatheredSatoriUnspents)+len(gatheredRvnUnspents))
+            gatheredRvn < self.estimatedFee(
+                inputCount=len(gatheredSatoriUnspents) +
+                len(gatheredRvnUnspents),
+                outputCount=len(amountByAddress) + 2)
         ):
             randomUnspent = unspentRvn.pop(randrange(len(unspentRvn)))
             gatheredRvnUnspents.append(randomUnspent)
@@ -138,7 +210,7 @@ class RavencoinWallet(Wallet):
         # see https://github.com/sphericale/python-ravencoinlib/blob/master/examples/spend-p2pkh-txout.py
         from ravencoin.wallet import CRavencoinAddress, CRavencoinSecret
         from ravencoin.core.scripteval import VerifyScript, SCRIPT_VERIFY_P2SH
-        from ravencoin.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, SignatureHash, SIGHASH_ALL
+        from ravencoin.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, SignatureHash, SIGHASH_ALL, OP_DROP, OP_RVN_ASSET
         from ravencoin.core import b2x, lx, COIN, COutPoint, CMutableTxOut, CMutableTxIn, CMutableTransaction, Hash160
 
         # how do I specify an asset output? this doesn't seem right for that:
@@ -159,7 +231,7 @@ class RavencoinWallet(Wallet):
                 self.publicKey.encode()), OP_EQUALVERIFY, OP_CHECKSIG])  # publicKey string to bytes            sighash = SignatureHash(txin_scriptPubKey, tx, 0, SIGHASH_ALL)
             txins.append(txin)
             txinScripts.append(txin_scriptPubKey)
-                txouts = []
+        txouts = []
         amountOut = 0
         for address, amount in amountByAddress.items():
             txout = CMutableTxOut(
@@ -169,7 +241,10 @@ class RavencoinWallet(Wallet):
             txouts.append(txout)
         # change
         assetChange = gatheredSatori - sendSatori
-        baseChange = gatheredRvn - amountOut
+        baseChange = gatheredRvn - amountOut - self.estimatedFee(
+            inputCount=len(gatheredSatoriUnspents) +
+            len(gatheredRvnUnspents),
+            outputCount=len(amountByAddress) + 2)
         txouts.append(
             CMutableTxOut(assetChange, self.address.to_scriptPubKey()))
         txouts.append(
