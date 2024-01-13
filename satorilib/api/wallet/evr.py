@@ -3,7 +3,7 @@ from evrmore import SelectParams
 from evrmore.wallet import P2PKHEvrmoreAddress, CEvrmoreSecret
 from satoriwallet import Evrmore
 from satoriwallet import evrmore
-from satoriwallet import utils as transactionUtils
+from satoriwallet import TxUtils, Validate, AssetTransaction
 from evrmore.wallet import CEvrmoreAddress, CEvrmoreSecret
 from evrmore.core.scripteval import VerifyScript, SCRIPT_VERIFY_P2SH
 from evrmore.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, SignatureHash, SIGHASH_ALL, OP_EVR_ASSET, OP_DROP
@@ -131,7 +131,7 @@ class EvrmoreWallet(Wallet):
         gatheredCurrencySats = 0
         gatheredCurrencyUnspents = []
         while (
-            gatheredCurrencySats < sats + transactionUtils.estimatedFee(
+            gatheredCurrencySats < sats + TxUtils.estimatedFee(
                 inputCount=inputCount + len(gatheredCurrencyUnspents),
                 outputCount=outputCount)
         ):
@@ -199,7 +199,7 @@ class EvrmoreWallet(Wallet):
 
         return txins, txinScripts
 
-    def compileOutputs(self, amountByAddress: dict[str, float] = None) -> list:
+    def compileSatoriOutputs(self, amountByAddress: dict[str, float] = None) -> list:
         # see https://github.com/sphericale/python-evrmorelib/blob/master/examples/spend-p2pkh-txout.py
         # vouts
         # how do I specify an asset output? this doesn't seem right for that:
@@ -219,40 +219,56 @@ class EvrmoreWallet(Wallet):
             #   b'!\x8d"6\xcf\xe8\xf6W4\x830\x85Y\x06\x01J\x82\xc4\x87p' <- looks like what we get with self.pubkey.encode()
             # https://ravencoin.org/assets/
             # https://rvn.cryptoscope.io/api/getrawtransaction/?txid=bae95f349f15effe42e75134ee7f4560f53462ddc19c47efdd03f85ef4ab8f40&decode=1
-            sats = transactionUtils.asSats(amount*COIN)
+            sats = TxUtils.asSats(amount*COIN)
             txout = CMutableTxOut(
                 0,
                 CScript([
                     OP_DUP, OP_HASH160,
-                    transactionUtils.addressToH160Bytes(address),
+                    TxUtils.addressToH160Bytes(address),
                     OP_EQUALVERIFY, OP_CHECKSIG, OP_EVR_ASSET,
                     bytes.fromhex(
-                        transactionUtils.AssetTransaction.satoriEvrHex() +
-                        transactionUtils.padHexStringTo8Bytes(
-                            transactionUtils.intToLittleEndianHex(
+                        AssetTransaction.satoriEvrHex() +
+                        TxUtils.padHexStringTo8Bytes(
+                            TxUtils.intToLittleEndianHex(
                                 sats))),
                     OP_DROP]))
             txouts.append(txout)
         return txouts
 
-    def compileChangeOutputs(
+    def compileCurrencyOutputs(self, currencySats: int, address: str) -> list[CMutableTxOut]:
+        return [CMutableTxOut(currencySats, CEvrmoreAddress(address).to_scriptPubKey())]
+
+    def compileSatoriChangeOutputs(
         self,
         txouts: list,
         satoriSats: int = 0,
-        currencySats: int = 0,
         gatheredSatoriSats: int = 0,
+    ) -> list:
+        satoriChange = gatheredSatoriSats - satoriSats
+        if satoriChange > 0:
+            txouts.append(CMutableTxOut(
+                satoriChange, self.address.to_scriptPubKey()))
+        elif satoriChange < 0:
+            raise Exception('tx: not enough satori to send')
+        return txouts
+
+    def compileCurrencyChangeOutputs(
+        self,
+        txouts: list,
+        currencySats: int = 0,
         gatheredCurrencySats: int = 0,
         inputCount: int = 0,
         outputCount: int = 0,
     ) -> list:
-        assetChange = gatheredSatoriSats - satoriSats
-        baseChange = gatheredCurrencySats - currencySats - transactionUtils.estimatedFee(
+        currencyChange = gatheredCurrencySats - currencySats - TxUtils.estimatedFee(
             inputCount=inputCount,
             outputCount=outputCount)
-        txouts.append(
-            CMutableTxOut(assetChange, self.address.to_scriptPubKey()))
-        txouts.append(
-            CMutableTxOut(baseChange, self.address.to_scriptPubKey()))
+        if currencyChange > 0:
+            txouts.append(
+                CMutableTxOut(currencyChange, self.address.to_scriptPubKey()))
+        elif currencyChange < 0:
+            # go back and get more?
+            raise Exception('tx: not enough currency to send')
         return txouts
 
     def createTransaction(self, txins: list, txinScripts: list, txouts: list) -> CMutableTransaction:
@@ -288,7 +304,7 @@ class EvrmoreWallet(Wallet):
         ''' creates a transaction with multiple SATORI asset recipients '''
         if len(amountByAddress) == 0 or len(amountByAddress) > 1000:
             raise Exception('too many or too few recipients')
-        satoriSats = transactionUtils.asSats(sum(amountByAddress.values()))
+        satoriSats = TxUtils.asSats(sum(amountByAddress.values()))
         (
             gatheredSatoriUnspents,
             gatheredSatoriSats) = self.gatherSatoriUnspents(satoriSats)
@@ -300,26 +316,24 @@ class EvrmoreWallet(Wallet):
         txins, txinScripts = self.compileInputs(
             gatheredCurrencyUnspents=gatheredCurrencyUnspents,
             gatheredSatoriUnspents=gatheredSatoriUnspents)
-        txouts = self.compileOutputs(amountByAddress)
-        txouts = self.compileChangeOutputs(
-            satoriSats=satoriSats,
-            gatheredSatoriSats=gatheredSatoriSats,
+        txouts = self.compileCurrencyChangeOutputs(
+            txouts=self.compileSatoriChangeOutputs(
+                txouts=self.compileSatoriOutputs(amountByAddress),
+                satoriSats=satoriSats,
+                gatheredSatoriSats=gatheredSatoriSats),
             gatheredCurrencySats=gatheredCurrencySats,
             inputCount=len(gatheredSatoriUnspents) +
             len(gatheredCurrencyUnspents),
-            outputCount=len(amountByAddress) + 2,
-            txouts=txouts)
+            outputCount=len(amountByAddress) + 2)
         tx = self.createTransaction(txins, txinScripts, txouts)
-        txHex = self.txToHex(tx)
-        broadcastResult = self.broadcast(txHex)
-        return broadcastResult
+        return self.broadcast(self.txToHex(tx))
 
     # for neuron
     def currencyTransaction(self, amount: float, address: str):
         ''' creates a transaction to just send rvn '''
-        if amount <= 0 or address == '':
-            raise Exception('bad inputs for currencyTransaction')
-        currencySats = transactionUtils.asSats(amount)
+        if amount <= 0 or Validate.address(address, self.identifier):
+            raise Exception('bad params for currencyTransaction')
+        currencySats = TxUtils.asSats(amount)
         (
             gatheredCurrencyUnspents,
             gatheredCurrencySats) = self.gatherCurrencyUnspents(
@@ -328,9 +342,8 @@ class EvrmoreWallet(Wallet):
                 outputCount=1)
         txins, txinScripts = self.compileInputs(
             gatheredCurrencyUnspents=gatheredCurrencyUnspents)
-        txouts = self.compileOutputs({address: amount})
-        txouts = self.compileChangeOutputs(
-            txouts=txouts,
+        txouts = self.compileCurrencyChangeOutputs(
+            txouts=self.compileCurrencyOutputs(currencySats, address),
             currencySats=currencySats,
             gatheredCurrencySats=gatheredCurrencySats,
             inputCount=len(txins),
@@ -338,72 +351,59 @@ class EvrmoreWallet(Wallet):
         tx = self.createTransaction(txins, txinScripts, txouts)
         return self.broadcast(self.txToHex(tx))
 
-        assert (amount > 0 and len(address) == 34)
-        sats = transactionUtils.asSats(amount)
-        unspentCurrency = [
-            x for x in self.unspentCurrency if x.get('value') > 0]
-        unspentCurrency = sorted(unspentCurrency, key=lambda x: x['value'])
-        haveEvr = sum([x.get('value') for x in unspentCurrency])
-        assert (haveEvr >= sats + self.reserve)
-        # gather rvn utxos smallest to largest
-        gatheredCurrencySats = 0
-        gatheredCurrencyUnspents = []
-        while (
-            gatheredCurrencySats < sats + transactionUtils.estimatedFee(
-                inputCount=len(gatheredCurrencyUnspents),
-                outputCount=2)
-        ):
-            smallestUnspent = unspentCurrency.pop(0)
-            gatheredCurrencyUnspents.append(smallestUnspent)
-            gatheredCurrencySats += smallestUnspent.get('value')
-        # make transaction
-        # see https://github.com/sphericale/python-evrmorelib/blob/master/examples/spend-p2pkh-txout.py
-        # vins
-        txins = []
-        txinScripts = []
-        for utxo in gatheredCurrencyUnspents:
-            txin = CMutableTxIn(
-                COutPoint(lx(utxo.get('tx_hash')), utxo.get('tx_pos')))
-            txin_scriptPubKey = CScript([OP_DUP, OP_HASH160, Hash160(
-                self.publicKey.encode()), OP_EQUALVERIFY, OP_CHECKSIG])
-            txins.append(txin)
-            txinScripts.append(txin_scriptPubKey)
-        # vouts
-        txouts = [
-            CMutableTxOut(sats, CEvrmoreAddress(address).to_scriptPubKey())]
-        # change
-        change = gatheredCurrencySats - sats - transactionUtils.estimatedFee(
-            inputCount=len(gatheredCurrencyUnspents),
-            outputCount=2)
-        txouts.append(CMutableTxOut(change, self.address.to_scriptPubKey()))
-        # create transaction
-        tx = CMutableTransaction(txins, txouts)
-        for i, (txin, txin_scriptPubKey) in enumerate(zip(txins, txinScripts)):
-            sighash = SignatureHash(txin_scriptPubKey, tx, i, SIGHASH_ALL)
-            sig = self.privateKey.sign(sighash) + bytes([SIGHASH_ALL])
-            txin.scriptSig = CScript([sig, self.privateKey.pub])
-            VerifyScript(txin.scriptSig, txin_scriptPubKey,
-                         tx, i, (SCRIPT_VERIFY_P2SH,))
-        txToBroadcast = b2x(tx.serialize())
-        print(txToBroadcast)
-        # in theory we can send the serialized tx to the blockchain through electrumx
-        result = None
-        if self.conn.connected():
-            result = self.conn.broadcast(txToBroadcast)
-        else:
-            # this is dumb, fix it.
-            x = Evrmore(self.address, self.scripthash, [
-                'moontree.com:50022',  # mainnet ssl evr
-                'electrum1-mainnet.evrmorecoin.org:50002',  # ssl
-                'electrum2-mainnet.evrmorecoin.org:50002',  # ssl
-            ])
-            self.conn = x
-            result = x.broadcast(b2x(tx.serialize()))
-        return result
-
-    def satoriTransaction(self, amount: int, address: str):
+    def satoriTransaction(self, amount: float, address: str):
         ''' creates a transaction to send satori to one address '''
-        return amount, address
+        if amount <= 0 or Validate.address(address, self.identifier):
+            raise Exception('satoriTransaction bad params')
+        satoriSats = TxUtils.asSats(amount)
+        (
+            gatheredSatoriUnspents,
+            gatheredSatoriSats) = self.gatherSatoriUnspents(satoriSats)
+        txins, txinScripts = self.compileInputs(
+            gatheredSatoriUnspents=gatheredSatoriUnspents)
+        txouts = self.compileCurrencyChangeOutputs(
+            txouts=self.compileSatoriChangeOutputs(
+                txouts=self.compileSatoriOutputs({address: amount}),
+                satoriSats=satoriSats,
+                gatheredSatoriSats=gatheredSatoriSats),
+            inputCount=len(gatheredSatoriUnspents),
+            outputCount=2)
+        tx = self.createTransaction(txins, txinScripts, txouts)
+        return self.broadcast(self.txToHex(tx))
+
+    def satoriAndCurrencyTransaction(self, satoriAmount: float, currencyAmount: float, address: str):
+        ''' creates a transaction to send satori and currency to one address '''
+        if satoriAmount <= 0 or currencyAmount <= 0 or Validate.address(address, self.identifier):
+            raise Exception('satoriAndCurrencyTransaction bad params')
+        satoriSats = TxUtils.asSats(satoriAmount)
+        currencySats = TxUtils.asSats(currencyAmount)
+        (
+            gatheredSatoriUnspents,
+            gatheredSatoriSats) = self.gatherSatoriUnspents(satoriSats)
+        (
+            gatheredCurrencyUnspents,
+            gatheredCurrencySats) = self.gatherCurrencyUnspents(
+                sats=currencySats,
+                inputCount=len(gatheredSatoriUnspents),
+                outputCount=4)
+        txins, txinScripts = self.compileInputs(
+            gatheredCurrencyUnspents=gatheredCurrencyUnspents,
+            gatheredSatoriUnspents=gatheredSatoriUnspents)
+        txouts = self.compileCurrencyChangeOutputs(
+            txouts=self.compileSatoriChangeOutputs(
+                txouts=(
+                    self.compileSatoriOutputs({address: satoriAmount}) +
+                    self.compileCurrencyOutputs(currencySats, address)),
+                satoriSats=satoriSats,
+                gatheredSatoriSats=gatheredSatoriSats),
+            currencySats=currencySats,
+            gatheredCurrencySats=gatheredCurrencySats,
+            inputCount=(
+                len(gatheredSatoriUnspents) +
+                len(gatheredCurrencyUnspents)),
+            outputCount=4)
+        tx = self.createTransaction(txins, txinScripts, txouts)
+        return self.broadcast(self.txToHex(tx))
 
     def satoriOnlyTransaction(self, amount: int, address: str) -> str:
         '''
