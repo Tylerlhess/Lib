@@ -20,7 +20,7 @@ class Wallet():
         self.scripthash = None
         self.stats = None
         self.banner = None
-        self.base = None
+        self.currency = None
         self.balance = None
         self.transactionHistory = None
         self.transactions = []  # TransactionStruct
@@ -176,7 +176,7 @@ class Wallet():
             return (16 + 1) % (divisibility + 8 + 1)
 
         if base:
-            balance = (self.base or 0) / int('1' + ('0'*8))
+            balance = (self.currency or 0) / int('1' + ('0'*8))
         else:
             if self.balance == 'unknown':
                 return self.balance
