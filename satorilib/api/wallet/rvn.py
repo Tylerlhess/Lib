@@ -10,7 +10,6 @@ from satorilib.api.wallet.wallet import Wallet
 class RavencoinWallet(Wallet):
 
     def __init__(self, walletPath, temporary=False):
-        walletPath = walletPath.replace('.yaml', '-rvn.yaml')
         super().__init__(walletPath, temporary)
 
     def __repr__(self):
@@ -24,6 +23,10 @@ class RavencoinWallet(Wallet):
             f'\n\tbalance: {self.balance},'
             f'\n\tstats: {self.stats},'
             f'\n\tbanner: {self.banner})')
+
+    @property
+    def identifier(self):
+        return 'rvn'
 
     def _generatePrivateKey(self):
         SelectParams('mainnet')
@@ -77,10 +80,21 @@ class RavencoinWallet(Wallet):
         self.transactions = x.transactions or []
         self.unspentRvn = x.unspentRvn
         self.unspentAssets = x.unspentAssets
-        self.baseVouts = x.rvnVouts
-        self.assetVouts = x.assetVouts
+        # self.baseVouts = x.rvnVouts
+        # self.assetVouts = x.assetVouts
+        
+    # for neuron
+    def ravenTransaction(self, amount: int, address: str):
+        ''' creates a transaction to just send rvn '''
+        return amount, address
 
-    def satoriTransaction(self, amountByAddress: dict):
+    # for neuron
+    def satoriTransaction(self, amount: int, address: str):
+        ''' creates a transaction to send satori to one address '''
+        return amount, address
+
+    # for server
+    def satoriDistribution(self, amountByAddress: dict):
         ''' creates a transaction '''
 
         def estimatedFee(inputCount: int = 0):
@@ -127,48 +141,59 @@ class RavencoinWallet(Wallet):
         from ravencoin.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, SignatureHash, SIGHASH_ALL
         from ravencoin.core import b2x, lx, COIN, COutPoint, CMutableTxOut, CMutableTxIn, CMutableTransaction, Hash160
 
+        # how do I specify an asset output? this doesn't seem right for that:
+
         txins = []
+        txinScripts = []
         for utxo in gatheredRvnUnspents:
             txin = CMutableTxIn(
                 COutPoint(lx(utxo.get('tx_hash')), utxo.get('tx_pos')))
             txin_scriptPubKey = CScript([OP_DUP, OP_HASH160, Hash160(
-                self.publicKey), OP_EQUALVERIFY, OP_CHECKSIG])
-            sighash = SignatureHash(txin_scriptPubKey, tx, 0, SIGHASH_ALL)
-            sig = seckey.sign(sighash) + bytes([SIGHASH_ALL])
-            txin.scriptSig = CScript([sig, seckey.pub])
+                self.publicKey.encode()), OP_EQUALVERIFY, OP_CHECKSIG])
             txins.append(txin)
+            txinScripts.append(txin_scriptPubKey)
         for utxo in gatheredSatoriUnspents:
             txin = CMutableTxIn(
                 COutPoint(lx(utxo.get('tx_hash')), utxo.get('tx_pos')))
             txin_scriptPubKey = CScript([OP_DUP, OP_HASH160, Hash160(
-                self.publicKey), OP_EQUALVERIFY, OP_CHECKSIG])
-            sighash = SignatureHash(txin_scriptPubKey, tx, 0, SIGHASH_ALL)
-            sig = seckey.sign(sighash) + bytes([SIGHASH_ALL])
-            txin.scriptSig = CScript([sig, seckey.pub])
+                self.publicKey.encode()), OP_EQUALVERIFY, OP_CHECKSIG])  # publicKey string to bytes            sighash = SignatureHash(txin_scriptPubKey, tx, 0, SIGHASH_ALL)
             txins.append(txin)
-        txouts = []
+            txinScripts.append(txin_scriptPubKey)
+                txouts = []
+        amountOut = 0
         for address, amount in amountByAddress.items():
             txout = CMutableTxOut(
-                amount*COIN, CRavencoinAddress(address).to_scriptPubKey())
+                amount*COIN,
+                CRavencoinAddress(address).to_scriptPubKey())
+            amountOut += amount*COIN
             txouts.append(txout)
+        # change
+        assetChange = gatheredSatori - sendSatori
+        baseChange = gatheredRvn - amountOut
+        txouts.append(
+            CMutableTxOut(assetChange, self.address.to_scriptPubKey()))
+        txouts.append(
+            CMutableTxOut(baseChange, self.address.to_scriptPubKey()))
+        # create transaction
         tx = CMutableTransaction(txins, txouts)
-        # assumes 1 input, 1 output to verify?
-        # VerifyScript(txin.scriptSig, txin_scriptPubKey, tx, 0, (SCRIPT_VERIFY_P2SH,))
-        print(b2x(tx.serialize()))
-        # in theory we can send the serialized tx to the blockchain through electrumx
-        x = Ravencoin(self.address, self.scripthash, ['moontree.com:50002',])
-        x.broadcast(b2x(tx.serialize()))
+        for i, (txin, txin_scriptPubKey) in enumerate(zip(txins, txinScripts)):
+            sighash = SignatureHash(txin_scriptPubKey, tx, i, SIGHASH_ALL)
+            sig = self.privateKey.sign(sighash) + bytes([SIGHASH_ALL])
+            txin.scriptSig = CScript([sig, self.privateKey.pub])
+            VerifyScript(txin.scriptSig, txin_scriptPubKey,
+                         tx, i, (SCRIPT_VERIFY_P2SH,))
 
-        # add all inputs and outputs to transaction
-        # ?? txbuilder
-        # ?? see python-ravencoinlib examples
-        # sign all inputs
-        # ?? see python-ravencoinlib
-        # ?? if asset input use (get the self.assetVouts corresponding to the
-        # ?? unspent).vout.scriptPubKey.hex.hexBytes
-        # send
-        # ?? use blockchain.transaction.broadcast raw_tx put function in
-        # ?? Ravencoin object since that's our connection object
+        txToBroadcast = b2x(tx.serialize())
+        print(txToBroadcast)
+        # in theory we can send the serialized tx to the blockchain through electrumx
+        if self.conn.connected():
+            self.conn.broadcast(txToBroadcast)
+        else:
+            # this is dumb, fix it.
+            x = Ravencoin(self.address, self.scripthash,
+                          ['moontree.com:50002'])
+            self.conn = x
+            x.broadcast(b2x(tx.serialize()))
 
     def sign(self, message: str):
         return ravencoin.signMessage(self._privateKeyObj, message)

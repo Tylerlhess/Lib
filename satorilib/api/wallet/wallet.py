@@ -1,7 +1,6 @@
 import os
 import json
 import mnemonic
-from random import randrange
 from satoriwallet.lib import connection
 from satorilib import logging
 from satorilib.api import system
@@ -51,6 +50,10 @@ class Wallet():
             f'\n\tstats: {self.stats},'
             f'\n\tbanner: {self.banner})')
 
+    @property
+    def identifier(self):
+        return 'wallet'
+
     def authPayload(self, asDict: bool = False, challenge: str = None):
         payload = connection.authPayload(self, challenge)
         if asDict:
@@ -76,15 +79,21 @@ class Wallet():
             self.get()
 
     def load(self):
-        wallet = WalletApi.load(walletPath=self.walletPath)
-        if wallet == False:
+        # todo: encrypt wallet file... entropy, words, privateKey
+        # do not encrypt publicKey, address, scripthash. we need these without a password,
+        # in order to see your words or anything you need to put in your password.
+
+        self.yaml = WalletApi.load(walletPath=self.walletPath)
+        if self.yaml == False:
             return False
-        self._entropy = wallet.get('entropy')
-        self.publicKey = wallet.get('publicKey')
-        self.privateKey = wallet.get('privateKey')
-        self.words = wallet.get('words')
-        self.address = wallet.get('address')
-        self.scripthash = wallet.get('scripthash')
+        self._entropy = self.yaml.get('entropy')
+        # # these are regenerated from entropy in every case
+        # self.words = self.yaml.get('words')
+        # thisWallet = self.yaml.get(self.identifier, {})
+        # self.publicKey = thisWallet.get('publicKey')
+        # self.privateKey = thisWallet.get('privateKey')
+        # self.address = thisWallet.get('address')
+        # self.scripthash = thisWallet.get('scripthash')
         if self._entropy is None:
             return False
         logging.info('load', self.publicKey, self.walletPath)
@@ -93,17 +102,27 @@ class Wallet():
     def save(self):
         WalletApi.save(
             wallet={
-                'entropy': self._entropy,
-                'publicKey': self.publicKey,
-                'privateKey': self.privateKey,
-                'words': self.words,
-                'address': self.address,
-                'scripthash': self.scripthash,
+                **(self.yaml if hasattr(self, 'yaml') else {}),
+                **{
+                    'entropy': self._entropy,
+                    'words': self.words,
+                    'privateKey': self.privateKey,
+                    'publicKey': self.publicKey,
+                    'scripthash': self.scripthash,
+                    self.identifier: {
+                        'address': self.address,
+                    }
+                }
             },
             walletPath=self.walletPath)
 
     def regenerate(self):
+        saveIt = False
+        if not hasattr(self, 'privateKey') or self.privateKey is None:
+            saveIt = True
         self.generate()
+        if saveIt:
+            self.save()
 
     def generate(self):
         self._entropy = self._entropy or self._generateEntropy()

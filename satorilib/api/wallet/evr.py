@@ -9,7 +9,6 @@ from satorilib.api.wallet.wallet import Wallet
 class EvrmoreWallet(Wallet):
 
     def __init__(self, walletPath, temporary=False):
-        walletPath = walletPath.replace('.yaml', '-evr.yaml')
         super().__init__(walletPath, temporary)
 
     def __repr__(self):
@@ -23,6 +22,10 @@ class EvrmoreWallet(Wallet):
             f'\n\tbalance: {self.balance},'
             f'\n\tstats: {self.stats},'
             f'\n\tbanner: {self.banner})')
+
+    @property
+    def identifier(self):
+        return 'evr'
 
     def _generatePrivateKey(self):
         SelectParams('mainnet')
@@ -49,8 +52,10 @@ class EvrmoreWallet(Wallet):
     Circulating Supply: {circulatingSats}
     Decimal Points: {divisions}
     Reissuable: {self.stats.get('reissuable', False)}
-    Issuing Transactions: {self.stats.get('source', {}).get('tx_hash', 'a015f44b866565c832022cab0dec94ce0b8e568dbe7c88dce179f9616f7db7e3')}
+    Issuing Transactions: {self.stats.get('source', {}).get('tx_hash', 'df745a3ee1050a9557c3b449df87bdd8942980dff365f7f5a93bc10cb1080188')}
     '''
+    # SATORI df745a3ee1050a9557c3b449df87bdd8942980dff365f7f5a93bc10cb1080188
+    # SATORI/TEST 15dd33886452c02d58b500903441b81128ef0d21dd22502aa684c002b37880fe
 
     def showBalance(self, rvn=False):
         ''' returns a string of balance properly formatted '''
@@ -102,10 +107,21 @@ class EvrmoreWallet(Wallet):
         self.transactions = x.transactions or []
         self.unspentEvr = x.unspentEvr
         self.unspentAssets = x.unspentAssets
-        self.baseVouts = x.evrVouts
-        self.assetVouts = x.assetVouts
+        # self.baseVouts = x.evrVouts
+        # self.assetVouts = x.assetVouts
 
-    def satoriTransaction(self, amountByAddress: dict):
+    # for neuron
+    def ravenTransaction(self, amount: int, address: str):
+        ''' creates a transaction to just send rvn '''
+        return amount, address
+
+    # for neuron
+    def satoriTransaction(self, amount: int, address: str):
+        ''' creates a transaction to send satori to one address '''
+        return amount, address
+
+    # for server
+    def satoriDistribution(self, amountByAddress: dict):
         ''' creates a transaction '''
 
         def estimatedFee(inputCount: int = 0):
@@ -146,53 +162,74 @@ class EvrmoreWallet(Wallet):
             gatheredRvnUnspents.append(randomUnspent)
             gatheredRvn += randomUnspent.get('value')
 
-        # see https://github.com/sphericale/python-ravencoinlib/blob/master/examples/spend-p2pkh-txout.py
-        from ravencoin.wallet import CRavencoinAddress, CRavencoinSecret
-        from ravencoin.core.scripteval import VerifyScript, SCRIPT_VERIFY_P2SH
-        from ravencoin.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, SignatureHash, SIGHASH_ALL
-        from ravencoin.core import b2x, lx, COIN, COutPoint, CMutableTxOut, CMutableTxIn, CMutableTransaction, Hash160
+        # see https://github.com/sphericale/python-evrmorelib/blob/master/examples/spend-p2pkh-txout.py
+        from evrmore.wallet import CRavencoinAddress, CRavencoinSecret
+        from evrmore.core.scripteval import VerifyScript, SCRIPT_VERIFY_P2SH
+        from evrmore.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, SignatureHash, SIGHASH_ALL
+        from evrmore.core import b2x, lx, COIN, COutPoint, CMutableTxOut, CMutableTxIn, CMutableTransaction, Hash160
+
+        # how do I specify an asset output? this doesn't seem right for that:
 
         txins = []
+        txinScripts = []
         for utxo in gatheredRvnUnspents:
             txin = CMutableTxIn(
                 COutPoint(lx(utxo.get('tx_hash')), utxo.get('tx_pos')))
             txin_scriptPubKey = CScript([OP_DUP, OP_HASH160, Hash160(
-                self.publicKey), OP_EQUALVERIFY, OP_CHECKSIG])
-            sighash = SignatureHash(txin_scriptPubKey, tx, 0, SIGHASH_ALL)
-            sig = seckey.sign(sighash) + bytes([SIGHASH_ALL])
-            txin.scriptSig = CScript([sig, seckey.pub])
+                self.publicKey.encode()), OP_EQUALVERIFY, OP_CHECKSIG])
             txins.append(txin)
+            txinScripts.append(txin_scriptPubKey)
         for utxo in gatheredSatoriUnspents:
             txin = CMutableTxIn(
                 COutPoint(lx(utxo.get('tx_hash')), utxo.get('tx_pos')))
             txin_scriptPubKey = CScript([OP_DUP, OP_HASH160, Hash160(
-                self.publicKey), OP_EQUALVERIFY, OP_CHECKSIG])
-            sighash = SignatureHash(txin_scriptPubKey, tx, 0, SIGHASH_ALL)
-            sig = seckey.sign(sighash) + bytes([SIGHASH_ALL])
-            txin.scriptSig = CScript([sig, seckey.pub])
+                self.publicKey.encode()), OP_EQUALVERIFY, OP_CHECKSIG])  # publicKey string to bytes            sighash = SignatureHash(txin_scriptPubKey, tx, 0, SIGHASH_ALL)
             txins.append(txin)
+            txinScripts.append(txin_scriptPubKey)
         txouts = []
+        amountOut = 0
         for address, amount in amountByAddress.items():
             txout = CMutableTxOut(
-                amount*COIN, CRavencoinAddress(address).to_scriptPubKey())
+                amount*COIN,
+                CRavencoinAddress(address).to_scriptPubKey())
+            amountOut += amount*COIN
             txouts.append(txout)
+        # change
+        assetChange = gatheredSatori - sendSatori
+        baseChange = gatheredRvn - amountOut
+        txouts.append(
+            CMutableTxOut(assetChange, self.address.to_scriptPubKey()))
+        txouts.append(
+            CMutableTxOut(baseChange, self.address.to_scriptPubKey()))
+        # create transaction
         tx = CMutableTransaction(txins, txouts)
-        # assumes 1 input, 1 output to verify?
-        # VerifyScript(txin.scriptSig, txin_scriptPubKey, tx, 0, (SCRIPT_VERIFY_P2SH,))
-        print(b2x(tx.serialize()))
+        for i, (txin, txin_scriptPubKey) in enumerate(zip(txins, txinScripts)):
+            sighash = SignatureHash(txin_scriptPubKey, tx, i, SIGHASH_ALL)
+            sig = self.privateKey.sign(sighash) + bytes([SIGHASH_ALL])
+            txin.scriptSig = CScript([sig, self.privateKey.pub])
+            VerifyScript(txin.scriptSig, txin_scriptPubKey,
+                         tx, i, (SCRIPT_VERIFY_P2SH,))
+
+        txToBroadcast = b2x(tx.serialize())
+        print(txToBroadcast)
         # in theory we can send the serialized tx to the blockchain through electrumx
-        x = Evrmore(self.address, self.scripthash, [
-            'moontree.com:50022',  # mainnet ssl evr
-            'electrum1-mainnet.evrmorecoin.org:50002',  # ssl
-            'electrum2-mainnet.evrmorecoin.org:50002',  # ssl
-        ])
-        x.broadcast(b2x(tx.serialize()))
+        if self.conn.connected():
+            self.conn.broadcast(txToBroadcast)
+        else:
+            # this is dumb, fix it.
+            x = Evrmore(self.address, self.scripthash, [
+                'moontree.com:50022',  # mainnet ssl evr
+                'electrum1-mainnet.evrmorecoin.org:50002',  # ssl
+                'electrum2-mainnet.evrmorecoin.org:50002',  # ssl
+            ])
+            self.conn = x
+            x.broadcast(b2x(tx.serialize()))
 
         # add all inputs and outputs to transaction
         # ?? txbuilder
-        # ?? see python-ravencoinlib examples
+        # ?? see python-evrmorelib examples
         # sign all inputs
-        # ?? see python-ravencoinlib
+        # ?? see python-evrmorelib
         # ?? if asset input use (get the self.assetVouts corresponding to the
         # ?? unspent).vout.scriptPubKey.hex.hexBytes
         # send

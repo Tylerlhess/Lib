@@ -8,8 +8,10 @@ from satorilib.api.disk import Disk
 from satorilib.api.wallet import RavencoinWallet
 from satorilib.api.wallet import EvrmoreWallet
 Disk.setConfig(config)
-r = RavencoinWallet('/Satori/Neuron/wallet/wallet-value.yaml')
+r = RavencoinWallet('/Satori/Neuron/wallet/wallet.yaml')
 r()
+e = EvrmoreWallet('/Satori/Neuron/wallet/wallet-value.yaml')
+e()
 x = EvrmoreWallet('/tmp/testwallet.yaml')
 x()
 a = RavencoinWallet('/tmp/testwalletRVN.yaml')
