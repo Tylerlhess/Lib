@@ -3,16 +3,18 @@ from evrmore.wallet import P2PKHEvrmoreAddress, CEvrmoreAddress, CEvrmoreSecret
 from evrmore.core.scripteval import VerifyScript, SCRIPT_VERIFY_P2SH
 from evrmore.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, SignatureHash, SIGHASH_ALL, OP_EVR_ASSET, OP_DROP
 from evrmore.core import b2x, lx, COIN, COutPoint, CMutableTxOut, CMutableTxIn, CMutableTransaction, Hash160
+from evrmore.core.scripteval import EvalScriptError
 from satoriwallet import ElectrumXAPI
 from satoriwallet import evrmore
 from satoriwallet import TxUtils, AssetTransaction
-from satorilib.api.wallet.wallet import Wallet
+from satorilib import logging
+from satorilib.api.wallet.wallet import Wallet, TransactionFailure
 
 
 class EvrmoreWallet(Wallet):
 
-    def __init__(self, walletPath, temporary=False):
-        super().__init__(walletPath, temporary)
+    def __init__(self, walletPath: str, temporary: bool = False, reserve: float = .1):
+        super().__init__(walletPath, temporary=temporary, reserve=reserve)
 
     def connect(self):
         self.electrumx = ElectrumXAPI(
@@ -70,18 +72,36 @@ class EvrmoreWallet(Wallet):
         txins = []
         txinScripts = []
         for utxo in (gatheredCurrencyUnspents or []):
-            txin = CMutableTxIn(
-                COutPoint(lx(utxo.get('tx_hash')), utxo.get('tx_pos')))
-            txin_scriptPubKey = CScript([OP_DUP, OP_HASH160, Hash160(
-                self.publicKey.encode()), OP_EQUALVERIFY, OP_CHECKSIG])
+            txin = CMutableTxIn(COutPoint(lx(
+                utxo.get('tx_hash')),
+                utxo.get('tx_pos')))
+            txin_scriptPubKey = CScript([
+                OP_DUP,
+                OP_HASH160,
+                Hash160(self.publicKeyBytes),
+                OP_EQUALVERIFY,
+                OP_CHECKSIG])
             txins.append(txin)
             txinScripts.append(txin_scriptPubKey)
         # satori vins
         for utxo in (gatheredSatoriUnspents or []):
-            txin = CMutableTxIn(
-                COutPoint(lx(utxo.get('tx_hash')), utxo.get('tx_pos')))
-            txin_scriptPubKey = CScript([OP_DUP, OP_HASH160, Hash160(
-                self.publicKey.encode()), OP_EQUALVERIFY, OP_CHECKSIG])
+            txin = CMutableTxIn(COutPoint(lx(
+                utxo.get('tx_hash')),
+                utxo.get('tx_pos')))
+            txin_scriptPubKey = CScript([
+                OP_DUP,
+                OP_HASH160,
+                Hash160(self.publicKeyBytes),
+                OP_EQUALVERIFY,
+                OP_CHECKSIG,
+                OP_EVR_ASSET,
+                bytes.fromhex(
+                    AssetTransaction.satoriHex(self.symbol) +
+                    TxUtils.padHexStringTo8Bytes(
+                        TxUtils.intToLittleEndianHex(
+                            int(utxo.get('value'))))),
+                OP_DROP,
+            ])
             txins.append(txin)
             txinScripts.append(txin_scriptPubKey)
         return txins, txinScripts
@@ -89,12 +109,11 @@ class EvrmoreWallet(Wallet):
     def _compileSatoriOutputs(self, amountByAddress: dict[str, float] = None) -> list:
         txouts = []
         for address, amount in amountByAddress.items():
-            sats = TxUtils.asSats(amount*COIN)
+            sats = TxUtils.asSats(amount)
             txout = CMutableTxOut(
                 0,
                 CScript([
                     OP_DUP, OP_HASH160,
-                    # we might have to use this everywhere, idk.
                     TxUtils.addressToH160Bytes(address),
                     OP_EQUALVERIFY, OP_CHECKSIG, OP_EVR_ASSET,
                     bytes.fromhex(
@@ -107,25 +126,36 @@ class EvrmoreWallet(Wallet):
         return txouts
 
     def _compileCurrencyOutputs(self, currencySats: int, address: str) -> list[CMutableTxOut]:
-        return [CMutableTxOut(currencySats, CEvrmoreAddress(address).to_scriptPubKey())]
+        return [CMutableTxOut(
+            currencySats,
+            CEvrmoreAddress(address).to_scriptPubKey()
+        )]
 
     def _compileSatoriChangeOutputs(
         self,
-        txouts: list,
         satoriSats: int = 0,
         gatheredSatoriSats: int = 0,
     ) -> list:
         satoriChange = gatheredSatoriSats - satoriSats
         if satoriChange > 0:
-            txouts.append(CMutableTxOut(
-                satoriChange, self.address.to_scriptPubKey()))
-        elif satoriChange < 0:
-            raise Exception('tx: not enough satori to send')
-        return txouts
+            return [CMutableTxOut(
+                0,
+                CScript([
+                    OP_DUP, OP_HASH160,
+                    TxUtils.addressToH160Bytes(self.address),
+                    OP_EQUALVERIFY, OP_CHECKSIG, OP_EVR_ASSET,
+                    bytes.fromhex(
+                        AssetTransaction.satoriHex(self.symbol) +
+                        TxUtils.padHexStringTo8Bytes(
+                            TxUtils.intToLittleEndianHex(
+                                satoriChange))),
+                    OP_DROP]))]
+        if satoriChange < 0:
+            raise TransactionFailure('tx: not enough satori to send')
+        return []
 
     def _compileCurrencyChangeOutputs(
         self,
-        txouts: list,
         currencySats: int = 0,
         gatheredCurrencySats: int = 0,
         inputCount: int = 0,
@@ -135,21 +165,28 @@ class EvrmoreWallet(Wallet):
             inputCount=inputCount,
             outputCount=outputCount)
         if currencyChange > 0:
-            txouts.append(
-                CMutableTxOut(currencyChange, self.address.to_scriptPubKey()))
-        elif currencyChange < 0:
+            return [CMutableTxOut(
+                currencyChange,
+                self._addressObj.to_scriptPubKey()
+            )]
+        if currencyChange < 0:
             # go back and get more?
-            raise Exception('tx: not enough currency to send')
-        return txouts
+            raise TransactionFailure('tx: not enough currency to send')
+        return []
 
     def _createTransaction(self, txins: list, txinScripts: list, txouts: list) -> CMutableTransaction:
         tx = CMutableTransaction(txins, txouts)
         for i, (txin, txin_scriptPubKey) in enumerate(zip(txins, txinScripts)):
             sighash = SignatureHash(txin_scriptPubKey, tx, i, SIGHASH_ALL)
-            sig = self.privateKey.sign(sighash) + bytes([SIGHASH_ALL])
-            txin.scriptSig = CScript([sig, self.privateKey.pub])
-            VerifyScript(txin.scriptSig, txin_scriptPubKey,
-                         tx, i, (SCRIPT_VERIFY_P2SH,))
+            sig = self._privateKeyObj.sign(sighash) + bytes([SIGHASH_ALL])
+            txin.scriptSig = CScript([sig, self._privateKeyObj.pub])
+            try:
+                VerifyScript(txin.scriptSig, txin_scriptPubKey,
+                             tx, i, (SCRIPT_VERIFY_P2SH,))
+            except EvalScriptError as e:
+                # python-evrmorelib doesn't support OP_RVN_ASSET in txin_scriptPubKey
+                if e != 'unsupported opcode 0xc0':
+                    raise EvalScriptError(e)
         return tx
 
     def _txToHex(self, tx: CMutableTransaction) -> str:

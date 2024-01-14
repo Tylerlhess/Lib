@@ -9,9 +9,22 @@ from satorilib.api import system
 from satorilib.api.disk.wallet import WalletApi
 
 
+class TransactionFailure(Exception):
+    '''
+    unable to create a transaction for some reason
+    '''
+
+    def __init__(self, message='Transaction Failure', extra_data=None):
+        super().__init__(message)
+        self.extra_data = extra_data
+
+    def __str__(self):
+        return f"{self.__class__.__name__}: {self.args[0]} (Extra Data: {self.extra_data})"
+
+
 class Wallet():
 
-    def __init__(self, walletPath, temporary=False):
+    def __init__(self, walletPath: str, temporary: bool = False, reserve: float = .01):
         self._entropy = None
         self._privateKeyObj = None
         self._addressObj = None
@@ -24,10 +37,15 @@ class Wallet():
         self.banner = None
         self.currency = None
         self.balance = None
+        self.currencyAmount = 0
+        self.balanceAmount = 0
         self.transactionHistory = None
         self.transactions = []  # TransactionStruct
-        self.temporary = temporary
+        self.assetTransactions = []
         self.walletPath = walletPath
+        self.temporary = temporary
+        # maintain minimum amount of currency at all times to cover fees - server only
+        self.reserve = TxUtils.asSats(reserve)
 
     def __call__(self):
         x = 0
@@ -64,6 +82,10 @@ class Wallet():
     def satoriOriginalTxHash(self) -> str:
         return ''
 
+    @property
+    def publicKeyBytes(self) -> bytes:
+        return bytes.fromhex(self.publicKey)
+
     def showStats(self):
         ''' returns a string of stats properly formatted '''
         def invertDivisibility(divisibility: int):
@@ -84,24 +106,6 @@ class Wallet():
     Reissuable: {self.stats.get('reissuable', False)}
     Issuing Transactions: {self.stats.get('source', {}).get('tx_hash', self.satoriOriginalTxHash)}
     '''
-
-    def showBalance(self, currency=False):
-        ''' returns a string of balance properly formatted '''
-        def invertDivisibility(divisibility: int):
-            return (16 + 1) % (divisibility + 8 + 1)
-
-        if currency:
-            balance = (self.currency or 0) / int('1' + ('0'*8))
-        else:
-            if self.balance == 'unknown':
-                return self.balance
-            balance = (self.balance /
-                       int('1' + ('0'*invertDivisibility(int(self.stats.get('divisions', 8))))))
-        headTail = str(balance).split('.')
-        if headTail[1] == '0':
-            return f"{int(headTail[0]):,}"
-        else:
-            return f"{int(headTail[0]):,}" + '.' + f"{headTail[1][0:4]}" + '.' + f"{headTail[1][4:]}"
 
     def authPayload(self, asDict: bool = False, challenge: str = None):
         payload = connection.authPayload(self, challenge)
@@ -152,7 +156,7 @@ class Wallet():
     def save(self):
         WalletApi.save(
             wallet={
-                **(self.yaml if hasattr(self, 'yaml') else {}),
+                **(self.yaml if hasattr(self, 'yaml') and isinstance(self.yaml, dict) else {}),
                 **{
                     'entropy': self._entropy,
                     'words': self.words,
@@ -217,29 +221,6 @@ class Wallet():
     def _generateAddress(self):
         ''' returns an address object '''
 
-    @property
-    def reserve(self) -> int:
-        ''' maintain minimum amount of currency at all times to cover fees '''
-        return TxUtils.asSats(3)
-
-    def showBalance(self, base=False):
-        ''' returns a string of balance properly formatted '''
-        def invertDivisibility(divisibility: int):
-            return (16 + 1) % (divisibility + 8 + 1)
-
-        if base:
-            balance = (self.currency or 0) / int('1' + ('0'*8))
-        else:
-            if self.balance == 'unknown':
-                return self.balance
-            balance = (self.balance /
-                       int('1' + ('0'*invertDivisibility(int(self.stats.get('divisions', 8))))))
-        headTail = str(balance).split('.')
-        if headTail[1] == '0':
-            return f"{int(headTail[0]):,}"
-        else:
-            return f"{int(headTail[0]):,}" + '.' + f"{headTail[1][0:4]}" + '.' + f"{headTail[1][4:]}"
-
     def get(self, allWalletInfo=False):
         ''' gets data from the blockchain, saves to attributes '''
         # x = Evrmore(self.address, self.scripthash, config.electrumxServers())
@@ -249,10 +230,15 @@ class Wallet():
         # on connect ask for peers, add each to our list of electrumxServers
         # if unable to connect, remove that server from our list
         self.electrumx.get(allWalletInfo)
+        self.currency = self.electrumx.currency
         self.balance = self.electrumx.balance
         self.stats = self.electrumx.stats
+        self.divisibility = self.stats.get('divisions', 8)
+        self.currencyAmount = TxUtils.asAmount(self.currency or 0, 8)
+        self.balanceAmount = TxUtils.asAmount(
+            self.balance or 0, self.divisibility)
+        # self.assetTransactions = self.electrumx.assetTransactions
         self.banner = self.electrumx.banner
-        self.currency = self.electrumx.currency
         self.transactionHistory = self.electrumx.transactionHistory
         self.transactions = self.electrumx.transactions or []
         self.unspentCurrency = self.electrumx.unspentCurrency
@@ -272,13 +258,13 @@ class Wallet():
         inputCount: int = 0,
         outputCount: int = 0,
         randomly: bool = False,
-    ) -> tuple[list, list]:
+    ) -> tuple[list, int]:
         unspentCurrency = [
             x for x in self.unspentCurrency if x.get('value') > 0]
         unspentCurrency = sorted(unspentCurrency, key=lambda x: x['value'])
         haveCurrency = sum([x.get('value') for x in unspentCurrency])
         if (haveCurrency < sats + self.reserve):
-            raise Exception(
+            raise TransactionFailure(
                 'tx: must retain a reserve of currency to cover fees')
         gatheredCurrencySats = 0
         gatheredCurrencyUnspents = []
@@ -296,7 +282,7 @@ class Wallet():
                 smallestUnspent = unspentCurrency.pop(0)
                 gatheredCurrencyUnspents.append(smallestUnspent)
                 gatheredCurrencySats += smallestUnspent.get('value')
-        return (gatheredCurrencySats, gatheredCurrencyUnspents)
+        return (gatheredCurrencyUnspents, gatheredCurrencySats)
 
     def _gatherSatoriUnspents(
         self,
@@ -308,7 +294,7 @@ class Wallet():
         unspentSatori = sorted(unspentSatori, key=lambda x: x['value'])
         haveSatori = sum([x.get('value') for x in unspentSatori])
         if not (haveSatori >= sats > 0):
-            raise Exception('tx: not enough satori to send')
+            raise TransactionFailure('tx: not enough satori to send')
         # gather satori utxos at random
         gatheredSatoriSats = 0
         gatheredSatoriUnspents = []
@@ -322,7 +308,7 @@ class Wallet():
                 smallestUnspent = unspentSatori.pop(0)
                 gatheredSatoriUnspents.append(smallestUnspent)
                 gatheredSatoriSats += smallestUnspent.get('value')
-        return (gatheredSatoriSats, gatheredSatoriUnspents)
+        return (gatheredSatoriUnspents, gatheredSatoriSats)
 
     def _compileInputs(
         self,
@@ -352,13 +338,14 @@ class Wallet():
         #   b'!\x8d"6\xcf\xe8\xf6W4\x830\x85Y\x06\x01J\x82\xc4\x87p' <- looks like what we get with self.pubkey.encode()
         # https://ravencoin.org/assets/
         # https://rvn.cryptoscope.io/api/getrawtransaction/?txid=bae95f349f15effe42e75134ee7f4560f53462ddc19c47efdd03f85ef4ab8f40&decode=1
+        #
+        # todo: you could generalize this to send any asset. but not necessary.
 
     def _compileCurrencyOutputs(self, currencySats: int, address: str) -> list['CMutableTxOut']:
         ''' compile currency outputs'''
 
     def _compileSatoriChangeOutputs(
         self,
-        txouts: list,
         satoriSats: int = 0,
         gatheredSatoriSats: int = 0,
     ) -> list:
@@ -366,7 +353,6 @@ class Wallet():
 
     def _compileCurrencyChangeOutputs(
         self,
-        txouts: list,
         currencySats: int = 0,
         gatheredCurrencySats: int = 0,
         inputCount: int = 0,
@@ -389,7 +375,7 @@ class Wallet():
     def satoriDistribution(self, amountByAddress: dict[str: float]) -> str:
         ''' creates a transaction with multiple SATORI asset recipients '''
         if len(amountByAddress) == 0 or len(amountByAddress) > 1000:
-            raise Exception('too many or too few recipients')
+            raise TransactionFailure('too many or too few recipients')
         satoriSats = TxUtils.asSats(sum(amountByAddress.values()))
         (
             gatheredSatoriUnspents,
@@ -402,23 +388,24 @@ class Wallet():
         txins, txinScripts = self._compileInputs(
             gatheredCurrencyUnspents=gatheredCurrencyUnspents,
             gatheredSatoriUnspents=gatheredSatoriUnspents)
-        txouts = self._compileCurrencyChangeOutputs(
-            txouts=self._compileSatoriChangeOutputs(
-                txouts=self._compileSatoriOutputs(amountByAddress),
-                satoriSats=satoriSats,
-                gatheredSatoriSats=gatheredSatoriSats),
+        satoriOuts = self._compileSatoriOutputs(amountByAddress)
+        satoriChangeOuts = self._compileSatoriChangeOutputs(
+            satoriSats=satoriSats,
+            gatheredSatoriSats=gatheredSatoriSats)
+        currencyChangeOuts = self._compileCurrencyChangeOutputs(
             gatheredCurrencySats=gatheredCurrencySats,
             inputCount=len(gatheredSatoriUnspents) +
             len(gatheredCurrencyUnspents),
             outputCount=len(amountByAddress) + 2)
+        txouts = satoriOuts + satoriChangeOuts + currencyChangeOuts
         tx = self._createTransaction(txins, txinScripts, txouts)
         return self._broadcast(self._txToHex(tx))
 
     # for neuron
     def currencyTransaction(self, amount: float, address: str):
         ''' creates a transaction to just send rvn '''
-        if amount <= 0 or Validate.address(address, self.symbol):
-            raise Exception('bad params for currencyTransaction')
+        if amount <= 0 or not Validate.address(address, self.symbol):
+            raise TransactionFailure('bad params for currencyTransaction')
         currencySats = TxUtils.asSats(amount)
         (
             gatheredCurrencyUnspents,
@@ -428,39 +415,50 @@ class Wallet():
                 outputCount=1)
         txins, txinScripts = self._compileInputs(
             gatheredCurrencyUnspents=gatheredCurrencyUnspents)
-        txouts = self._compileCurrencyChangeOutputs(
-            txouts=self._compileCurrencyOutputs(currencySats, address),
+        currencyOuts = self._compileCurrencyOutputs(currencySats, address)
+        currencyChangeOuts = self._compileCurrencyChangeOutputs(
             currencySats=currencySats,
             gatheredCurrencySats=gatheredCurrencySats,
             inputCount=len(txins),
             outputCount=2)
+        txouts = currencyOuts + currencyChangeOuts
         tx = self._createTransaction(txins, txinScripts, txouts)
         return self._broadcast(self._txToHex(tx))
 
     def satoriTransaction(self, amount: float, address: str):
         ''' creates a transaction to send satori to one address '''
-        if amount <= 0 or Validate.address(address, self.symbol):
-            raise Exception('satoriTransaction bad params')
+        if amount <= 0 or not Validate.address(address, self.symbol):
+            raise TransactionFailure('satoriTransaction bad params')
         satoriSats = TxUtils.asSats(amount)
         (
             gatheredSatoriUnspents,
             gatheredSatoriSats) = self._gatherSatoriUnspents(satoriSats)
+        # gather currency in anticipation of fee
+        (
+            gatheredCurrencyUnspents,
+            gatheredCurrencySats) = self._gatherCurrencyUnspents(
+                inputCount=len(gatheredSatoriUnspents),
+                outputCount=3)
         txins, txinScripts = self._compileInputs(
-            gatheredSatoriUnspents=gatheredSatoriUnspents)
-        txouts = self._compileCurrencyChangeOutputs(
-            txouts=self._compileSatoriChangeOutputs(
-                txouts=self._compileSatoriOutputs({address: amount}),
-                satoriSats=satoriSats,
-                gatheredSatoriSats=gatheredSatoriSats),
-            inputCount=len(gatheredSatoriUnspents),
-            outputCount=2)
+            gatheredCurrencyUnspents=gatheredCurrencyUnspents,
+            gatheredSatoriUnspents=gatheredSatoriUnspents
+        )
+        satoriOuts = self._compileSatoriOutputs({address: amount})
+        satoriChangeOuts = self._compileSatoriChangeOutputs(
+            satoriSats=satoriSats,
+            gatheredSatoriSats=gatheredSatoriSats)
+        currencyChangeOuts = self._compileCurrencyChangeOutputs(
+            gatheredCurrencySats=gatheredCurrencySats,
+            inputCount=len(txins),
+            outputCount=3)
+        txouts = satoriOuts + satoriChangeOuts + currencyChangeOuts
         tx = self._createTransaction(txins, txinScripts, txouts)
         return self._broadcast(self._txToHex(tx))
 
     def satoriAndCurrencyTransaction(self, satoriAmount: float, currencyAmount: float, address: str):
         ''' creates a transaction to send satori and currency to one address '''
-        if satoriAmount <= 0 or currencyAmount <= 0 or Validate.address(address, self.symbol):
-            raise Exception('satoriAndCurrencyTransaction bad params')
+        if satoriAmount <= 0 or currencyAmount <= 0 or not Validate.address(address, self.symbol):
+            raise TransactionFailure('satoriAndCurrencyTransaction bad params')
         satoriSats = TxUtils.asSats(satoriAmount)
         currencySats = TxUtils.asSats(currencyAmount)
         (
@@ -475,19 +473,19 @@ class Wallet():
         txins, txinScripts = self._compileInputs(
             gatheredCurrencyUnspents=gatheredCurrencyUnspents,
             gatheredSatoriUnspents=gatheredSatoriUnspents)
-        txouts = self._compileCurrencyChangeOutputs(
-            txouts=self._compileSatoriChangeOutputs(
-                txouts=(
-                    self._compileSatoriOutputs({address: satoriAmount}) +
-                    self._compileCurrencyOutputs(currencySats, address)),
-                satoriSats=satoriSats,
-                gatheredSatoriSats=gatheredSatoriSats),
+        satoriOuts = self._compileSatoriOutputs({address: satoriAmount})
+        currencyOuts = self._compileCurrencyOutputs(currencySats, address)
+        satoriChangeOuts = self._compileSatoriChangeOutputs(
+            satoriSats=satoriSats,
+            gatheredSatoriSats=gatheredSatoriSats)
+        currencyChangeOuts = self._compileCurrencyChangeOutputs(
             currencySats=currencySats,
             gatheredCurrencySats=gatheredCurrencySats,
             inputCount=(
                 len(gatheredSatoriUnspents) +
                 len(gatheredCurrencyUnspents)),
             outputCount=4)
+        txouts = satoriOuts + currencyOuts + satoriChangeOuts + currencyChangeOuts
         tx = self._createTransaction(txins, txinScripts, txouts)
         return self._broadcast(self._txToHex(tx))
 
@@ -501,6 +499,7 @@ class Wallet():
         to be completed. he who completes the transaction will pay the rvn fee
         and collect the satori fee. we will probably broadcast as a json object.
         '''
+        # todo
         return 'json transaction with incomplete elements'
 
     def satoriOnlyTransactionCompleted(self, transaction: dict) -> str:
@@ -509,4 +508,37 @@ class Wallet():
         transaction add in it's own address for the satori fee and injecting the
         necessary rvn inputs to cover the fee.
         '''
+        # todo
         return 'broadcast result'
+
+    def sendAllTransaction(self, address: str) -> str:
+        '''
+        sweeps all Satori and currency to the address. so it has to take the fee
+        out of whatever is in the wallet rather than tacking it on at the end.
+        '''
+        if not Validate.address(address, self.symbol):
+            raise TransactionFailure('sendAllTransaction')
+        if (self.currencyAmount < self.reserve):
+            # todo: if no currency make a send-all partial transaction instead
+            raise TransactionFailure(
+                'sendAllTransaction: not enough currency for fee')
+        # grab everything
+        gatheredSatoriUnspents = [
+            x for x in self.unspentAssets if x.get('name') == 'SATORI']
+        gatheredCurrencyUnspents = self.unspentCurrency
+        # compile inputs
+        txins, txinScripts = self._compileInputs(
+            gatheredCurrencyUnspents=gatheredCurrencyUnspents,
+            gatheredSatoriUnspents=gatheredSatoriUnspents)
+        # determin how much currency to send: take out fee
+        currencySatsLessFee = TxUtils.estimatedFee(
+            inputCount=(
+                len(gatheredSatoriUnspents) +
+                len(gatheredCurrencyUnspents)),
+            outputCount=2)
+        txouts = (
+            self._compileSatoriOutputs({address: self.balanceAmount}) +
+            self._compileCurrencyOutputs(currencySatsLessFee, address))
+        # since it's a send all, there's no change outputs
+        tx = self._createTransaction(txins, txinScripts, txouts)
+        return self._broadcast(self._txToHex(tx))
