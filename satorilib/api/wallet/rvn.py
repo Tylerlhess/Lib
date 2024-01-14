@@ -1,6 +1,5 @@
 from ravencoin import SelectParams
-from ravencoin.wallet import P2PKHRavencoinAddress, CRavencoinSecret
-from ravencoin.wallet import CRavencoinAddress, CRavencoinSecret
+from ravencoin.wallet import P2PKHRavencoinAddress, CRavencoinAddress, CRavencoinSecret
 from ravencoin.core.scripteval import VerifyScript, SCRIPT_VERIFY_P2SH
 from ravencoin.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, SignatureHash, SIGHASH_ALL, OP_RVN_ASSET, OP_DROP
 from ravencoin.core import b2x, lx, COIN, COutPoint, CMutableTxOut, CMutableTxIn, CMutableTransaction, Hash160
@@ -14,6 +13,8 @@ class RavencoinWallet(Wallet):
 
     def __init__(self, walletPath, temporary=False):
         super().__init__(walletPath, temporary)
+
+    def connect(self):
         self.electrumx = ElectrumXAPI(
             chain=self.chain,
             address=self.address,

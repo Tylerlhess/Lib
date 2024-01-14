@@ -125,6 +125,7 @@ class Wallet():
             self.generate()
             self.save()
         if not self.temporary:
+            self.connect()
             self.get()
 
     def load(self):
@@ -138,11 +139,11 @@ class Wallet():
         self._entropy = self.yaml.get('entropy')
         # # these are regenerated from entropy in every case
         # self.words = self.yaml.get('words')
-        # thisWallet = self.yaml.get(self.identifier, {})
-        # self.publicKey = thisWallet.get('publicKey')
-        # self.privateKey = thisWallet.get('privateKey')
+        # thisWallet = self.yaml.get(self.symbol, {})
+        # self.publicKey = self.yaml.get('publicKey')
+        # self.privateKey = self.yaml.get('privateKey')
         # self.address = thisWallet.get('address')
-        # self.scripthash = thisWallet.get('scripthash')
+        # self.scripthash = self.yaml.get('scripthash')
         if self._entropy is None:
             return False
         logging.info('load', self.publicKey, self.walletPath)
@@ -158,7 +159,7 @@ class Wallet():
                     'privateKey': self.privateKey,
                     'publicKey': self.publicKey,
                     'scripthash': self.scripthash,
-                    self.identifier: {
+                    self.symbol: {
                         'address': self.address,
                     }
                 }
@@ -221,9 +222,6 @@ class Wallet():
         ''' maintain minimum amount of currency at all times to cover fees '''
         return TxUtils.asSats(3)
 
-    def showStats(self):
-        ''' returns a string of stats properly formatted '''
-
     def showBalance(self, base=False):
         ''' returns a string of balance properly formatted '''
         def invertDivisibility(divisibility: int):
@@ -251,7 +249,6 @@ class Wallet():
         # on connect ask for peers, add each to our list of electrumxServers
         # if unable to connect, remove that server from our list
         self.electrumx.get(allWalletInfo)
-        self.conn = self.electrumx
         self.balance = self.electrumx.balance
         self.stats = self.electrumx.stats
         self.banner = self.electrumx.banner

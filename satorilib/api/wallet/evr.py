@@ -1,6 +1,5 @@
 from evrmore import SelectParams
-from evrmore.wallet import P2PKHEvrmoreAddress, CEvrmoreSecret
-from evrmore.wallet import CEvrmoreAddress, CEvrmoreSecret
+from evrmore.wallet import P2PKHEvrmoreAddress, CEvrmoreAddress, CEvrmoreSecret
 from evrmore.core.scripteval import VerifyScript, SCRIPT_VERIFY_P2SH
 from evrmore.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, SignatureHash, SIGHASH_ALL, OP_EVR_ASSET, OP_DROP
 from evrmore.core import b2x, lx, COIN, COutPoint, CMutableTxOut, CMutableTxIn, CMutableTransaction, Hash160
@@ -14,6 +13,8 @@ class EvrmoreWallet(Wallet):
 
     def __init__(self, walletPath, temporary=False):
         super().__init__(walletPath, temporary)
+
+    def connect(self):
         self.electrumx = ElectrumXAPI(
             chain=self.chain,
             address=self.address,
