@@ -19,7 +19,7 @@ class TransactionFailure(Exception):
         self.extra_data = extra_data
 
     def __str__(self):
-        return f"{self.__class__.__name__}: {self.args[0]} (Extra Data: {self.extra_data})"
+        return f"{self.__class__.__name__}: {self.args[0]} {self.extra_data or ''}"
 
 
 class Wallet():
@@ -518,7 +518,9 @@ class Wallet():
         '''
         if not Validate.address(address, self.symbol):
             raise TransactionFailure('sendAllTransaction')
-        if (self.currencyAmount < self.reserve):
+        logging.debug('currency', self.currency,
+                      'self.reserve', self.reserve, color='yellow')
+        if (self.currency < self.reserve):
             # todo: if no currency make a send-all partial transaction instead
             raise TransactionFailure(
                 'sendAllTransaction: not enough currency for fee')
@@ -526,16 +528,19 @@ class Wallet():
         gatheredSatoriUnspents = [
             x for x in self.unspentAssets if x.get('name') == 'SATORI']
         gatheredCurrencyUnspents = self.unspentCurrency
+        currencySats = sum([x.get('value') for x in gatheredCurrencyUnspents])
         # compile inputs
         txins, txinScripts = self._compileInputs(
             gatheredCurrencyUnspents=gatheredCurrencyUnspents,
             gatheredSatoriUnspents=gatheredSatoriUnspents)
         # determin how much currency to send: take out fee
-        currencySatsLessFee = TxUtils.estimatedFee(
+        currencySatsLessFee = currencySats - TxUtils.estimatedFee(
             inputCount=(
                 len(gatheredSatoriUnspents) +
                 len(gatheredCurrencyUnspents)),
             outputCount=2)
+        if currencySatsLessFee < 0:
+            raise TransactionFailure('tx: not enough currency to send')
         txouts = (
             self._compileSatoriOutputs({address: self.balanceAmount}) +
             self._compileCurrencyOutputs(currencySatsLessFee, address))

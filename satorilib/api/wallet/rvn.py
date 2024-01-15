@@ -176,7 +176,7 @@ class RavencoinWallet(Wallet):
                              tx, i, (SCRIPT_VERIFY_P2SH,))
             except EvalScriptError as e:
                 # python-ravencoinlib doesn't support OP_RVN_ASSET in txin_scriptPubKey
-                if e != 'unsupported opcode 0xc0':
+                if str(e) != 'EvalScript: unsupported opcode 0xc0':
                     raise EvalScriptError(e)
         return tx
 
