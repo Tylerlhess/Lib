@@ -131,14 +131,14 @@ class EvrmoreWallet(Wallet):
             CEvrmoreAddress(address).to_scriptPubKey()
         )]
 
-    def _compileSatoriChangeOutputs(
+    def _compileSatoriChangeOutput(
         self,
         satoriSats: int = 0,
         gatheredSatoriSats: int = 0,
-    ) -> list:
+    ) -> Union[CMutableTxOut, None]:
         satoriChange = gatheredSatoriSats - satoriSats
         if satoriChange > 0:
-            return [CMutableTxOut(
+            return CMutableTxOut(
                 0,
                 CScript([
                     OP_DUP, OP_HASH160,
@@ -149,31 +149,40 @@ class EvrmoreWallet(Wallet):
                         TxUtils.padHexStringTo8Bytes(
                             TxUtils.intToLittleEndianHex(
                                 satoriChange))),
-                    OP_DROP]))]
+                    OP_DROP]))
         if satoriChange < 0:
             raise TransactionFailure('tx: not enough satori to send')
-        return []
+        return None
 
-    def _compileCurrencyChangeOutputs(
+    def _compileCurrencyChangeOutput(
         self,
         currencySats: int = 0,
         gatheredCurrencySats: int = 0,
         inputCount: int = 0,
         outputCount: int = 0,
-    ) -> list:
+    ) -> Union[CMutableTxOut, None]:
         currencyChange = gatheredCurrencySats - currencySats - TxUtils.estimatedFee(
             inputCount=inputCount,
             outputCount=outputCount)
         if currencyChange > 0:
-            return [CMutableTxOut(
+            return CMutableTxOut(
                 currencyChange,
                 self._addressObj.to_scriptPubKey()
-            )]
+            )
         if currencyChange < 0:
             # go back and get more?
             raise TransactionFailure('tx: not enough currency to send')
-        return []
-
+        return None
+    
+    def _compileMemoOutput(self, memo: str) -> Union[CMutableTxOut, None]:
+        if memo is not None and memo != '':
+            return CMutableTxOut(
+                0,
+                CScript([
+                    OP_RETURN,
+                    bytes.fromhex(AssetTransaction.memoHex(memo))]))
+        return None
+    
     def _createTransaction(self, txins: list, txinScripts: list, txouts: list) -> CMutableTransaction:
         tx = CMutableTransaction(txins, txouts)
         for i, (txin, txin_scriptPubKey) in enumerate(zip(txins, txinScripts)):

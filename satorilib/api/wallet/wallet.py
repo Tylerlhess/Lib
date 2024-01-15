@@ -344,21 +344,33 @@ class Wallet():
     def _compileCurrencyOutputs(self, currencySats: int, address: str) -> list['CMutableTxOut']:
         ''' compile currency outputs'''
 
-    def _compileSatoriChangeOutputs(
+    def _compileSatoriChangeOutput(
         self,
         satoriSats: int = 0,
         gatheredSatoriSats: int = 0,
-    ) -> list:
-        ''' compile satori change outputs '''
+    ) -> 'CMutableTxOut':
+        ''' compile satori change output '''
 
-    def _compileCurrencyChangeOutputs(
+    def _compileCurrencyChangeOutput(
         self,
         currencySats: int = 0,
         gatheredCurrencySats: int = 0,
         inputCount: int = 0,
         outputCount: int = 0,
-    ) -> list:
-        ''' compile currency change outputs '''
+    ) -> 'CMutableTxOut':
+        ''' compile currency change output '''
+
+    def _compileMemoOutput(self, memo: str) -> 'CMutableTxOut':
+        '''
+        compile op_return memo output
+        for example: 
+            {"value":0,
+            "n":0,
+            "scriptPubKey":{"asm":"OP_RETURN 1869440365",
+            "hex":"6a046d656d6f",
+            "type":"nulldata"},
+            "valueSat":0},
+        '''
 
     def _createTransaction(self, txins: list, txinScripts: list, txouts: list) -> 'CMutableTransaction':
         ''' create transaction '''
@@ -372,7 +384,7 @@ class Wallet():
         return self.electrumx.broadcast(txHex)
 
     # for server
-    def satoriDistribution(self, amountByAddress: dict[str: float]) -> str:
+    def satoriDistribution(self, amountByAddress: dict[str: float], memo: str) -> str:
         ''' creates a transaction with multiple SATORI asset recipients '''
         if len(amountByAddress) == 0 or len(amountByAddress) > 1000:
             raise TransactionFailure('too many or too few recipients')
@@ -384,21 +396,25 @@ class Wallet():
             gatheredCurrencyUnspents,
             gatheredCurrencySats) = self._gatherCurrencyUnspents(
                 inputCount=len(gatheredSatoriUnspents),
-                outputCount=len(amountByAddress) + 2,)
+                outputCount=len(amountByAddress) + 3)
         txins, txinScripts = self._compileInputs(
             gatheredCurrencyUnspents=gatheredCurrencyUnspents,
             gatheredSatoriUnspents=gatheredSatoriUnspents)
         satoriOuts = self._compileSatoriOutputs(amountByAddress)
-        satoriChangeOuts = self._compileSatoriChangeOutputs(
+        satoriChangeOut = self._compileSatoriChangeOutput(
             satoriSats=satoriSats,
             gatheredSatoriSats=gatheredSatoriSats)
-        currencyChangeOuts = self._compileCurrencyChangeOutputs(
+        currencyChangeOut = self._compileCurrencyChangeOutput(
             gatheredCurrencySats=gatheredCurrencySats,
-            inputCount=len(gatheredSatoriUnspents) +
-            len(gatheredCurrencyUnspents),
-            outputCount=len(amountByAddress) + 2)
-        txouts = satoriOuts + satoriChangeOuts + currencyChangeOuts
-        tx = self._createTransaction(txins, txinScripts, txouts)
+            inputCount=len(txins),
+            outputCount=len(amountByAddress) + 3)  # satoriChange, currencyChange, memo
+        memoOut = self._compileMemoOutput(memo)
+        tx = self._createTransaction(
+            txins=txins,
+            txinScripts=txinScripts,
+            txouts=satoriOuts + [
+                x for x in [satoriChangeOut, currencyChangeOut, memoOut]
+                if x is not None])
         return self._broadcast(self._txToHex(tx))
 
     # for neuron
@@ -416,13 +432,17 @@ class Wallet():
         txins, txinScripts = self._compileInputs(
             gatheredCurrencyUnspents=gatheredCurrencyUnspents)
         currencyOuts = self._compileCurrencyOutputs(currencySats, address)
-        currencyChangeOuts = self._compileCurrencyChangeOutputs(
+        currencyChangeOut = self._compileCurrencyChangeOutput(
             currencySats=currencySats,
             gatheredCurrencySats=gatheredCurrencySats,
             inputCount=len(txins),
             outputCount=2)
-        txouts = currencyOuts + currencyChangeOuts
-        tx = self._createTransaction(txins, txinScripts, txouts)
+        tx = self._createTransaction(
+            txins=txins,
+            txinScripts=txinScripts,
+            txouts=currencyOuts + [
+                x for x in [currencyChangeOut]
+                if x is not None])
         return self._broadcast(self._txToHex(tx))
 
     def satoriTransaction(self, amount: float, address: str):
@@ -441,18 +461,21 @@ class Wallet():
                 outputCount=3)
         txins, txinScripts = self._compileInputs(
             gatheredCurrencyUnspents=gatheredCurrencyUnspents,
-            gatheredSatoriUnspents=gatheredSatoriUnspents
-        )
+            gatheredSatoriUnspents=gatheredSatoriUnspents)
         satoriOuts = self._compileSatoriOutputs({address: amount})
-        satoriChangeOuts = self._compileSatoriChangeOutputs(
+        satoriChangeOut = self._compileSatoriChangeOutput(
             satoriSats=satoriSats,
             gatheredSatoriSats=gatheredSatoriSats)
-        currencyChangeOuts = self._compileCurrencyChangeOutputs(
+        currencyChangeOut = self._compileCurrencyChangeOutput(
             gatheredCurrencySats=gatheredCurrencySats,
             inputCount=len(txins),
             outputCount=3)
-        txouts = satoriOuts + satoriChangeOuts + currencyChangeOuts
-        tx = self._createTransaction(txins, txinScripts, txouts)
+        tx = self._createTransaction(
+            txins=txins,
+            txinScripts=txinScripts,
+            txouts=satoriOuts + [
+                x for x in [satoriChangeOut, currencyChangeOut]
+                if x is not None])
         return self._broadcast(self._txToHex(tx))
 
     def satoriAndCurrencyTransaction(self, satoriAmount: float, currencyAmount: float, address: str):
@@ -475,18 +498,23 @@ class Wallet():
             gatheredSatoriUnspents=gatheredSatoriUnspents)
         satoriOuts = self._compileSatoriOutputs({address: satoriAmount})
         currencyOuts = self._compileCurrencyOutputs(currencySats, address)
-        satoriChangeOuts = self._compileSatoriChangeOutputs(
+        satoriChangeOut = self._compileSatoriChangeOutput(
             satoriSats=satoriSats,
             gatheredSatoriSats=gatheredSatoriSats)
-        currencyChangeOuts = self._compileCurrencyChangeOutputs(
+        currencyChangeOut = self._compileCurrencyChangeOutput(
             currencySats=currencySats,
             gatheredCurrencySats=gatheredCurrencySats,
             inputCount=(
                 len(gatheredSatoriUnspents) +
                 len(gatheredCurrencyUnspents)),
             outputCount=4)
-        txouts = satoriOuts + currencyOuts + satoriChangeOuts + currencyChangeOuts
-        tx = self._createTransaction(txins, txinScripts, txouts)
+        tx = self._createTransaction(
+            txins=txins,
+            txinScripts=txinScripts,
+            txouts=(
+                satoriOuts + currencyOuts + [
+                    x for x in [satoriChangeOut, currencyChangeOut]
+                    if x is not None]))
         return self._broadcast(self._txToHex(tx))
 
     def satoriOnlyTransaction(self, amount: int, address: str) -> str:
@@ -541,9 +569,11 @@ class Wallet():
             outputCount=2)
         if currencySatsLessFee < 0:
             raise TransactionFailure('tx: not enough currency to send')
-        txouts = (
-            self._compileSatoriOutputs({address: self.balanceAmount}) +
-            self._compileCurrencyOutputs(currencySatsLessFee, address))
         # since it's a send all, there's no change outputs
-        tx = self._createTransaction(txins, txinScripts, txouts)
+        tx = self._createTransaction(
+            txins=txins,
+            txinScripts=txinScripts,
+            txouts=(
+                self._compileSatoriOutputs({address: self.balanceAmount}) +
+                self._compileCurrencyOutputs(currencySatsLessFee, address)))
         return self._broadcast(self._txToHex(tx))
