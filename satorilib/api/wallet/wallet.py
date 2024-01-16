@@ -471,13 +471,11 @@ class Wallet():
             gatheredCurrencySats=gatheredCurrencySats,
             inputCount=len(txins),
             outputCount=3)
-        memoOut = self._compileMemoOutput('memo')
-
         tx = self._createTransaction(
             txins=txins,
             txinScripts=txinScripts,
             txouts=satoriOuts + [
-                x for x in [satoriChangeOut, currencyChangeOut, memoOut]
+                x for x in [satoriChangeOut, currencyChangeOut]
                 if x is not None])
         return self._broadcast(self._txToHex(tx))
 
