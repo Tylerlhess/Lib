@@ -2,6 +2,7 @@ import os
 import json
 from random import randrange
 import mnemonic
+from typing import Union
 from satoriwallet.lib import connection
 from satoriwallet import TxUtils, Validate
 from satorilib import logging
@@ -470,11 +471,13 @@ class Wallet():
             gatheredCurrencySats=gatheredCurrencySats,
             inputCount=len(txins),
             outputCount=3)
+        memoOut = self._compileMemoOutput('memo')
+
         tx = self._createTransaction(
             txins=txins,
             txinScripts=txinScripts,
             txouts=satoriOuts + [
-                x for x in [satoriChangeOut, currencyChangeOut]
+                x for x in [satoriChangeOut, currencyChangeOut, memoOut]
                 if x is not None])
         return self._broadcast(self._txToHex(tx))
 

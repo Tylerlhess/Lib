@@ -15,16 +15,30 @@ def _generateAddress(_privateKeyObj):
     return P2PKHEvrmoreAddress.from_pubkey(_privateKeyObj.pub)
 
 
-def run():
+def run(condition: callable):
     SelectParams('mainnet')
     while True:
         entropy = _generateEntropy()
         address = str(_generateAddress(
             _generatePrivateKey(entropy)))
-        if address.lower().startswith("evrmore"):
-            print(address, entropy)
+        if condition(address):
+            print(entropy)
             print(entropy.hex())
-            return address
+            print(address)
 
 
-# run()
+def basicCondition(address: str) -> bool:
+    return address.lower().startswith("Evrmore")
+
+
+def caseCondition(address: str) -> bool:
+    return address.startswith("ESatori")
+
+
+def caseConditionVariable(value: str) -> callable:
+    def caseCondition(address: str) -> bool:
+        return address.startswith(f'E{value}')
+    return caseCondition
+
+
+run(caseConditionVariable('Devs'))

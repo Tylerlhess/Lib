@@ -1,7 +1,8 @@
+from typing import Union
 from ravencoin import SelectParams
 from ravencoin.wallet import P2PKHRavencoinAddress, CRavencoinAddress, CRavencoinSecret
 from ravencoin.core.scripteval import VerifyScript, SCRIPT_VERIFY_P2SH
-from ravencoin.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, SignatureHash, SIGHASH_ALL, OP_RVN_ASSET, OP_DROP
+from ravencoin.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, SignatureHash, SIGHASH_ALL, OP_RVN_ASSET, OP_DROP, OP_RETURN
 from ravencoin.core import b2x, lx, COIN, COutPoint, CMutableTxOut, CMutableTxIn, CMutableTransaction, Hash160
 from ravencoin.core.scripteval import EvalScriptError
 from satoriwallet import ElectrumXAPI
@@ -165,12 +166,31 @@ class RavencoinWallet(Wallet):
         return None
 
     def _compileMemoOutput(self, memo: str) -> Union[CMutableTxOut, None]:
-        if memo is not None and memo != '':
+        if memo is not None and memo != '' and 4 < len(memo) < 80:
             return CMutableTxOut(
                 0,
                 CScript([
                     OP_RETURN,
-                    bytes.fromhex(AssetTransaction.memoHex(memo))]))
+                    # memo.encode().hex().encode() ->b'j\x086d656d6f' -> 3664363536643666 -> '6d656d6f'
+                    # -> b'j\x04memo' -> 6d656d6f -> 'memo'
+                    # bytes.fromhex(AssetTransaction.memoHex(memo))
+                    # memo.encode().hex()  # ->expected a bytes-like object, str found str
+                    # bytes([len(memo)]) + memo.encode()  # -> b'\x04memo' 046d656d6f
+                    # '6d656d6f'.encode() # -> 3664363536643666 -> 6d656d6f
+                    # 'some information'.encode()  # -> 736f6d6520696e666f726d6174696f6e -> 'some information'
+                    # 'memomemo'.encode()  # -> 6d656d6f6d656d6f
+                    # 'memom'.encode()  # ->6d656d6f6d
+                    # 'memo'.encode()  # ->1869440365 # ?????? "hex":"6a046d656d6f"
+                    # 'devs'.encode()  # ->1869440365 # ?????? "asm":"OP_RETURN 1937139044","hex":"6a0464657673"
+                    # 'creators'.encode()# 63726561746f7273
+                    # 'managers'.encode()  # 6d616e6167657273
+                    # 'predictors'.encode()  # 707265646963746f7273
+                    # 'relayers'.encode()  # 72656c6179657273
+                    # 'relay'.encode()  # 72656c6179
+                    # 'r'.encode()  # 114 ???
+                    # it seems as though we can't do 4 or less probably because of something CScript is doing... idk why.
+                    memo.encode()
+                ]))
         return None
 
     def _createTransaction(self, txins: list, txinScripts: list, txouts: list) -> CMutableTransaction:
