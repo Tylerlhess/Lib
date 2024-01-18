@@ -40,6 +40,7 @@ class Wallet():
         self.balance = None
         self.currencyAmount = 0
         self.balanceAmount = 0
+        self.divisibility = 0
         self.transactionHistory = None
         self.transactions = []  # TransactionStruct
         self.assetTransactions = []
