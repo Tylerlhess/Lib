@@ -2,49 +2,69 @@
 Here's plan for the server - python server, you checkin with it,
 it returns a key you use to make a websocket connection with the pubsub server.
 '''
+from typing import Union
 import json
 import requests
 from satorilib import logging
-from satorilib.api.wallet import RavencoinWallet
+from satorilib.api.wallet import Wallet
 
 
 class SatoriServerClient(object):
     def __init__(
-            self, wallet: 'Wallet', url: str = None,
-            *args, **kwargs):
+        self,
+        wallet: Wallet,
+        url: str = None,
+        *args, **kwargs
+    ):
         super(SatoriServerClient, self).__init__(*args, **kwargs)
         self.wallet = wallet
         self.url = url or 'https://satorinet.io'
 
-    def registerWallet(self):
-        r = requests.post(
-            self.url + '/register/wallet',
-            headers=self.wallet.authPayload(asDict=True),
-            json=self.wallet.registerPayload())
+    def _getChallenge(self):
+        return requests.get(self.url + '/time').text
+
+    def _makeAuthenticatedCall(
+        self,
+        function: callable,
+        endpoint: str,
+        json: Union[str, None] = None,
+        challenge: str = None,
+    ):
+        logging.info(
+            'outgoing Satori server message:',
+            json[0:40], f'{"..." if len(json) > 40 else ""}',
+            print=True)
+        r = function(
+            self.url + endpoint,
+            headers=self.wallet.authPayload(
+                asDict=True, challenge=challenge or self._getChallenge()),
+            json=json)
         r.raise_for_status()
+        logging.info(
+            'incoming Satori server message:',
+            str(r.json())[0:40], f'{"..." if len(str(r.json())) > 40 else ""}',
+            print=True)
         return r
+
+    def registerWallet(self):
+        return self._makeAuthenticatedCall(
+            function=requests.post,
+            endpoint='/register/wallet',
+            json=self.wallet.registerPayload())
 
     def registerStream(self, stream: dict, payload: str = None):
         ''' publish stream {'source': 'test', 'name': 'stream1', 'target': 'target'}'''
-        # logging.debug('\nregisterSubscription',
-        #              payload or json.dumps(stream))
-        r = requests.post(
-            self.url + '/register/stream',
-            headers=self.wallet.authPayload(asDict=True),
+        return self._makeAuthenticatedCall(
+            function=requests.post,
+            endpoint='/register/stream',
             json=payload or json.dumps(stream))
-        r.raise_for_status()
-        return r
 
     def registerSubscription(self, subscription: dict, payload: str = None):
         ''' subscribe to stream '''
-        # logging.debug('\nregisterSubscription',
-        #              payload or json.dumps(subscription))
-        r = requests.post(
-            self.url + '/register/subscription',
-            headers=self.wallet.authPayload(asDict=True),
+        return self._makeAuthenticatedCall(
+            function=requests.post,
+            endpoint='/register/subscription',
             json=payload or json.dumps(subscription))
-        r.raise_for_status()
-        return r
 
     def registerPin(self, pin: dict, payload: str = None):
         ''' 
@@ -57,99 +77,44 @@ class SatoriServerClient(object):
             'disk': 1, 
             'count': 27},
         '''
-        authPayload = self.wallet.authPayload(asDict=True)
-        try:
-            r = requests.post(
-                self.url + '/register/pin',
-                headers=authPayload,
-                json=payload or json.dumps(pin))
-            # logging.debug('lib server registerPin:',
-            #              payload or json.dumps(pin), r)
-            r.raise_for_status()
-        except Exception as e:
-            logging.error(
-                'lib server registerPin error:\n'
-                f'payload or json.dumps(pin): {payload or json.dumps(pin)}\n'
-                f'self.url + /register/pin: {self.url + "/register/pin/"}\n'
-                f'authPayload: {authPayload}\n', e)
-        return r
+        return self._makeAuthenticatedCall(
+            function=requests.post,
+            endpoint='/register/pin',
+            json=payload or json.dumps(pin))
 
     def requestPrimary(self):
         ''' subscribe to primary data stream and and publish prediction '''
-        r = requests.get(
-            self.url + '/request/primary',
-            headers=self.wallet.authPayload(asDict=True))
-        r.raise_for_status()
-        return r
+        return self._makeAuthenticatedCall(
+            function=requests.get,
+            endpoint='/request/primary')
 
     def getStreams(self, stream: dict, payload: str = None):
         ''' subscribe to primary data stream and and publish prediction '''
-        r = requests.post(
-            self.url + '/get/streams',
-            headers=self.wallet.authPayload(asDict=True),
+        return self._makeAuthenticatedCall(
+            function=requests.post,
+            endpoint='/get/streams',
             json=payload or json.dumps(stream))
-        r.raise_for_status()
-        return r
 
     def myStreams(self):
         ''' subscribe to primary data stream and and publish prediction '''
-        r = requests.post(
-            self.url + '/my/streams',
-            headers=self.wallet.authPayload(asDict=True),
+        return self._makeAuthenticatedCall(
+            function=requests.post,
+            endpoint='/my/streams',
             json='{}')
-        r.raise_for_status()
-        return r
 
     def removeStream(self, stream: dict = None, payload: str = None):
         ''' removes a stream from the server '''
         if payload is None and stream is None:
             raise ValueError('stream or payload must be provided')
-        r = requests.post(
-            self.url + '/remove/stream',
-            headers=self.wallet.authPayload(asDict=True),
+        return self._makeAuthenticatedCall(
+            function=requests.post,
+            endpoint='/remove/stream',
             json=payload or json.dumps(stream or {}))
-        r.raise_for_status()
-        return r
 
     def checkin(self) -> dict:
-        # r = requests.post(
-        #    self.url + '/checkin',
-        #    headers=self.wallet.authPayload(asDict=True),
-        #    json=self.wallet.registerPayload())
-        # if r.text.startswith('unable to verify recent timestamp.'):
-        #    logging.error(
-        #        'Please sync your system clock. '
-        #        'Attempting again with server time.',
-        #        r.text, color='red')
-        # poor man's solution for getting a prompt from the server:
-        # use server's time, that way it doesn't have to remember which
-        # prompt it gave to who and we can continue to use the time
-        # verification system we have.
-        # how it's the default way:
-        challenge = requests.get(self.url + '/time').text
-        logging.info('outgoing Satori server message: <checkin>', print=True)
-        r = requests.post(
-            self.url + '/checkin',
-            headers=self.wallet.authPayload(asDict=True, challenge=challenge),
-            json=self.wallet.registerPayload(challenge=challenge))
-        r.raise_for_status()
-        # use subscriptions to initialize engine
-        # # logging.debug('publications.key', j.get('publications.key'))
-        # # logging.debug('subscriptions.key', j.get('subscriptions.key'))
-        # use subscriptions to initialize engine
-        # logging.debug('subscriptions', j.get('subscriptions'))
-        # use publications to initialize engine
-        # logging.debug('publications', j.get('publications'))
-        # use pins to initialize engine and update any missing data
-        # logging.debug('pins', j.get('pins'))
-        # use server version to use the correct api
-        # logging.debug('server version', j.get('versions', {}).get('server'))
-        # use client version to know when to update the client
-        # logging.debug('client version', j.get('versions', {}).get('client'))
-        # from satoricentral.utils import Crypt
-        # # logging.debug('key', Crypt().decrypt(
-        #    toDecrypt=j.get('key'),
-        #    key='thiskeyisfromenv',
-        #    clean=True))
-        logging.info('incoming Satori server message:', r.json(), print=True)
-        return r.json()
+        challenge = self._getChallenge()
+        return self._makeAuthenticatedCall(
+            function=requests.post,
+            endpoint='/checkin',
+            json=self.wallet.registerPayload(challenge=challenge),
+            challenge=challenge).json()

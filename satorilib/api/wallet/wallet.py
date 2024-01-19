@@ -109,13 +109,13 @@ class Wallet():
     Issuing Transactions: {self.stats.get('source', {}).get('tx_hash', self.satoriOriginalTxHash)}
     '''
 
-    def authPayload(self, asDict: bool = False, challenge: str = None):
+    def authPayload(self, asDict: bool = False, challenge: str = None) -> str:
         payload = connection.authPayload(self, challenge)
         if asDict:
             return payload
         return json.dumps(payload)
 
-    def registerPayload(self, asDict: bool = False, challenge: str = None):
+    def registerPayload(self, asDict: bool = False, challenge: str = None) -> str:
         payload = {
             **connection.authPayload(self, challenge),
             **system.devicePayload(asDict=True)}
