@@ -6,7 +6,7 @@ import pandas as pd
 from satorilib import logging
 from satorilib.concepts import StreamId
 from satorilib.api import memory
-from satorilib.api.time import datetimeToTimestamp, now
+from satorilib.api.time import datetimeToTimestamp, now, datetimeToTimestamp, earliestDate
 from satorilib.api.hash import hashIt, generatePathId, historyHashes, verifyHashes, cleanHashes, verifyRoot, verifyHashesReturnError
 from satorilib.api.disk import Disk
 from satorilib.api.disk.utils import safetify, safetifyWithResult
@@ -348,6 +348,12 @@ class Cache(Disk):
         if rows.empty:
             return rows
         return rows.iloc[[-1]]
+
+    def getLatestObservationTime(self) -> str:
+        ''' gets most recent time '''
+        if self.df is None or self.df.empty:
+            return datetimeToTimestamp(earliestDate)
+        return self.df.sort_index().index.values[-1]
 
     def gather(
         self,
