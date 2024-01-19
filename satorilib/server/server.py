@@ -42,7 +42,7 @@ class SatoriServerClient(object):
         r.raise_for_status()
         logging.info(
             'incoming Satori server message:',
-            str(r.json())[0:40], f'{"..." if len(str(r.json())) > 40 else ""}',
+            r.text[0:40], f'{"..." if len(r.text) > 40 else ""}',
             print=True)
         return r
 
