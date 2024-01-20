@@ -26,7 +26,7 @@ def secondsToTimestamp(time: float) -> str:
 
 
 def earliestDate() -> dt.datetime:
-    return dt.datetime(1, 1, 1)
+    return dt.datetime(1000, 1, 1)
 
 
 def now() -> dt.datetime:
