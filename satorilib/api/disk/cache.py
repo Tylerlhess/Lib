@@ -352,7 +352,7 @@ class Cache(Disk):
     def getLatestObservationTime(self) -> str:
         ''' gets most recent time '''
         if self.df is None or self.df.empty:
-            return datetimeToTimestamp(earliestDate)
+            return datetimeToTimestamp(earliestDate())
         return self.df.sort_index().index.values[-1]
 
     def gather(
