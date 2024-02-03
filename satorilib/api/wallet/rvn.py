@@ -14,8 +14,18 @@ from satorilib.api.wallet.wallet import Wallet, TransactionFailure
 
 class RavencoinWallet(Wallet):
 
-    def __init__(self, walletPath: str, temporary: bool = False, reserve: float = .1):
-        super().__init__(walletPath, temporary=temporary, reserve=reserve)
+    def __init__(
+        self,
+        walletPath: str,
+        temporary: bool = False,
+        reserve: float = .1,
+        isTestnet: bool = False
+    ):
+        super().__init__(
+            walletPath,
+            temporary=temporary,
+            reserve=reserve,
+            isTestnet=isTestnet)
 
     def connect(self):
         self.electrumx = ElectrumXAPI(

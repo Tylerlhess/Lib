@@ -25,7 +25,14 @@ class TransactionFailure(Exception):
 
 class Wallet():
 
-    def __init__(self, walletPath: str, temporary: bool = False, reserve: float = .01):
+    def __init__(
+        self,
+        walletPath: str,
+        temporary: bool = False,
+        reserve: float = .01,
+        isTestnet: bool = False
+    ):
+        self.isTestnet = isTestnet
         self._entropy = None
         self._privateKeyObj = None
         self._addressObj = None
