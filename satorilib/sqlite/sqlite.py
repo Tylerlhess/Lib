@@ -72,7 +72,7 @@ class Sqlite:
                 # query=sql_io.apply_params(query, params),
                 data=data,
                 table=table,
-                params=params,
+                params=params or [],
                 database=self.database,
                 index_col=self.index_col)
         return sql_io.execute(
