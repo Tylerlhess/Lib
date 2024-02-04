@@ -6,6 +6,9 @@ dedicated thread just for that.
 '''
 import inspect
 import asyncio
+# todo: integrate stop events into the AsyncThread for graceful shutdown:
+# https://chat.openai.com/share/149385bc-e9a4-442a-a973-34d473766f0a
+
 import threading
 import datetime as dt
 from satorilib import logging
