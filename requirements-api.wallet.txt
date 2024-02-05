@@ -5,3 +5,4 @@ python-ravencoinlib==0.2.2
 mnemonic==0.20
 base58==2.1.1
 #qrcode==7.3.1
+pycryptodome==3.20.0

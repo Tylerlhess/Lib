@@ -19,13 +19,15 @@ class EvrmoreWallet(Wallet):
         walletPath: str,
         temporary: bool = False,
         reserve: float = .1,
-        isTestnet: bool = False
+        isTestnet: bool = False,
+        password: Union[str, None] = None,
     ):
         super().__init__(
             walletPath,
             temporary=temporary,
             reserve=reserve,
-            isTestnet=isTestnet)
+            isTestnet=isTestnet,
+            password=password)
 
     def connect(self):
         self.electrumx = ElectrumXAPI(

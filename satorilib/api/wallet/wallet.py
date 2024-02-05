@@ -3,6 +3,7 @@ import json
 from random import randrange
 import mnemonic
 from typing import Union
+from functools import partial
 from satoriwallet.lib import connection
 from satoriwallet import TxUtils, Validate
 from satorilib import logging
@@ -30,9 +31,11 @@ class Wallet():
         walletPath: str,
         temporary: bool = False,
         reserve: float = .01,
-        isTestnet: bool = False
+        isTestnet: bool = False,
+        password: str = None,
     ):
         self.isTestnet = isTestnet
+        self.password = password
         self._entropy = None
         self._privateKeyObj = None
         self._addressObj = None
@@ -141,14 +144,23 @@ class Wallet():
             self.connect()
             self.get()
 
-    def load(self):
-        # todo: encrypt wallet file... entropy, words, privateKey
-        # do not encrypt publicKey, address, scripthash. we need these without a password,
-        # in order to see your words or anything you need to put in your password.
+    def decryptWallet(self, encrypted: dict) -> dict:
+        if isinstance(self.password, str):
+            from satorilib import secret
+            return secret.decryptMapValues(encrypted, self.password)
+        return encrypted
 
+    def encryptWallet(self, content: dict) -> dict:
+        if isinstance(self.password, str):
+            from satorilib import secret
+            return secret.encryptMapValues(content, self.password)
+        return content
+
+    def load(self):
         self.yaml = WalletApi.load(walletPath=self.walletPath)
         if self.yaml == False:
             return False
+        self.yaml = self.decryptWallet(self.yaml)
         self._entropy = self.yaml.get('entropy')
         # # these are regenerated from entropy in every case
         # self.words = self.yaml.get('words')
@@ -165,17 +177,21 @@ class Wallet():
     def save(self):
         WalletApi.save(
             wallet={
-                **(self.yaml if hasattr(self, 'yaml') and isinstance(self.yaml, dict) else {}),
-                **{
-                    'entropy': self._entropy,
-                    'words': self.words,
-                    'privateKey': self.privateKey,
-                    'publicKey': self.publicKey,
-                    'scripthash': self.scripthash,
-                    self.symbol: {
-                        'address': self.address,
-                    }
-                }
+                **(
+                    self.encryptWallet(self.yaml)
+                    if hasattr(self, 'yaml') and isinstance(self.yaml, dict)
+                    else {}),
+                **self.encryptWallet(
+                    content={
+                        'entropy': self._entropy,
+                        'words': self.words,
+                        'privateKey': self.privateKey,
+                        'publicKey': self.publicKey,
+                        'scripthash': self.scripthash,
+                        self.symbol: {
+                            'address': self.address,
+                        }
+                    })
             },
             walletPath=self.walletPath)
 
