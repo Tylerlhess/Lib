@@ -419,6 +419,15 @@ class Wallet():
         ''' creates a transaction with multiple SATORI asset recipients '''
         if len(amountByAddress) == 0 or len(amountByAddress) > 1000:
             raise TransactionFailure('too many or too few recipients')
+        for address, amount in amountByAddress.items():
+            if (
+                amount <= 0 or
+                not TxUtils.isAmountDivisibilityValid(
+                    amount=amount,
+                    divisibility=self.divisibility) or
+                not Validate.address(address, self.symbol)
+            ):
+                raise TransactionFailure('satoriDistribution bad params')
         satoriSats = TxUtils.asSats(sum(amountByAddress.values()))
         (
             gatheredSatoriUnspents,
@@ -451,7 +460,13 @@ class Wallet():
     # for neuron
     def currencyTransaction(self, amount: float, address: str):
         ''' creates a transaction to just send rvn '''
-        if amount <= 0 or not Validate.address(address, self.symbol):
+        if (
+            amount <= 0 or
+            not TxUtils.isAmountDivisibilityValid(
+                amount=amount,
+                divisibility=8) or
+            not Validate.address(address, self.symbol)
+        ):
             raise TransactionFailure('bad params for currencyTransaction')
         currencySats = TxUtils.asSats(amount)
         (
@@ -478,7 +493,14 @@ class Wallet():
 
     def satoriTransaction(self, amount: float, address: str):
         ''' creates a transaction to send satori to one address '''
-        if amount <= 0 or not Validate.address(address, self.symbol):
+
+        if (
+            amount <= 0 or
+            not TxUtils.isAmountDivisibilityValid(
+                amount=amount,
+                divisibility=self.divisibility) or
+            not Validate.address(address, self.symbol)
+        ):
             raise TransactionFailure('satoriTransaction bad params')
         satoriSats = TxUtils.asSats(amount)
         (
@@ -511,7 +533,17 @@ class Wallet():
 
     def satoriAndCurrencyTransaction(self, satoriAmount: float, currencyAmount: float, address: str):
         ''' creates a transaction to send satori and currency to one address '''
-        if satoriAmount <= 0 or currencyAmount <= 0 or not Validate.address(address, self.symbol):
+        if (
+            satoriAmount <= 0 or
+            currencyAmount <= 0 or
+            not TxUtils.isAmountDivisibilityValid(
+                amount=satoriAmount,
+                divisibility=self.divisibility) or
+            not TxUtils.isAmountDivisibilityValid(
+                amount=currencyAmount,
+                divisibility=8) or
+            not Validate.address(address, self.symbol)
+        ):
             raise TransactionFailure('satoriAndCurrencyTransaction bad params')
         satoriSats = TxUtils.asSats(satoriAmount)
         currencySats = TxUtils.asSats(currencyAmount)
