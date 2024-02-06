@@ -147,13 +147,19 @@ class Wallet():
     def decryptWallet(self, encrypted: dict) -> dict:
         if isinstance(self.password, str):
             from satorilib import secret
-            return secret.decryptMapValues(encrypted, self.password)
+            try:
+                return secret.decryptMapValues(encrypted, self.password)
+            except Exception as _:
+                return encrypted
         return encrypted
 
     def encryptWallet(self, content: dict) -> dict:
         if isinstance(self.password, str):
             from satorilib import secret
-            return secret.encryptMapValues(content, self.password)
+            try:
+                return secret.encryptMapValues(content, self.password)
+            except Exception as _:
+                return content
         return content
 
     def load(self):
