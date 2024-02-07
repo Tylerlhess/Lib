@@ -216,3 +216,9 @@ class EvrmoreWallet(Wallet):
 
     def _txToHex(self, tx: CMutableTransaction) -> str:
         return b2x(tx.serialize())
+
+    def _serialize(self, tx: CMutableTransaction) -> bytes:
+        return tx.serialize()
+
+    def _deserialize(self, serialTx) -> CMutableTransaction:
+        return CMutableTransaction.deserialize(serialTx)

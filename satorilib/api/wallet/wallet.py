@@ -34,6 +34,7 @@ class Wallet():
         isTestnet: bool = False,
         password: str = None,
     ):
+        self.satoriFee = 1
         self.isTestnet = isTestnet
         self.password = password
         self._entropy = None
@@ -493,7 +494,6 @@ class Wallet():
 
     def satoriTransaction(self, amount: float, address: str):
         ''' creates a transaction to send satori to one address '''
-
         if (
             amount <= 0 or
             not TxUtils.isAmountDivisibilityValid(
@@ -590,16 +590,57 @@ class Wallet():
         to be completed. he who completes the transaction will pay the rvn fee
         and collect the satori fee. we will probably broadcast as a json object.
         '''
-        # todo
-        return 'json transaction with incomplete elements'
+        if (
+            amount <= 0 or
+            not TxUtils.isAmountDivisibilityValid(
+                amount=amount,
+                divisibility=self.divisibility) or
+            not Validate.address(address, self.symbol)
+        ):
+            raise TransactionFailure('satoriTransaction bad params')
+        satoriTotalSats = TxUtils.asSats(amount + self.satoriFee)
+        satoriSats = TxUtils.asSats(amount)
+        (
+            gatheredSatoriUnspents,
+            gatheredSatoriSats) = self._gatherSatoriUnspents(satoriTotalSats)
+        # put this on completion part
+        # (
+        #    gatheredCurrencyUnspents,
+        #    gatheredCurrencySats) = self._gatherCurrencyUnspents(
+        #        inputCount=len(gatheredSatoriUnspents),
+        #        outputCount=3)
+        txins, txinScripts = self._compileInputs(
+            #    gatheredCurrencyUnspents=gatheredCurrencyUnspents,
+            gatheredSatoriUnspents=gatheredSatoriUnspents)
+        satoriOuts = self._compileSatoriOutputs({address: amount})
+        satoriChangeOut = self._compileSatoriChangeOutput(
+            satoriSats=satoriSats,
+            gatheredSatoriSats=gatheredSatoriSats)
+        # currencyChangeOut = self._compileCurrencyChangeOutput(
+        #    gatheredCurrencySats=gatheredCurrencySats,
+        #    inputCount=len(txins),
+        #    outputCount=3)
+        tx = self._createTransaction(
+            txins=txins,
+            txinScripts=txinScripts,
+            txouts=satoriOuts + [
+                x for x in [satoriChangeOut]  # , currencyChangeOut]
+                if x is not None])
+        return tx.serialize()
 
-    def satoriOnlyTransactionCompleted(self, transaction: dict) -> str:
+    def satoriOnlyTransactionCompleted(self, serialTx: bytes) -> str:
         '''
         a companion function to satoriOnlyTransaction which completes the 
         transaction add in it's own address for the satori fee and injecting the
         necessary rvn inputs to cover the fee.
         '''
-        # todo
+        tx = self._deserialize(serialTx)
+        # add rvn fee input
+        # add satori fee output to self
+        # add return rvn change output to self
+        # sign rvn fee input
+        # broadcast
+        # return transaction id
         return 'broadcast result'
 
     def sendAllTransaction(self, address: str) -> str:
