@@ -73,8 +73,8 @@ class EvrmoreWallet(Wallet):
     def sign(self, message: str):
         return evrmore.signMessage(self._privateKeyObj, message)
 
-    def verify(self, message: str, sig: bytes):
-        return evrmore.verify(address=self.address, message=message, signature=sig)
+    def verify(self, message: str, sig: bytes, address: Union[str, None] = None):
+        return evrmore.verify(address=address or self.address, message=message, signature=sig)
 
     def _compileInputs(
         self,

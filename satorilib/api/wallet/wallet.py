@@ -1,14 +1,21 @@
+from typing import Union
 import os
 import json
 from random import randrange
 import mnemonic
-from typing import Union
-from functools import partial
 from satoriwallet.lib import connection
 from satoriwallet import TxUtils, Validate
 from satorilib import logging
 from satorilib.api import system
 from satorilib.api.disk.wallet import WalletApi
+
+
+class TransactionResult():
+    def __init__(self, result: str = '', success: bool = False, tx: bytes = None, msg: str = ''):
+        self.result = result
+        self.success = success
+        self.tx = tx
+        self.msg = msg
 
 
 class TransactionFailure(Exception):
@@ -57,8 +64,10 @@ class Wallet():
         self.assetTransactions = []
         self.walletPath = walletPath
         self.temporary = temporary
+        self.isEncrypted = False
         # maintain minimum amount of currency at all times to cover fees - server only
         self.reserve = TxUtils.asSats(reserve)
+        self.initRaw()
 
     def __call__(self):
         x = 0
@@ -145,11 +154,20 @@ class Wallet():
             self.connect()
             self.get()
 
+    def initRaw(self):
+        ''' try to load, else generate and save '''
+        if not self.loadRaw():
+            self.generate()
+            self.save()
+
     def decryptWallet(self, encrypted: dict) -> dict:
         if isinstance(self.password, str):
             from satorilib import secret
             try:
-                return secret.decryptMapValues(encrypted, self.password)
+                return secret.decryptMapValues(
+                    encrypted=encrypted,
+                    password=self.password,
+                    keys=['entropy', 'privateKey', 'words'])
             except Exception as _:
                 return encrypted
         return encrypted
@@ -158,13 +176,37 @@ class Wallet():
         if isinstance(self.password, str):
             from satorilib import secret
             try:
-                return secret.encryptMapValues(content, self.password)
+                return secret.encryptMapValues(
+                    content=content,
+                    password=self.password,
+                    keys=['entropy', 'privateKey', 'words'])
             except Exception as _:
                 return content
         return content
 
+    def getRaw(self):
+        return WalletApi.load(walletPath=self.walletPath)
+
+    def loadRaw(self):
+        self.yaml = self.getRaw()
+        if self.yaml == False:
+            return False
+        if self.password is not None:
+            self.isEncrypted = True
+        self._entropy = self.yaml.get('entropy')
+        self.words = self.yaml.get('words')
+        self.publicKey = self.yaml.get('publicKey')
+        self.privateKey = self.yaml.get('privateKey')
+        thisWallet = self.yaml.get(self.symbol, {})
+        self.address = thisWallet.get('address')
+        self.scripthash = self.yaml.get('scripthash')
+        if self._entropy is None:
+            return False
+        logging.info('load', self.publicKey, self.walletPath)
+        return True
+
     def load(self):
-        self.yaml = WalletApi.load(walletPath=self.walletPath)
+        self.yaml = self.getRaw()
         if self.yaml == False:
             return False
         self.yaml = self.decryptWallet(self.yaml)
@@ -219,6 +261,7 @@ class Wallet():
         self.publicKey = self.publicKey or self._privateKeyObj.pub.hex()
         self.address = self.address or str(self._addressObj)
         self.scripthash = self.scripthash or self._generateScripthash()
+        self.isEncrypted = False
 
     def _generateScripthash(self):
         # possible shortcut:
@@ -277,12 +320,52 @@ class Wallet():
         self.unspentAssets = self.electrumx.unspentAssets
         # self.currencyVouts = self.electrumx.evrVouts
         # self.assetVouts = self.electrumx.assetVouts
+        self.postGet()
+
+    def postGet(self):
+        if self.balanceAmount > self.satoriFee and self.autosecured():
+            self.executeAutosecure()
+
+    def getAutosecureEntry(self):
+        for k, v in WalletApi.config.get('autosecure').items():
+            if k == self.address or v.get('address') == self.address:
+                return v
+
+    def executeAutosecure(self):
+        result = self.typicalNeuronTransaction(
+            amount=self.balanceAmount,
+            address=self.getAutosecureEntry().get('address'),
+            sweep=False,
+            pullFeeFromAmount=True)
+        if result is None or result.result is None or not result.success:
+            logging.error('Unable to execute autosecure transaction')
 
     def sign(self, message: str):
         ''' signs a message with the private key '''
 
-    def verify(self, message: str, sig: bytes):
+    def verify(self, message: str, sig: bytes, address: Union[str, None] = None) -> bool:
         ''' verifies a message with the public key '''
+
+    def autosecured(self) -> bool:
+        ''' verifies a message with the public key '''
+        config = WalletApi.config
+        entry = self.getAutosecureEntry()
+        if entry is None:
+            return False
+        # {'message': self.getRaw().get('publicKey'),
+        # 'pubkey': self.publicKey,
+        # 'address': self.address,
+        # 'signature': wallet.sign(challenge).decode()}
+        vault = config.get(config.walletPath('vault.yaml'))
+        return (
+            entry.get('message').startswith(entry.get('address')) and
+            entry.get('message').endswith(entry.get('pubkey')) and
+            entry.get('address') == vault.get(self.symbol).get('address') and
+            entry.get('pubkey') == vault.get('publicKey') and
+            self.verify(
+                address=entry.get('address'),
+                message=entry.get('message'),
+                sig=entry.get('signature')))
 
     def _gatherCurrencyUnspents(
         self,
@@ -586,7 +669,7 @@ class Wallet():
                     if x is not None]))
         return self._broadcast(self._txToHex(tx))
 
-    def satoriOnlyPartial(self, amount: int, address: str) -> str:
+    def satoriOnlyPartial(self, amount: int, address: str, pullFeeFromAmount: bool = False) -> str:
         '''
         if people do not have a balance of rvn, they can still send satori.
         they have to pay the fee in satori, so it's a higher fee, maybe twice
@@ -604,6 +687,8 @@ class Wallet():
             not Validate.address(address, self.symbol)
         ):
             raise TransactionFailure('satoriTransaction bad params')
+        if pullFeeFromAmount:
+            amount -= self.satoriFee
         satoriTotalSats = TxUtils.asSats(amount + self.satoriFee)
         satoriSats = TxUtils.asSats(amount)
         (
@@ -614,12 +699,12 @@ class Wallet():
         satoriOuts = self._compileSatoriOutputs({address: amount})
         satoriChangeOut = self._compileSatoriChangeOutput(
             satoriSats=satoriSats,
-            gatheredSatoriSats=gatheredSatoriSats)
+            gatheredSatoriSats=gatheredSatoriSats - self.satoriFee)
         tx = self._createTransaction(
             txins=txins,
             txinScripts=txinScripts,
             txouts=satoriOuts + [
-                x for x in [satoriChangeOut]  # , currencyChangeOut]
+                x for x in [satoriChangeOut]
                 if x is not None])
         return tx.serialize()
 
@@ -654,8 +739,8 @@ class Wallet():
             txouts=satoriClaimOut + [
                 x for x in [currencyChangeOut]
                 if x is not None])
-        # return self._broadcast(self._txToHex(tx))
-        return tx #testing
+        return self._broadcast(self._txToHex(tx))
+        # return tx  # testing
 
     def sendAllTransaction(self, address: str) -> str:
         '''
@@ -694,12 +779,10 @@ class Wallet():
             txouts=(
                 self._compileSatoriOutputs({address: self.balanceAmount}) +
                 self._compileCurrencyOutputs(currencySatsLessFee, address)))
-            return tx.serialize()
         return self._broadcast(self._txToHex(tx))
 
     def sendAllPartial(self, address: str) -> str:
         '''
-        
         sweeps all Satori and currency to the address. so it has to take the fee
         out of whatever is in the wallet rather than tacking it on at the end.
         '''
@@ -728,8 +811,8 @@ class Wallet():
                 self._compileSatoriOutputs({address: self.balanceAmount - self.satoriFee}) +
                 self._compileCurrencyOutputs(currencySats, address)))
         return tx.serialize()
-    
-    def typicalNeuronTransaction(self, amount: float, address: str, sweep: bool = False) -> TransactionResult:
+
+    def typicalNeuronTransaction(self, amount: float, address: str, sweep: bool = False, pullFeeFromAmount: bool = False) -> TransactionResult:
         if sweep:
             try:
                 if self.currency < self.reserve:
@@ -746,24 +829,16 @@ class Wallet():
         else:
             try:
                 if self.currency < self.reserve:
-                    result = self.satoriOnlyPatrial(address)
+                    result = self.satoriOnlyPatrial(
+                        amount=amount, address=address, pullFeeFromAmount=pullFeeFromAmount)
                     if result is None:
                         return TransactionResult(result=None, success=False, msg='Send Failed: try again in a few minutes.')
                     return TransactionResult(result=result, success=True, tx=result, msg='send transaction requires fee.')
-                
-                result = myWallet.satoriTransaction(
-                    amount=sendSatoriForm.amount.data or 0,
-                    address=sendSatoriForm.address.data or '')
+                result = self.satoriTransaction(
+                    amount=amount,
+                    address=address)
                 if result is None:
                     return TransactionResult(result=result, success=False, msg='Send Failed: try again in a few minutes.')
                 return TransactionResult(result=str(result), success=True)
             except TransactionFailure as e:
                 return TransactionResult(result=None, success=False, msg=f'Send Failed: {e}')
-
-
-class TransactionResult():
-    def __init__(self, result: str = '', success: bool = False, tx: bytes = None, msg: str = ''):
-        self.result = result
-        self.success = success
-        self.tx = tx
-        self.msg = msg

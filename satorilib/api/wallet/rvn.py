@@ -64,8 +64,8 @@ class RavencoinWallet(Wallet):
     def sign(self, message: str):
         return ravencoin.signMessage(self._privateKeyObj, message)
 
-    def verify(self, message: str, sig: bytes):
-        return ravencoin.verify(address=self.address, message=message, signature=sig)
+    def verify(self, message: str, sig: bytes, address: Union[str, None] = None):
+        return ravencoin.verify(address=address or self.address, message=message, signature=sig)
 
     def _compileInputs(
         self,

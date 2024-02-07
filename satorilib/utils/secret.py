@@ -56,22 +56,23 @@ def decryptMapValues(encrypted: dict, password: str) -> dict:
     return decrypted
 
 
-def encryptMapValues(content: dict, password: str) -> dict:
+def encryptMapValues(content: dict, password: str, keys: list = None) -> dict:
     ''' encrypts all the values in the dictionary, even if it's nested '''
     if password is None:
         return content
     encrypted = {}
+    keys = keys or []
     for k, v in content.items():
-        if isinstance(v, str):
+        if isinstance(v, str) and (len(k) == 0 or (len(k) > 0 and k in keys)):
             encrypted[k] = encrypt(v, password)
         elif isinstance(v, dict):
-            encrypted[k] = encryptMapValues(v, password)
+            encrypted[k] = encryptMapValues(v, password, keys)
         else:
             encrypted[k] = v
     return encrypted
 
 
-def decryptMapValues(encrypted: dict, password: str) -> dict:
+def decryptMapValues(encrypted: dict, password: str, keys: list = None) -> dict:
     ''' decrypts all the values in the dictionary, even if it's nested '''
     # return {
     #    k: decrypt(v, password)
@@ -81,11 +82,12 @@ def decryptMapValues(encrypted: dict, password: str) -> dict:
     if password is None:
         return encrypted
     decrypted = {}
+    keys = keys or []
     for k, v in encrypted.items():
-        if isinstance(v, str):
+        if isinstance(v, str) and (len(k) == 0 or (len(k) > 0 and k in keys)):
             decrypted[k] = decrypt(v, password)
         elif isinstance(v, dict):
-            decrypted[k] = decryptMapValues(v, password)
+            decrypted[k] = decryptMapValues(v, password, keys)
         else:
             decrypted[k] = v
     return decrypted
