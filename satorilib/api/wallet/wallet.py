@@ -404,10 +404,16 @@ class Wallet():
             "valueSat":0},
         '''
 
-    def _createTransaction(self, txins: list, txinScripts: list, txouts: list) -> 'CMutableTransaction':
+    def _createTransaction(self, txins: list, txinScripts: list, txouts: list,  tx: 'CMutableTransaction' = None) -> 'CMutableTransaction':
         ''' create transaction '''
 
     def _txToHex(self, tx: 'CMutableTransaction') -> str:
+        ''' serialize '''
+
+    def _serialize(self, tx: 'CMutableTransaction') -> bytes:
+        ''' serialize '''
+
+    def _deserialize(self, serialTx: bytes) -> 'CMutableTransaction':
         ''' serialize '''
 
     def _broadcast(self, txHex: str) -> str:
@@ -580,7 +586,7 @@ class Wallet():
                     if x is not None]))
         return self._broadcast(self._txToHex(tx))
 
-    def satoriOnlyTransaction(self, amount: int, address: str) -> str:
+    def satoriOnlyPartial(self, amount: int, address: str) -> str:
         '''
         if people do not have a balance of rvn, they can still send satori.
         they have to pay the fee in satori, so it's a higher fee, maybe twice
@@ -603,23 +609,12 @@ class Wallet():
         (
             gatheredSatoriUnspents,
             gatheredSatoriSats) = self._gatherSatoriUnspents(satoriTotalSats)
-        # put this on completion part
-        # (
-        #    gatheredCurrencyUnspents,
-        #    gatheredCurrencySats) = self._gatherCurrencyUnspents(
-        #        inputCount=len(gatheredSatoriUnspents),
-        #        outputCount=3)
         txins, txinScripts = self._compileInputs(
-            #    gatheredCurrencyUnspents=gatheredCurrencyUnspents,
             gatheredSatoriUnspents=gatheredSatoriUnspents)
         satoriOuts = self._compileSatoriOutputs({address: amount})
         satoriChangeOut = self._compileSatoriChangeOutput(
             satoriSats=satoriSats,
             gatheredSatoriSats=gatheredSatoriSats)
-        # currencyChangeOut = self._compileCurrencyChangeOutput(
-        #    gatheredCurrencySats=gatheredCurrencySats,
-        #    inputCount=len(txins),
-        #    outputCount=3)
         tx = self._createTransaction(
             txins=txins,
             txinScripts=txinScripts,
@@ -628,20 +623,39 @@ class Wallet():
                 if x is not None])
         return tx.serialize()
 
-    def satoriOnlyTransactionCompleted(self, serialTx: bytes) -> str:
+    def satoriOnlyCompleter(self, serialTx: bytes, address: str) -> str:
         '''
         a companion function to satoriOnlyTransaction which completes the 
         transaction add in it's own address for the satori fee and injecting the
-        necessary rvn inputs to cover the fee.
+        necessary rvn inputs to cover the fee. address is the address claim
+        satori fee address.
         '''
         tx = self._deserialize(serialTx)
         # add rvn fee input
-        # add satori fee output to self
+        (
+            gatheredCurrencyUnspents,
+            gatheredCurrencySats) = self._gatherCurrencyUnspents(
+                inputCount=len(tx.vin) + 2,  # fee input could potentially be 2
+                outputCount=len(tx.vout) + 2)  # claim output, change output
+        txins, txinScripts = self._compileInputs(
+            gatheredCurrencyUnspents=gatheredCurrencyUnspents)
         # add return rvn change output to self
-        # sign rvn fee input
-        # broadcast
-        # return transaction id
-        return 'broadcast result'
+        currencyChangeOut = self._compileCurrencyChangeOutput(
+            gatheredCurrencySats=gatheredCurrencySats,
+            inputCount=len(tx.vin) + len(txins),
+            outputCount=len(tx.vout) + 2)
+        # add satori fee output to self
+        satoriClaimOut = self._compileSatoriOutputs({address: self.satoriFee})
+        # sign rvn fee inputs and complete the transaction
+        tx = self._createTransaction(
+            tx=tx,
+            txins=txins,
+            txinScripts=txinScripts,
+            txouts=satoriClaimOut + [
+                x for x in [currencyChangeOut]
+                if x is not None])
+        # return self._broadcast(self._txToHex(tx))
+        return tx #testing
 
     def sendAllTransaction(self, address: str) -> str:
         '''
@@ -652,7 +666,7 @@ class Wallet():
             raise TransactionFailure('sendAllTransaction')
         logging.debug('currency', self.currency,
                       'self.reserve', self.reserve, color='yellow')
-        if (self.currency < self.reserve):
+        if self.currency < self.reserve:
             # todo: if no currency make a send-all partial transaction instead
             raise TransactionFailure(
                 'sendAllTransaction: not enough currency for fee')
@@ -680,4 +694,76 @@ class Wallet():
             txouts=(
                 self._compileSatoriOutputs({address: self.balanceAmount}) +
                 self._compileCurrencyOutputs(currencySatsLessFee, address)))
+            return tx.serialize()
         return self._broadcast(self._txToHex(tx))
+
+    def sendAllPartial(self, address: str) -> str:
+        '''
+        
+        sweeps all Satori and currency to the address. so it has to take the fee
+        out of whatever is in the wallet rather than tacking it on at the end.
+        '''
+        if not Validate.address(address, self.symbol):
+            raise TransactionFailure('sendAllTransaction')
+        logging.debug('currency', self.currency,
+                      'self.reserve', self.reserve, color='yellow')
+        if self.balanceAmount < self.satoriFee:
+            # todo: if no currency make a send-all partial transaction instead
+            raise TransactionFailure(
+                'sendAllTransaction: not enough Satori for fee')
+        # grab everything
+        gatheredSatoriUnspents = [
+            x for x in self.unspentAssets if x.get('name') == 'SATORI']
+        gatheredCurrencyUnspents = self.unspentCurrency
+        currencySats = sum([x.get('value') for x in gatheredCurrencyUnspents])
+        # compile inputs
+        txins, txinScripts = self._compileInputs(
+            gatheredCurrencyUnspents=gatheredCurrencyUnspents,
+            gatheredSatoriUnspents=gatheredSatoriUnspents)
+        # since it's a send all, there's no change outputs
+        tx = self._createTransaction(
+            txins=txins,
+            txinScripts=txinScripts,
+            txouts=(
+                self._compileSatoriOutputs({address: self.balanceAmount - self.satoriFee}) +
+                self._compileCurrencyOutputs(currencySats, address)))
+        return tx.serialize()
+    
+    def typicalNeuronTransaction(self, amount: float, address: str, sweep: bool = False) -> TransactionResult:
+        if sweep:
+            try:
+                if self.currency < self.reserve:
+                    result = self.sendAllPartial(address)
+                    if result is None:
+                        return TransactionResult(result=None, success=False, msg='Send Failed: try again in a few minutes.')
+                    return TransactionResult(result=result, success=True, tx=result, msg='send transaction requires fee.')
+                result = self.sendAllTransaction(address)
+                if result is None:
+                    return TransactionResult(result=result, success=False, msg='Send Failed: try again in a few minutes.')
+                return TransactionResult(result=str(result), success=True)
+            except TransactionFailure as e:
+                return TransactionResult(result=None, success=False, msg=f'Send Failed: {e}')
+        else:
+            try:
+                if self.currency < self.reserve:
+                    result = self.satoriOnlyPatrial(address)
+                    if result is None:
+                        return TransactionResult(result=None, success=False, msg='Send Failed: try again in a few minutes.')
+                    return TransactionResult(result=result, success=True, tx=result, msg='send transaction requires fee.')
+                
+                result = myWallet.satoriTransaction(
+                    amount=sendSatoriForm.amount.data or 0,
+                    address=sendSatoriForm.address.data or '')
+                if result is None:
+                    return TransactionResult(result=result, success=False, msg='Send Failed: try again in a few minutes.')
+                return TransactionResult(result=str(result), success=True)
+            except TransactionFailure as e:
+                return TransactionResult(result=None, success=False, msg=f'Send Failed: {e}')
+
+
+class TransactionResult():
+    def __init__(self, result: str = '', success: bool = False, tx: bytes = None, msg: str = ''):
+        self.result = result
+        self.success = success
+        self.tx = tx
+        self.msg = msg

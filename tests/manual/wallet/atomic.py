@@ -1,3 +1,4 @@
+from ravencoin.core import CMutableTransaction
 from satorineuron import config
 from satorilib import logging
 from satorineuron.init import engine
@@ -17,10 +18,14 @@ wallet.balance
 tx = wallet.satoriOnlyTransaction(1, 'RX4FbdramqY6qu7twwGCLsX6NyVwkwCevY')
 
 print(tx)
-serialTx = tx.serialize()
-print(serialTx)
-deserialTx = serialTx.deserialize()
-print(deserialTx)
-print(tx == deserialTx)
-print(wallet._txToHex(tx))
-print(wallet._txToHex(deserialTx))
+# serialTx = tx.serialize()
+# print(serialTx)
+deserialTx = CMutableTransaction.deserialize(tx)
+# print(deserialTx)
+# print(tx == deserialTx)
+# print(wallet._txToHex(tx))
+# print(wallet._txToHex(deserialTx))
+# print(wallet._txToHex(tx) == wallet._txToHex(deserialTx))
+#
+t = wallet.satoriOnlyTransactionCompleted(
+    tx, 'RX4FbdramqY6qu7twwGCLsX6NyVwkwCevY')

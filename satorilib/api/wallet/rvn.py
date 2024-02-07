@@ -205,15 +205,21 @@ class RavencoinWallet(Wallet):
                 ]))
         return None
 
-    def _createTransaction(self, txins: list, txinScripts: list, txouts: list) -> CMutableTransaction:
-        tx = CMutableTransaction(txins, txouts)
+    def _createTransaction(self, txins: list, txinScripts: list, txouts: list, tx: CMutableTransaction = None) -> CMutableTransaction:
+        vinCount = 0
+        if isinstance(tx, CMutableTransaction):
+            vinCount = len(tx.vin)
+            tx = CMutableTransaction(tx.vin + txins, tx.vout + txouts)
+        else:
+            tx = CMutableTransaction(txins, txouts)
         for i, (txin, txin_scriptPubKey) in enumerate(zip(txins, txinScripts)):
-            sighash = SignatureHash(txin_scriptPubKey, tx, i, SIGHASH_ALL)
+            sighash = SignatureHash(
+                txin_scriptPubKey, tx, i+vinCount, SIGHASH_ALL)
             sig = self._privateKeyObj.sign(sighash) + bytes([SIGHASH_ALL])
             txin.scriptSig = CScript([sig, self._privateKeyObj.pub])
             try:
                 VerifyScript(txin.scriptSig, txin_scriptPubKey,
-                             tx, i, (SCRIPT_VERIFY_P2SH,))
+                             tx, i+vinCount, (SCRIPT_VERIFY_P2SH,))
             except EvalScriptError as e:
                 # python-ravencoinlib doesn't support OP_RVN_ASSET in txin_scriptPubKey
                 if str(e) != 'EvalScript: unsupported opcode 0xc0':
@@ -226,5 +232,5 @@ class RavencoinWallet(Wallet):
     def _serialize(self, tx: CMutableTransaction) -> bytes:
         return tx.serialize()
 
-    def _deserialize(self, serialTx) -> CMutableTransaction:
+    def _deserialize(self, serialTx: bytes) -> CMutableTransaction:
         return CMutableTransaction.deserialize(serialTx)
