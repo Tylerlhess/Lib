@@ -7,6 +7,7 @@ import json
 import requests
 from satorilib import logging
 from satorilib.api.wallet import Wallet
+from functools import partial
 
 
 class SatoriServerClient(object):
@@ -39,6 +40,39 @@ class SatoriServerClient(object):
             headers=self.wallet.authPayload(
                 asDict=True, challenge=challenge or self._getChallenge()),
             json=json)
+        r.raise_for_status()
+        logging.info(
+            'incoming Satori server message:',
+            r.text[0:40], f'{"..." if len(r.text) > 40 else ""}',
+            print=True)
+        return r
+
+    def _makeUnauthenticatedCall(
+        self,
+        function: callable,
+        endpoint: str,
+        headers: Union[dict, None] = None,
+        payload: Union[str, bytes, None] = None,
+    ):
+        logging.info(
+            'outgoing Satori server message to ',
+            endpoint,
+            print=True)
+        data = None
+        json = None
+        if isinstance(payload, bytes):
+            headers = headers or {'Content-Type': 'application/octet-stream'}
+            data = payload
+        elif isinstance(payload, str):
+            headers = headers or {'Content-Type': 'application/json'}
+            json = payload
+        else:
+            headers = headers or {}
+        r = function(
+            self.url + endpoint,
+            headers=headers,
+            json=json,
+            data=data)
         r.raise_for_status()
         logging.info(
             'incoming Satori server message:',
@@ -118,3 +152,10 @@ class SatoriServerClient(object):
             endpoint='/checkin',
             json=self.wallet.registerPayload(challenge=challenge),
             challenge=challenge).json()
+
+    def sendSatoriPartial(self, tx: bytes, network: str):
+        ''' sends a satori partial transaction to the server '''
+        return self._makeUnauthenticatedCall(
+            function=requests.post,
+            endpoint=f'/broadcast/satori/partial/{network}',
+            payload=tx)
