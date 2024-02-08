@@ -196,14 +196,18 @@ class EvrmoreWallet(Wallet):
         inputCount: int = 0,
         outputCount: int = 0,
         scriptPubKey: CScript = None,
-    ) -> Union[CMutableTxOut, None]:
+        returnSats: bool = False,
+    ) -> Union[CMutableTxOut, None, tuple[CMutableTxOut, int]]:
         currencyChange = gatheredCurrencySats - currencySats - TxUtils.estimatedFee(
             inputCount=inputCount,
             outputCount=outputCount)
         if currencyChange > 0:
-            return CMutableTxOut(
+            txout = CMutableTxOut(
                 currencyChange,
                 scriptPubKey or self._addressObj.to_scriptPubKey())
+            if returnSats:
+                return txout, currencyChange
+            return txout
         if currencyChange < 0:
             # go back and get more?
             raise TransactionFailure('tx: not enough currency to send')

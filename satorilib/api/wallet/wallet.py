@@ -495,7 +495,8 @@ class Wallet():
         inputCount: int = 0,
         outputCount: int = 0,
         scriptPubKey: 'CScript' = None,
-    ) -> 'CMutableTxOut':
+        returnSats: bool = False,
+    ) -> Union['CMutableTxOut', None, tuple['CMutableTxOut', int]]':
         ''' compile currency change output '''
 
     def _compileMemoOutput(self, memo: str) -> 'CMutableTxOut':
@@ -866,7 +867,9 @@ class Wallet():
             inputCount=len(gatheredSatoriUnspents),
             outputCount=len(satoriOuts) + 2 +
             (1 if satoriChangeOut is not None else 0),
-            scriptPubKey=self._generateScriptPubKeyFromAddress(completerAddress))
+            scriptPubKey=self._generateScriptPubKeyFromAddress(
+                completerAddress),
+            returnSats=True)
         if currencyChangeOut is None:
             raise TransactionFailure('unable to generate currency change')
         tx = self._createPartialOriginatorSimple(
