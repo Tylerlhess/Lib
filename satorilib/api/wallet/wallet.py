@@ -11,12 +11,12 @@ from satorilib.api.disk.wallet import WalletApi
 
 
 class TransactionResult():
-    def __init__(self, result: str = '', success: bool = False, tx: bytes = None, msg: str = '', reportedFeeAmount: float = None):
+    def __init__(self, result: str = '', success: bool = False, tx: bytes = None, msg: str = '', reportedFeeSats: int = None):
         self.result = result
         self.success = success
         self.tx = tx
         self.msg = msg
-        self.reportedFeeAmount = reportedFeeAmount
+        self.reportedFeeSats = reportedFeeSats
 
 
 class TransactionFailure(Exception):
@@ -806,9 +806,9 @@ class Wallet():
         amount: int,
         address: str,
         pullFeeFromAmount: bool = False,
-        feeAmountReserved: float = 0,
+        feeSatsReserved: int = 0,
         completerAddress: str = None,
-    ) -> tuple[str, float]:
+    ) -> tuple[str, int]:
         '''
         if people do not have a balance of rvn, they can still send satori.
         they have to pay the fee in satori, so it's a higher fee, maybe twice
@@ -833,7 +833,7 @@ class Wallet():
         that the last output is the raven fee change and that the second to last
         output is the Satori fee for itself.
         '''
-        if completerAddress is None or feeAmountReserved == 0:
+        if completerAddress is None or feeSatsReserved == 0:
             raise TransactionFailure('need completer details')
         if (
             amount <= 0 or
@@ -863,7 +863,7 @@ class Wallet():
             raise TransactionFailure('unable to generate satori fee')
         # change out to server
         currencyChangeOut, currencyChange = self._compileCurrencyChangeOutput(
-            gatheredCurrencySats=feeAmountReserved,
+            gatheredCurrencySats=feeSatsReserved,
             inputCount=len(gatheredSatoriUnspents),
             outputCount=len(satoriOuts) + 2 +
             (1 if satoriChangeOut is not None else 0),
@@ -878,16 +878,15 @@ class Wallet():
             txouts=satoriOuts + [
                 x for x in [satoriChangeOut]
                 if x is not None] + [satoriFeeOut, currencyChangeOut])
-        reportedFeeAmount = feeAmountReserved - \
-            TxUtils.asAmount(currencyChange)
-        return tx.serialize(), reportedFeeAmount
+        reportedFeeSats = feeSatsReserved - currencyChange
+        return tx.serialize(), reportedFeeSats
 
     def satoriOnlyCompleterSimple(
         self,
         serialTx: bytes,
         address: str,
-        feeAmountReserved: float,
-        reportedFeeAmount: float,
+        feeSatsReserved: int,
+        reportedFeeSats: int,
     ) -> str:
         '''
         a companion function to satoriOnlyPartialSimple which completes the 
@@ -897,13 +896,13 @@ class Wallet():
         def _verifyFee():
 
             return (
-                reportedFeeAmount < 1 and
+                reportedFeeSats < TxUtils.asSats(1) and
                 # currency change is guaranteed:
-                # reportedFeeAmount < 1
-                # feeAmountReserved is greater than 1
-                reportedFeeAmount < feeAmountReserved and
+                # reportedFeeSats < TxUtils.asSats(1)
+                # feeSatsReserved is greater than TxUtils.asSats(1)
+                reportedFeeSats < feeSatsReserved and
                 # value is sats right?
-                tx.vout[-1].nValue == TxUtils.asSats(feeAmountReserved) - TxUtils.asSats(reportedFeeAmount))
+                tx.vout[-1].nValue == feeSatsReserved - reportedFeeSats)
 
         def _verifyClaim():
             return self._checkSatoriValue(tx.vout[-2])
@@ -911,16 +910,15 @@ class Wallet():
         tx = self._deserialize(serialTx)
         if not _verifyFee():
             raise TransactionFailure(
-                f'fee mismatch, {reportedFeeAmount}, {feeAmountReserved}')
+                f'fee mismatch, {reportedFeeSats}, {feeSatsReserved}')
         if not _verifyClaim():
             raise TransactionFailure(f'claim mismatch, {tx.vout[-2].value}')
         # add rvn fee input
-        gatheredCurrencySats = TxUtils.asSats(feeAmountReserved)
+        gatheredCurrencySats = feeSatsReserved
         gatheredCurrencyUnspent = self._gatherReservedCurrencyUnspent(
             exactSats=gatheredCurrencySats)
         if gatheredCurrencyUnspent is None:
-            raise TransactionFailure(
-                f'unable to find that amount {feeAmountReserved}')
+            raise TransactionFailure(f'unable to find sats {feeSatsReserved}')
         txins, txinScripts = self._compileInputs(
             gatheredCurrencyUnspents=[gatheredCurrencyUnspent])
         tx = self._createPartialCompleterSimple(
@@ -978,7 +976,7 @@ class Wallet():
             txouts=txouts)
         return self._broadcast(self._txToHex(tx))
 
-    # def sendAllPartial(self, address: str, feeAmountReserved: float = 0) -> str:
+    # def sendAllPartial(self, address: str, feeSatsReserved: float = 0) -> str:
     #     '''
     #     sweeps all Satori and currency to the address. so it has to take the fee
     #     out of whatever is in the wallet rather than tacking it on at the end.
@@ -1022,7 +1020,7 @@ class Wallet():
         sweep: bool = False,
         pullFeeFromAmount: bool = False,
         completerAddress: str = None,
-        feeAmountReserved: float = 0
+        feeSatsReserved: int = 0
     ) -> TransactionResult:
         if sweep:
             try:
@@ -1034,14 +1032,14 @@ class Wallet():
                             'Sorry, Sweeping Satori Fee transactions are not '
                             'yet suported.'))
                     # incomplete
-                    # if feeAmountReserved == 0:
+                    # if feeSatsReserved == 0:
                     #    return TransactionResult(
                     #        result='try again',
                     #        success=True,
                     #        tx=None,
-                    #        msg='creating partial, need feeAmountReserved.')
+                    #        msg='creating partial, need feeSatsReserved.')
                     # result = self.sendAllPartialSimple(
-                    #    address, feeAmountReserved=feeAmountReserved)
+                    #    address, feeSatsReserved=feeSatsReserved)
                     # if result is None:
                     #    return TransactionResult(
                     #        result=None,
@@ -1070,17 +1068,17 @@ class Wallet():
                     # if we have to make a partial we need more data so we need
                     # to return, telling them we need more data, asking for more
                     # information, and then if we get more data we can do this:
-                    if feeAmountReserved == 0 or completerAddress is None:
+                    if feeSatsReserved == 0 or completerAddress is None:
                         return TransactionResult(
                             result='try again',
                             success=True,
                             tx=None,
-                            msg='creating partial, need feeAmountReserved.')
+                            msg='creating partial, need feeSatsReserved.')
                     result = self.satoriOnlyPartialSimple(
                         amount=amount,
                         address=address,
                         pullFeeFromAmount=pullFeeFromAmount,
-                        feeAmountReserved=feeAmountReserved,
+                        feeSatsReserved=feeSatsReserved,
                         completerAddress=completerAddress)
                     if result is None:
                         return TransactionResult(
@@ -1091,7 +1089,7 @@ class Wallet():
                         result=result,
                         success=True,
                         tx=result[0],
-                        reportedFeeAmount=result[1],
+                        reportedFeeSats=result[1],
                         msg='send transaction requires fee.')
                 result = self.satoriTransaction(amount=amount, address=address)
                 if result is None:
