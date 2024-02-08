@@ -153,9 +153,21 @@ class SatoriServerClient(object):
             json=self.wallet.registerPayload(challenge=challenge),
             challenge=challenge).json()
 
-    def sendSatoriPartial(self, tx: bytes, network: str):
+    def requestPartial(self, network: str):
+        ''' sends a satori partial transaction to the server '''
+        return self._makeUnauthenticatedCall(
+            function=requests.get,
+            endpoint=f'/partial/request/{network}').json()
+
+    def broadcastPartial(
+        self,
+        tx: bytes,
+        feeAmountReserved: float,
+        reportedFeeAmount: float,
+        network: str
+    ):
         ''' sends a satori partial transaction to the server '''
         return self._makeUnauthenticatedCall(
             function=requests.post,
-            endpoint=f'/broadcast/satori/partial/{network}',
+            endpoint=f'/partial/broadcast/{network}/{feeAmountReserved}/{reportedFeeAmount}',
             payload=tx)

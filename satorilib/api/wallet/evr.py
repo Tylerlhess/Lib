@@ -2,7 +2,7 @@ from typing import Union
 from evrmore import SelectParams
 from evrmore.wallet import P2PKHEvrmoreAddress, CEvrmoreAddress, CEvrmoreSecret
 from evrmore.core.scripteval import VerifyScript, SCRIPT_VERIFY_P2SH
-from evrmore.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, SignatureHash, SIGHASH_ALL, OP_EVR_ASSET, OP_DROP, OP_RETURN
+from evrmore.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, SignatureHash, SIGHASH_ALL, OP_EVR_ASSET, OP_DROP, OP_RETURN, SIGHASH_ANYONECANPAY
 from evrmore.core import b2x, lx, COIN, COutPoint, CMutableTxOut, CMutableTxIn, CMutableTransaction, Hash160
 from evrmore.core.scripteval import EvalScriptError
 from satoriwallet import ElectrumXAPI
@@ -70,11 +70,33 @@ class EvrmoreWallet(Wallet):
     def _generateAddress(self):
         return P2PKHEvrmoreAddress.from_pubkey(self._privateKeyObj.pub)
 
+    def _generateScriptPubKeyFromAddress(self, address: str):
+        return CEvrmoreAddress(address).to_scriptPubKey()
+
     def sign(self, message: str):
         return evrmore.signMessage(self._privateKeyObj, message)
 
     def verify(self, message: str, sig: bytes, address: Union[str, None] = None):
         return evrmore.verify(address=address or self.address, message=message, signature=sig)
+
+    def _checkSatoriValue(self, output: CMutableTxOut) -> bool:
+        ''' 
+        returns true if the output is a satori output of self.satoriFee
+        '''
+        nextOne = False
+        for i, x in enumerate(s.scriptPubKey):
+            if nextOne:
+                # doesn't padd with 0s at the end
+                # b'rvnt\x06SATORI\x00\xe1\xf5\x05'
+                # b'rvnt\x06SATORI\x00\xe1\xf5\x05\x00\x00\x00\x00'
+                return x.startswith(bytes.fromhex(
+                    AssetTransaction.satoriHex(self.symbol) +
+                    TxUtils.padHexStringTo8Bytes(
+                        TxUtils.intToLittleEndianHex(
+                            TxUtils.toSats(self.satoriFee)))))
+            if x == OP_RVN_ASSET:
+                nextOne = True
+        return False
 
     def _compileInputs(
         self,
@@ -173,6 +195,7 @@ class EvrmoreWallet(Wallet):
         gatheredCurrencySats: int = 0,
         inputCount: int = 0,
         outputCount: int = 0,
+        scriptPubKey: CScript = None,
     ) -> Union[CMutableTxOut, None]:
         currencyChange = gatheredCurrencySats - currencySats - TxUtils.estimatedFee(
             inputCount=inputCount,
@@ -180,8 +203,7 @@ class EvrmoreWallet(Wallet):
         if currencyChange > 0:
             return CMutableTxOut(
                 currencyChange,
-                self._addressObj.to_scriptPubKey()
-            )
+                scriptPubKey or self._addressObj.to_scriptPubKey())
         if currencyChange < 0:
             # go back and get more?
             raise TransactionFailure('tx: not enough currency to send')
@@ -199,26 +221,91 @@ class EvrmoreWallet(Wallet):
                 ]))
         return None
 
-    def _createTransaction(self, txins: list, txinScripts: list, txouts: list, tx: CMutableTransaction = None) -> CMutableTransaction:
-        vinCount = 0
-        if isinstance(tx, CMutableTransaction):
-            vinCount = len(tx.vin)
-            tx = CMutableTransaction(tx.vin + txins, tx.vout + txouts)
-        else:
-            tx = CMutableTransaction(txins, txouts)
-        for i, (txin, txin_scriptPubKey) in enumerate(zip(txins, txinScripts)):
-            sighash = SignatureHash(
-                txin_scriptPubKey, tx, i+vinCount, SIGHASH_ALL)
-            sig = self._privateKeyObj.sign(sighash) + bytes([SIGHASH_ALL])
-            txin.scriptSig = CScript([sig, self._privateKeyObj.pub])
-            try:
-                VerifyScript(txin.scriptSig, txin_scriptPubKey,
-                             tx, i+vinCount, (SCRIPT_VERIFY_P2SH,))
-            except EvalScriptError as e:
-                # python-evrmorelib doesn't support OP_RVN_ASSET in txin_scriptPubKey
-                if e != 'unsupported opcode 0xc0':
-                    raise EvalScriptError(e)
+    def _createTransaction(self, txins: list, txinScripts: list, txouts: list) -> CMutableTransaction:
+        tx = CMutableTransaction(txins, txouts)
+        for i, (txin, txinScriptPubKey) in enumerate(zip(txins, txinScripts)):
+            self._signInput(
+                tx=tx,
+                i=i,
+                txin=txin,
+                txinScriptPubKey=txinScriptPubKey,
+                sighashFlag=SIGHASH_ALL)
         return tx
+
+    def _createPartialOriginatorSimple(self, txins: list, txinScripts: list, txouts: list) -> CMutableTransaction:
+        ''' simple version SIGHASH_ANYONECANPAY | SIGHASH_ALL '''
+        tx = CMutableTransaction(txins, txouts)
+        for i, (txin, txinScriptPubKey) in enumerate(zip(txins, txinScripts)):
+            self._signInput(
+                tx=tx,
+                i=i,
+                txin=txin,
+                txinScriptPubKey=txinScriptPubKey,
+                sighashFlag=SIGHASH_ANYONECANPAY | SIGHASH_ALL)
+        return tx
+
+    def _createPartialCompleterSimple(self, txins: list, txinScripts: list, tx: CMutableTransaction) -> CMutableTransaction:
+        '''
+        simple version SIGHASH_ANYONECANPAY | SIGHASH_ALL
+        just adds an input for the RVN fee and signs it
+        '''
+        # todo, verify the last two outputs at somepoint before this
+        tx.vin.extend(txins)
+        startIndex = len(tx.vin) - len(txins)
+        for i, (txin, txinScriptPubKey) in (
+            enumerate(zip(tx.vin[startIndex:], txinScripts), start=startIndex)
+        ):
+            self._signInput(
+                tx=tx,
+                i=i,
+                txin=txin,
+                txinScriptPubKey=txinScriptPubKey,
+                sighashFlag=SIGHASH_ANYONECANPAY | SIGHASH_ALL)
+        return tx
+
+    def _signInput(
+        self,
+        tx: CMutableTransaction,
+        i: int,
+        txin: CMutableTxIn,
+        txinScriptPubKey: CScript,
+        sighashFlag: int
+    ):
+        sighash = SignatureHash(txinScriptPubKey, tx, i, sighashFlag)
+        sig = self._privateKeyObj.sign(sighash) + bytes([sighashFlag])
+        txin.scriptSig = CScript([sig, self._privateKeyObj.pub])
+        try:
+            VerifyScript(txin.scriptSig, txinScriptPubKey,
+                         tx, i, (SCRIPT_VERIFY_P2SH,))
+        except EvalScriptError as e:
+            # python-ravencoinlib doesn't support OP_RVN_ASSET in txinScriptPubKey
+            if str(e) != 'EvalScript: unsupported opcode 0xc0':
+                raise EvalScriptError(e)
+
+    # def _createPartialOriginator(self, txins: list, txinScripts: list, txouts: list) -> CMutableTransaction:
+    #    ''' not completed - complex version SIGHASH_ANYONECANPAY | SIGHASH_SINGLE '''
+    #    tx = CMutableTransaction(txins, txouts)
+    #    for i, (txin, txin_scriptPubKey) in enumerate(zip(tx.vin, txinScripts)):
+    #        # Use SIGHASH_SINGLE for the originator's inputs
+    #        sighash_type = SIGHASH_SINGLE
+    #        sighash = SignatureHash(txin_scriptPubKey, tx, i, sighash_type)
+    #        sig = self._privateKeyObj.sign(sighash) + bytes([sighash_type])
+    #        txin.scriptSig = CScript([sig, self._privateKeyObj.pub])
+    #    return tx
+    #
+    # def _createPartialCompleter(self, txins: list, txinScripts: list, txouts: list, tx: CMutableTransaction) -> CMutableTransaction:
+    #    ''' not completed '''
+    #    tx.vin.extend(txins)  # Add new inputs
+    #    tx.vout.extend(txouts)  # Add new outputs
+    #    # Sign new inputs with SIGHASH_ANYONECANPAY and possibly SIGHASH_SINGLE
+    #    # Assuming the completer's inputs start from len(tx.vin) - len(txins)
+    #    startIndex = len(tx.vin) - len(txins)
+    #    for i, (txin, txin_scriptPubKey) in enumerate(zip(tx.vin[startIndex:], txinScripts), start=startIndex):
+    #        sighash_type = SIGHASH_ANYONECANPAY  # Or SIGHASH_ANYONECANPAY | SIGHASH_SINGLE
+    #        sighash = SignatureHash(txin_scriptPubKey, tx, i, sighash_type)
+    #        sig = self._privateKeyObj.sign(sighash) + bytes([sighash_type])
+    #        txin.scriptSig = CScript([sig, self._privateKeyObj.pub])
+    #    return tx
 
     def _txToHex(self, tx: CMutableTransaction) -> str:
         return b2x(tx.serialize())
