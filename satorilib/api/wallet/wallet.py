@@ -16,7 +16,7 @@ class TransactionResult():
         self.success = success
         self.tx = tx
         self.msg = msg
-        self.reportedFeeAmount
+        self.reportedFeeAmount = reportedFeeAmount
 
 
 class TransactionFailure(Exception):
