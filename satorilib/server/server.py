@@ -162,12 +162,12 @@ class SatoriServerClient(object):
     def broadcastSimplePartial(
         self,
         tx: bytes,
-        feeAmountReserved: float,
-        reportedFeeAmount: float,
+        feeSatsReserved: float,
+        reportedFeeSats: float,
         network: str
     ):
         ''' sends a satori partial transaction to the server '''
         return self._makeUnauthenticatedCall(
             function=requests.post,
-            endpoint=f'/simple_partial/broadcast/{network}/{feeAmountReserved}/{reportedFeeAmount}',
+            endpoint=f'/simple_partial/broadcast/{network}/{feeSatsReserved}/{reportedFeeSats}',
             payload=tx)
