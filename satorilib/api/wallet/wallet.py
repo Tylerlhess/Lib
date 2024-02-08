@@ -350,12 +350,11 @@ class Wallet():
     def verify(self, message: str, sig: bytes, address: Union[str, None] = None) -> bool:
         ''' verifies a message with the public key '''
 
-    def _checkSatoriValue(self, output: CMutableTxOut) -> bool:
+    def _checkSatoriValue(self, output: 'CMutableTxOut') -> bool:
         ''' 
         returns true if the output is a satori output of self.satoriFee
         '''
 
-    
     def autosecured(self) -> bool:
         ''' verifies a message with the public key '''
         config = WalletApi.config
@@ -495,6 +494,7 @@ class Wallet():
         gatheredCurrencySats: int = 0,
         inputCount: int = 0,
         outputCount: int = 0,
+        scriptPubKey: 'CScript' = None,
     ) -> 'CMutableTxOut':
         ''' compile currency change output '''
 
@@ -862,9 +862,10 @@ class Wallet():
             raise TransactionFailure('unable to generate satori fee')
         # change out to server
         currencyChangeOut = self._compileCurrencyChangeOutput(
-            gatheredCurrencySats=feeAmountReserved
+            gatheredCurrencySats=feeAmountReserved,
             inputCount=len(gatheredSatoriUnspents),
-            outputCount=len(satoriOuts) + 2 + (1 if satoriChangeOut is not None else 0),
+            outputCount=len(satoriOuts) + 2 +
+            (1 if satoriChangeOut is not None else 0),
             scriptPubKey=self._generateScriptPubKeyFromAddress(completerAddress))
         if currencyChangeOut is None:
             raise TransactionFailure('unable to generate currency change')
