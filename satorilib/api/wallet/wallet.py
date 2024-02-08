@@ -496,7 +496,7 @@ class Wallet():
         outputCount: int = 0,
         scriptPubKey: 'CScript' = None,
         returnSats: bool = False,
-    ) -> Union['CMutableTxOut', None, tuple['CMutableTxOut', int]]':
+    ) -> Union['CMutableTxOut', None, tuple['CMutableTxOut', int]]:
         ''' compile currency change output '''
 
     def _compileMemoOutput(self, memo: str) -> 'CMutableTxOut':
@@ -862,7 +862,7 @@ class Wallet():
         if satoriFeeOut is None:
             raise TransactionFailure('unable to generate satori fee')
         # change out to server
-        currencyChangeOut = self._compileCurrencyChangeOutput(
+        currencyChangeOut, currencyChange = self._compileCurrencyChangeOutput(
             gatheredCurrencySats=feeAmountReserved,
             inputCount=len(gatheredSatoriUnspents),
             outputCount=len(satoriOuts) + 2 +
