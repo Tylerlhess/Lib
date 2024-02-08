@@ -699,7 +699,7 @@ class Wallet():
         satoriOuts = self._compileSatoriOutputs({address: amount})
         satoriChangeOut = self._compileSatoriChangeOutput(
             satoriSats=satoriSats,
-            gatheredSatoriSats=gatheredSatoriSats - self.satoriFee)
+            gatheredSatoriSats=gatheredSatoriSats - TxUtils.asSats(self.satoriFee))
         tx = self._createTransaction(
             txins=txins,
             txinScripts=txinScripts,
@@ -756,14 +756,19 @@ class Wallet():
             raise TransactionFailure(
                 'sendAllTransaction: not enough currency for fee')
         # grab everything
+
         gatheredSatoriUnspents = [
             x for x in self.unspentAssets if x.get('name') == 'SATORI']
         gatheredCurrencyUnspents = self.unspentCurrency
         currencySats = sum([x.get('value') for x in gatheredCurrencyUnspents])
         # compile inputs
-        txins, txinScripts = self._compileInputs(
-            gatheredCurrencyUnspents=gatheredCurrencyUnspents,
-            gatheredSatoriUnspents=gatheredSatoriUnspents)
+        if len(gatheredSatoriUnspents) > 0:
+            txins, txinScripts = self._compileInputs(
+                gatheredCurrencyUnspents=gatheredCurrencyUnspents,
+                gatheredSatoriUnspents=gatheredSatoriUnspents)
+        else:
+            txins, txinScripts = self._compileInputs(
+                gatheredCurrencyUnspents=gatheredCurrencyUnspents)
         # determin how much currency to send: take out fee
         currencySatsLessFee = currencySats - TxUtils.estimatedFee(
             inputCount=(
@@ -773,12 +778,16 @@ class Wallet():
         if currencySatsLessFee < 0:
             raise TransactionFailure('tx: not enough currency to send')
         # since it's a send all, there's no change outputs
+        if len(gatheredSatoriUnspents) > 0:
+            txouts = (
+                self._compileSatoriOutputs({address: self.balanceAmount}) +
+                self._compileCurrencyOutputs(currencySatsLessFee, address))
+        else:
+            txouts = self._compileCurrencyOutputs(currencySatsLessFee, address)
         tx = self._createTransaction(
             txins=txins,
             txinScripts=txinScripts,
-            txouts=(
-                self._compileSatoriOutputs({address: self.balanceAmount}) +
-                self._compileCurrencyOutputs(currencySatsLessFee, address)))
+            txouts=txouts)
         return self._broadcast(self._txToHex(tx))
 
     def sendAllPartial(self, address: str) -> str:
@@ -829,7 +838,7 @@ class Wallet():
         else:
             try:
                 if self.currency < self.reserve:
-                    result = self.satoriOnlyPatrial(
+                    result = self.satoriOnlyPartial(
                         amount=amount, address=address, pullFeeFromAmount=pullFeeFromAmount)
                     if result is None:
                         return TransactionResult(result=None, success=False, msg='Send Failed: try again in a few minutes.')

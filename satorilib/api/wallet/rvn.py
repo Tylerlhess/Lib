@@ -226,6 +226,29 @@ class RavencoinWallet(Wallet):
                     raise EvalScriptError(e)
         return tx
 
+    def _createPartialOriginator(self, txins: list, txinScripts: list, txouts: list) -> CMutableTransaction:
+        tx = CMutableTransaction(txins, txouts)
+        for i, (txin, txin_scriptPubKey) in enumerate(zip(tx.vin, txinScripts)):
+            # Use SIGHASH_SINGLE for the originator's inputs
+            sighash_type = SIGHASH_SINGLE
+            sighash = SignatureHash(txin_scriptPubKey, tx, i, sighash_type)
+            sig = self._privateKeyObj.sign(sighash) + bytes([sighash_type])
+            txin.scriptSig = CScript([sig, self._privateKeyObj.pub])
+        return tx
+
+    def _createPartialCompleter(self, txins: list, txinScripts: list, txouts: list, tx: CMutableTransaction) -> CMutableTransaction:
+        tx.vin.extend(txins)  # Add new inputs
+        tx.vout.extend(txouts)  # Add new outputs
+        # Sign new inputs with SIGHASH_ANYONECANPAY and possibly SIGHASH_SINGLE
+        # Assuming the completer's inputs start from len(tx.vin) - len(txins)
+        startIndex = len(tx.vin) - len(txins)
+        for i, (txin, txin_scriptPubKey) in enumerate(zip(tx.vin[startIndex:], txinScripts), start=startIndex):
+            sighash_type = SIGHASH_ANYONECANPAY  # Or SIGHASH_ANYONECANPAY | SIGHASH_SINGLE
+            sighash = SignatureHash(txin_scriptPubKey, tx, i, sighash_type)
+            sig = self._privateKeyObj.sign(sighash) + bytes([sighash_type])
+            txin.scriptSig = CScript([sig, self._privateKeyObj.pub])
+        return tx
+
     def _txToHex(self, tx: CMutableTransaction) -> str:
         return b2x(tx.serialize())
 
