@@ -9,6 +9,8 @@ from satorilib import logging
 from satorilib.api import system
 from satorilib.api.disk.wallet import WalletApi
 
+satoriFeeAddress = 'RPBG9hf93Uge2SgZt4K1mRNyJeTTcKe8kt'
+
 
 class TransactionResult():
     def __init__(self, result: str = '', success: bool = False, tx: bytes = None, msg: str = '', reportedFeeSats: int = None):
@@ -715,6 +717,17 @@ class Wallet():
     #    not completed! this generalized version needs to use SIGHASH_SINGLE
     #    which makes the transaction more complex as all inputs need to
     #    correspond to their output. see simple version for more details.
+    #
+    #    after having completed the simple version, I realized that the easy
+    #    solution to the problem of using SIGHASH_SINGLE and needing to issue
+    #    change is to simply add an additional input to be assigned to the
+    #    change output (a good use of dust, actaully). The only edge case we'd
+    #    need to handle is if the user has has no additional utxo to be used as
+    #    and input. In that case you'd have to put the process on hold, create a
+    #    separate transaction to send the user back to self in order to create
+    #    the additional input. That would be a pain, but it is doable, and it
+    #    would be a semi-rare case, and it would be a good use of dust, and it
+    #    would allow for the general mutli-party-partial-transaction solution.
     #    '''
     #    if (
     #        amount <= 0 or
@@ -853,15 +866,9 @@ class Wallet():
         txins, txinScripts = self._compileInputs(
             gatheredSatoriUnspents=gatheredSatoriUnspents)
         satoriOuts = self._compileSatoriOutputs({address: amount})
-        logging.debug('amount', amount, color='yellow')
-        logging.debug('satoriOuts', satoriOuts, color='yellow')
         satoriChangeOut = self._compileSatoriChangeOutput(
             satoriSats=satoriSats,
             gatheredSatoriSats=gatheredSatoriSats - TxUtils.asSats(self.satoriFee))
-        logging.debug('gatheredSatoriSats', gatheredSatoriSats, color='yellow')
-        logging.debug('TxUtils.asSats(self.satoriFee)',
-                      TxUtils.asSats(self.satoriFee), color='yellow')
-        logging.debug('satoriChangeOut', satoriChangeOut, color='yellow')
         # fee out to server
         satoriFeeOut = self._compileSatoriOutputs(
             {completerAddress: self.satoriFee})[0]
@@ -885,8 +892,6 @@ class Wallet():
                 x for x in [satoriChangeOut]
                 if x is not None] + [satoriFeeOut, currencyChangeOut])
         reportedFeeSats = feeSatsReserved - currencyChange
-        logging.debug('tx.serialize()', tx.serialize(), color='yellow')
-        logging.debug('reportedFeeSats', reportedFeeSats, color='yellow')
         return tx.serialize(), reportedFeeSats
 
     def satoriOnlyCompleterSimple(
@@ -933,7 +938,6 @@ class Wallet():
             txins=txins,
             txinScripts=txinScripts)
         return self._broadcast(self._txToHex(tx))
-        # return tx  # testing
 
     def sendAllTransaction(self, address: str) -> str:
         '''
@@ -945,11 +949,9 @@ class Wallet():
         logging.debug('currency', self.currency,
                       'self.reserve', self.reserve, color='yellow')
         if self.currency < self.reserve:
-            # todo: if no currency make a send-all partial transaction instead
             raise TransactionFailure(
                 'sendAllTransaction: not enough currency for fee')
         # grab everything
-
         gatheredSatoriUnspents = [
             x for x in self.unspentAssets if x.get('name') == 'SATORI']
         gatheredCurrencyUnspents = self.unspentCurrency
@@ -983,42 +985,133 @@ class Wallet():
             txouts=txouts)
         return self._broadcast(self._txToHex(tx))
 
-    # def sendAllPartial(self, address: str, feeSatsReserved: float = 0) -> str:
-    #     '''
-    #     sweeps all Satori and currency to the address. so it has to take the fee
-    #     out of whatever is in the wallet rather than tacking it on at the end.
+    # not finished
+    # I thought this would be worth it, but
+    # SIGHASH_ANYONECANPAY | SIGHASH_SIGNLE is still too complex. particularly
+    # generating outputs
+    # def sendAllPartial(self, address: str) -> str:
+    #    '''
+    #    sweeps all Satori and currency to the address. so it has to take the fee
+    #    out of whatever is in the wallet rather than tacking it on at the end.
     #
-    #     this one doesn't actaully need change back, so we could use the most
-    #     general solution of SIGHASH_ANYONECANPAY | SIGHASH_SIGNLE if the server
-    #     knows how to handle it.
+    #    this one doesn't actaully need change back, so we could use the most
+    #    general solution of SIGHASH_ANYONECANPAY | SIGHASH_SIGNLE if the server
+    #    knows how to handle it.
+    #    '''
+    #    def _generateOutputs():
+    #        '''
+    #        we must guarantee we have the same number of inputs to outputs.
+    #        we must guarantee sum of ouputs = sum of inputs - satoriFee.
+    #        that is all.
     #
-    #     this is incomplete as it is now, because it's an edge case.
-    #     '''
-    #     if not Validate.address(address, self.symbol):
-    #         raise TransactionFailure('sendAllTransaction')
-    #     logging.debug('currency', self.currency,
-    #                   'self.reserve', self.reserve, color='yellow')
-    #     if self.balanceAmount < self.satoriFee:
-    #         # todo: if no currency make a send-all partial transaction instead
-    #         raise TransactionFailure(
-    #             'sendAllTransaction: not enough Satori for fee')
-    #     # grab everything
-    #     gatheredSatoriUnspents = [
-    #         x for x in self.unspentAssets if x.get('name') == 'SATORI']
-    #     gatheredCurrencyUnspents = self.unspentCurrency
-    #     currencySats = sum([x.get('value') for x in gatheredCurrencyUnspents])
-    #     # compile inputs
-    #     txins, txinScripts = self._compileInputs(
-    #         gatheredCurrencyUnspents=gatheredCurrencyUnspents,
-    #         gatheredSatoriUnspents=gatheredSatoriUnspents)
-    #     # since it's a send all, there's no change outputs
-    #     tx = self._createPartialOriginator(
-    #         txins=txins,
-    #         txinScripts=txinScripts,
-    #         txouts=(
-    #             self._compileSatoriOutputs({address: self.balanceAmount - self.satoriFee}) +
-    #             self._compileCurrencyOutputs(currencySats, address)))
-    #     return tx.serialize()
+    #        we could run into a situation where we need to take the fee out of
+    #        multiple inputs. We could also run into the situation where we need
+    #        to pair a currency output with a satori input.
+    #        '''
+    #        reservedFee = 0
+    #        outs = []
+    #        satoriFeeSats = TxUtils.asSats(self.satoriFee)
+    #        for x in gatheredCurrencyUnspents:
+    #            if x.get('value') > reservedFee:
+    #        for x in gatheredSatoriUnspents:
+    #            if reservedFee < satoriFeeSats:
+    #                if x.get('value') > satoriFeeSats - reservedFee:
+    #                    reservedFee += (satoriFeeSats - reservedFee)
+    #                    # compile output with
+    #                    satoriFeeSats x.get('value') -
+    #                reservedFee = x.get('value') -
+    #        return ( # not finished, combine with above
+    #            self._compileSatoriOutputs({
+    #                address: unspent.get('x') - self.satoriFee # on first item
+    #                for unspent in gatheredSatoriUnspents
+    #                }) +
+    #            self._compileCurrencyOutputs(currencySats, address))
+    #
+    #    if not Validate.address(address, self.symbol):
+    #        raise TransactionFailure('sendAllTransaction')
+    #    logging.debug('currency', self.currency,
+    #                'self.reserve', self.reserve, color='yellow')
+    #    if self.balanceAmount <= self.satoriFee*2:
+    #        # what if they have 2 satoris in 2 different utxos?
+    #        # one goes to the destination, and what about the other?
+    #        # server supplies the fee claim so... we can't create this
+    #        # transaction unless we supply the fee claim, and the server detects
+    #        # it.
+    #        raise TransactionFailure(
+    #            'sendAllTransaction: not enough Satori for fee')
+    #    # grab everything
+    #    gatheredSatoriUnspents = [
+    #        x for x in self.unspentAssets if x.get('name') == 'SATORI']
+    #    gatheredCurrencyUnspents = self.unspentCurrency
+    #    currencySats = sum([x.get('value') for x in gatheredCurrencyUnspents])
+    #    # compile inputs
+    #    txins, txinScripts = self._compileInputs(
+    #        gatheredCurrencyUnspents=gatheredCurrencyUnspents,
+    #        gatheredSatoriUnspents=gatheredSatoriUnspents)
+    #    # since it's a send all, there's no change outputs
+    #    tx = self._createPartialOriginator(
+    #        txins=txins,
+    #        txinScripts=txinScripts,
+    #        txouts=_generateOutputs())
+    #    return tx.serialize()
+
+    def sendAllPartialSimple(
+        self,
+        address: str,
+        feeSatsReserved: int = 0,
+        completerAddress: str = None,
+    ) -> tuple[str, int]:
+        '''
+        sweeps all Satori and currency to the address. so it has to take the fee
+        out of whatever is in the wallet rather than tacking it on at the end.
+
+        this one doesn't actaully need change back, so we could use the most
+        general solution of SIGHASH_ANYONECANPAY | SIGHASH_SIGNLE if the server
+        knows how to handle it.
+        '''
+        if not Validate.address(address, self.symbol):
+            raise TransactionFailure('sendAllTransaction')
+        logging.debug('currency', self.currency,
+                      'self.reserve', self.reserve, color='yellow')
+        if self.balanceAmount < self.satoriFee:
+            # what if they have 2 satoris in 2 different utxos?
+            # one goes to the destination, and what about the other?
+            # server supplies the fee claim so... we can't create this
+            # transaction unless we supply the fee claim, and the server detects
+            # it.
+            raise TransactionFailure(
+                'sendAllTransaction: not enough Satori for fee')
+        # grab everything
+        gatheredSatoriUnspents = [
+            x for x in self.unspentAssets if x.get('name') == 'SATORI']
+        gatheredCurrencyUnspents = self.unspentCurrency
+        currencySats = sum([x.get('value') for x in gatheredCurrencyUnspents])
+        # compile inputs
+        txins, txinScripts = self._compileInputs(
+            gatheredCurrencyUnspents=gatheredCurrencyUnspents,
+            gatheredSatoriUnspents=gatheredSatoriUnspents)
+        sweepOuts = (
+            self._compileCurrencyOutputs(currencySats, address) +
+            self._compileSatoriOutputs(
+                {address: self.balanceAmaount - self.satoriFee}))
+        satoriFeeOut = self._compileSatoriOutputs(
+            {completerAddress: self.satoriFee})[0]
+        # change out to server
+        currencyChangeOut, currencyChange = self._compileCurrencyChangeOutput(
+            gatheredCurrencySats=feeSatsReserved,
+            inputCount=len(gatheredSatoriUnspents) +
+            len(gatheredCurrencyUnspents),
+            outputCount=len(sweepOuts) + 2,
+            scriptPubKey=self._generateScriptPubKeyFromAddress(
+                completerAddress),
+            returnSats=True)
+        # since it's a send all, there's no change outputs
+        tx = self._createPartialOriginator(
+            txins=txins,
+            txinScripts=txinScripts,
+            txouts=sweepOuts + [satoriFeeOut, currencyChangeOut])
+        reportedFeeSats = feeSatsReserved - currencyChange
+        return tx.serialize(), reportedFeeSats
 
     def typicalNeuronTransaction(
         self,
@@ -1032,31 +1125,27 @@ class Wallet():
         if sweep:
             try:
                 if self.currency < self.reserve:
+                    if feeSatsReserved == 0 or completerAddress is None:
+                        return TransactionResult(
+                            result='try again',
+                            success=True,
+                            tx=None,
+                            msg='creating partial, need feeSatsReserved.')
+                    result = self.sendAllPartialSimple(
+                        address=address,
+                        feeSatsReserved=feeSatsReserved,
+                        completerAddress=completerAddress)
+                    if result is None:
+                        return TransactionResult(
+                            result=None,
+                            success=False,
+                            msg='Send Failed: try again in a few minutes.')
                     return TransactionResult(
-                        result=None,
-                        success=False,
-                        msg=(
-                            'Sorry, Sweeping Satori Fee transactions are not '
-                            'yet suported.'))
-                    # incomplete
-                    # if feeSatsReserved == 0:
-                    #    return TransactionResult(
-                    #        result='try again',
-                    #        success=True,
-                    #        tx=None,
-                    #        msg='creating partial, need feeSatsReserved.')
-                    # result = self.sendAllPartialSimple(
-                    #    address, feeSatsReserved=feeSatsReserved)
-                    # if result is None:
-                    #    return TransactionResult(
-                    #        result=None,
-                    #        success=False,
-                    #        msg='Send Failed: try again in a few minutes.')
-                    # return TransactionResult(
-                    #     result=result,
-                    #     success=True,
-                    #     tx=result,
-                    #     msg='send transaction requires fee.')
+                        result=result,
+                        success=True,
+                        tx=result[0],
+                        reportedFeeSats=result[1],
+                        msg='send transaction requires fee.')
                 result = self.sendAllTransaction(address)
                 if result is None:
                     return TransactionResult(
