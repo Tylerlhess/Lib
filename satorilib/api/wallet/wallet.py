@@ -9,8 +9,6 @@ from satorilib import logging
 from satorilib.api import system
 from satorilib.api.disk.wallet import WalletApi
 
-satoriFeeAddress = 'RPBG9hf93Uge2SgZt4K1mRNyJeTTcKe8kt'
-
 
 class TransactionResult():
     def __init__(self, result: str = '', success: bool = False, tx: bytes = None, msg: str = '', reportedFeeSats: int = None):
