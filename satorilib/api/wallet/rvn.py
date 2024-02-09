@@ -75,7 +75,7 @@ class RavencoinWallet(Wallet):
         returns true if the output is a satori output of self.satoriFee
         '''
         nextOne = False
-        for i, x in enumerate(s.scriptPubKey):
+        for i, x in enumerate(output.scriptPubKey):
             if nextOne:
                 # doesn't padd with 0s at the end
                 # b'rvnt\x06SATORI\x00\xe1\xf5\x05'
@@ -260,7 +260,11 @@ class RavencoinWallet(Wallet):
         simple version SIGHASH_ANYONECANPAY | SIGHASH_ALL
         just adds an input for the RVN fee and signs it
         '''
+        # how does the final thing not have currency in?
+        logging.debug('txins', txins, color='yellow')
+        logging.debug('tx.vin', tx.vin, color='yellow')
         tx.vin.extend(txins)
+        logging.debug('tx.vin', tx.vin, color='yellow')
         startIndex = len(tx.vin) - len(txins)
         for i, (txin, txinScriptPubKey) in (
             enumerate(zip(tx.vin[startIndex:], txinScripts), start=startIndex)
@@ -271,6 +275,7 @@ class RavencoinWallet(Wallet):
                 txin=txin,
                 txinScriptPubKey=txinScriptPubKey,
                 sighashFlag=SIGHASH_ANYONECANPAY | SIGHASH_ALL)
+        logging.debug('tx.vin', tx.vin, color='yellow')
         return tx
 
     def _signInput(

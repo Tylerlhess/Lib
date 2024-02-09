@@ -853,9 +853,15 @@ class Wallet():
         txins, txinScripts = self._compileInputs(
             gatheredSatoriUnspents=gatheredSatoriUnspents)
         satoriOuts = self._compileSatoriOutputs({address: amount})
+        logging.debug('amount', amount, color='yellow')
+        logging.debug('satoriOuts', satoriOuts, color='yellow')
         satoriChangeOut = self._compileSatoriChangeOutput(
             satoriSats=satoriSats,
             gatheredSatoriSats=gatheredSatoriSats - TxUtils.asSats(self.satoriFee))
+        logging.debug('gatheredSatoriSats', gatheredSatoriSats, color='yellow')
+        logging.debug('TxUtils.asSats(self.satoriFee)',
+                      TxUtils.asSats(self.satoriFee), color='yellow')
+        logging.debug('satoriChangeOut', satoriChangeOut, color='yellow')
         # fee out to server
         satoriFeeOut = self._compileSatoriOutputs(
             {completerAddress: self.satoriFee})[0]
@@ -879,6 +885,8 @@ class Wallet():
                 x for x in [satoriChangeOut]
                 if x is not None] + [satoriFeeOut, currencyChangeOut])
         reportedFeeSats = feeSatsReserved - currencyChange
+        logging.debug('tx.serialize()', tx.serialize(), color='yellow')
+        logging.debug('reportedFeeSats', reportedFeeSats, color='yellow')
         return tx.serialize(), reportedFeeSats
 
     def satoriOnlyCompleterSimple(
@@ -914,9 +922,8 @@ class Wallet():
         if not _verifyClaim():
             raise TransactionFailure(f'claim mismatch, {tx.vout[-2].value}')
         # add rvn fee input
-        gatheredCurrencySats = feeSatsReserved
         gatheredCurrencyUnspent = self._gatherReservedCurrencyUnspent(
-            exactSats=gatheredCurrencySats)
+            exactSats=feeSatsReserved)
         if gatheredCurrencyUnspent is None:
             raise TransactionFailure(f'unable to find sats {feeSatsReserved}')
         txins, txinScripts = self._compileInputs(
