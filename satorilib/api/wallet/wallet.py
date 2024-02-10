@@ -929,6 +929,12 @@ class Wallet():
             # changeAddress if change address is none self.address
             return True
 
+        logging.debug(
+            '\nfeeSatsReserved', feeSatsReserved, type(feeSatsReserved),
+            '\nreportedFeeSats', reportedFeeSats, type(reportedFeeSats),
+            '\nchangeAddress', changeAddress, type(changeAddress),
+            '\ncompleterAddress', completerAddress, type(completerAddress),
+            color='yellow')
         logging.debug('serialTx', serialTx, color='yellow')
         tx = self._deserialize(serialTx)
         if not _verifyFee():
