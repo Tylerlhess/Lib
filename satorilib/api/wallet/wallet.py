@@ -929,7 +929,6 @@ class Wallet():
 
         def _verifyClaimAddress():
             ''' verify the claim output goes to completerAddress '''
-
             for i, x in enumerate(tx.vout[-2].scriptPubKey):
                 if i == 2 and isinstance(x, bytes):
                     return completerAddress == self.hash160ToAddress(x)
