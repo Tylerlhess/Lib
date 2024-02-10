@@ -109,6 +109,9 @@ class Wallet():
     def publicKeyBytes(self) -> bytes:
         return bytes.fromhex(self.publicKey)
 
+    def hash160ToAddress(self, hexStr: str) -> str:
+        return TxUtils.hash160ToAddress(hexStr, self.networkByte)
+
     def showStats(self):
         ''' returns a string of stats properly formatted '''
         def invertDivisibility(divisibility: int):
@@ -911,29 +914,36 @@ class Wallet():
         address is the address claim satori fee address.
         '''
         def _verifyFee():
-
+            '''
+            notice, currency change is guaranteed:
+                reportedFeeSats < TxUtils.asSats(1)
+                feeSatsReserved is greater than TxUtils.asSats(1)
+            '''
             return (
                 reportedFeeSats < TxUtils.asSats(1) and
-                # currency change is guaranteed:
-                # reportedFeeSats < TxUtils.asSats(1)
-                # feeSatsReserved is greater than TxUtils.asSats(1)
                 reportedFeeSats < feeSatsReserved and
-                # value is sats right?
                 tx.vout[-1].nValue == feeSatsReserved - reportedFeeSats)
 
         def _verifyClaim():
             return self._checkSatoriValue(tx.vout[-2])
 
         def _verifyClaimAddress():
-            # verify the claim output goes to us at completerAddress
-            # completerAddress if change address is none self.address
-            return True
+            ''' verify the claim output goes to completerAddress '''
+
+            for i, x in enumerate(tx.vout[-2].scriptPubKey):
+                if i == 2 and isinstance(x, bytes):
+                    return completerAddress == self.hash160ToAddress(x.hex())
+            return False
 
         def _verifyChangeAddress():
-            # verify the change output goes to us at changeAddress
-            # changeAddress if change address is none self.address
-            return True
+            ''' verify the change output goes to us at changeAddress '''
+            for i, x in enumerate(tx.vout[-1].scriptPubKey):
+                if i == 2 and isinstance(x, bytes):
+                    return changeAddress == self.hash160ToAddress(x.hex())
+            return False
 
+        completerAddress = completerAddress or self.address
+        changeAddress = changeAddress or self.address
         tx = self._deserialize(serialTx)
         if not _verifyFee():
             raise TransactionFailure(

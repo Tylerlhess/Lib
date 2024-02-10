@@ -47,6 +47,18 @@ class RavencoinWallet(Wallet):
         return 'rvn'
 
     @property
+    def networkByte(self) -> bytes:
+        return self.networkByteP2PKH
+
+    @property
+    def networkByteP2PKH(self) -> bytes:
+        return b'\x3c'  # b'0x3c'
+
+    @property
+    def networkByteP2SH(self) -> bytes:
+        return b'\x7a'  # b'0x7a'
+
+    @property
     def chain(self) -> str:
         return 'Ravencoin'
 
