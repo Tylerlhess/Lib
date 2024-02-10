@@ -60,7 +60,7 @@ class Wallet():
         self.currencyAmount = 0
         self.balanceAmount = 0
         self.divisibility = 0
-        self.transactionHistory = None
+        self.transactionHistory: list[dict] = None
         self.transactions = []  # TransactionStruct
         self.assetTransactions = []
         self.walletPath = walletPath
@@ -929,6 +929,7 @@ class Wallet():
             # changeAddress if change address is none self.address
             return True
 
+        logging.debug('serialTx', serialTx, color='yellow')
         tx = self._deserialize(serialTx)
         if not _verifyFee():
             raise TransactionFailure(
@@ -942,10 +943,13 @@ class Wallet():
         # add rvn fee input
         gatheredCurrencyUnspent = self._gatherReservedCurrencyUnspent(
             exactSats=feeSatsReserved)
+        logging.debug('gatheredCurrencyUnspent',
+                      gatheredCurrencyUnspent, color='yellow')
         if gatheredCurrencyUnspent is None:
             raise TransactionFailure(f'unable to find sats {feeSatsReserved}')
         txins, txinScripts = self._compileInputs(
             gatheredCurrencyUnspents=[gatheredCurrencyUnspent])
+        logging.debug('txins', txins, color='yellow')
         tx = self._createPartialCompleterSimple(
             tx=tx,
             txins=txins,
@@ -1133,6 +1137,7 @@ class Wallet():
         changeAddress: str = None,
         feeSatsReserved: int = 0
     ) -> TransactionResult:
+        logging.debug('sweep', sweep, color='yellow')
         if sweep:
             try:
                 if self.currency < self.reserve:
@@ -1148,6 +1153,8 @@ class Wallet():
                         completerAddress=completerAddress,
                         changeAddress=changeAddress,
                     )
+                    logging.debug('result of sendAllPartialSimple',
+                                  result, color='yellow')
                     if result is None:
                         return TransactionResult(
                             result=None,
@@ -1190,6 +1197,8 @@ class Wallet():
                         feeSatsReserved=feeSatsReserved,
                         completerAddress=completerAddress,
                         changeAddress=changeAddress)
+                    logging.debug(
+                        'result of satoriOnlyPartialSimple', result, color='yellow')
                     if result is None:
                         return TransactionResult(
                             result=None,
