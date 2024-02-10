@@ -999,7 +999,9 @@ class Wallet():
         if len(gatheredSatoriUnspents) > 0:
             txouts = (
                 self._compileSatoriOutputs({address: self.balanceAmount}) +
-                self._compileCurrencyOutputs(currencySatsLessFee, address))
+                (
+                    self._compileCurrencyOutputs(currencySatsLessFee, address)
+                    if currencySatsLessFee > 0 else []))
         else:
             txouts = self._compileCurrencyOutputs(currencySatsLessFee, address)
         tx = self._createTransaction(
@@ -1107,14 +1109,17 @@ class Wallet():
             x for x in self.unspentAssets if x.get('name') == 'SATORI']
         gatheredCurrencyUnspents = self.unspentCurrency
         currencySats = sum([x.get('value') for x in gatheredCurrencyUnspents])
+
         # compile inputs
         txins, txinScripts = self._compileInputs(
             gatheredCurrencyUnspents=gatheredCurrencyUnspents,
             gatheredSatoriUnspents=gatheredSatoriUnspents)
         sweepOuts = (
-            self._compileCurrencyOutputs(currencySats, address) +
+            (
+                self._compileCurrencyOutputs(currencySats, address)
+                if currencySats > 0 else []) +
             self._compileSatoriOutputs(
-                {address: self.balanceAmaount - self.satoriFee}))
+                {address: self.balanceAmount - self.satoriFee}))
         satoriFeeOut = self._compileSatoriOutputs(
             {completerAddress: self.satoriFee})[0]
         # change out to server
@@ -1126,7 +1131,7 @@ class Wallet():
             scriptPubKey=self._generateScriptPubKeyFromAddress(changeAddress),
             returnSats=True)
         # since it's a send all, there's no change outputs
-        tx = self._createPartialOriginator(
+        tx = self._createPartialOriginatorSimple(
             txins=txins,
             txinScripts=txinScripts,
             txouts=sweepOuts + [satoriFeeOut, currencyChangeOut])
