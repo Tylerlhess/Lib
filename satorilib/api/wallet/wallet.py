@@ -309,19 +309,24 @@ class Wallet():
         # on connect ask for peers, add each to our list of electrumxServers
         # if unable to connect, remove that server from our list
         self.electrumx.get(allWalletInfo)
-        self.currency = self.electrumx.currency
-        self.balance = self.electrumx.balance
+        self.currencyOnChain = self.electrumx.currency
+        self.balanceOnChain = self.electrumx.balance
         self.stats = self.electrumx.stats
         self.divisibility = self.stats.get('divisions', 8)
-        self.currencyAmount = TxUtils.asAmount(self.currency or 0, 8)
-        self.balanceAmount = TxUtils.asAmount(
-            self.balance or 0, self.divisibility)
         # self.assetTransactions = self.electrumx.assetTransactions
         self.banner = self.electrumx.banner
         self.transactionHistory = self.electrumx.transactionHistory
         self.transactions = self.electrumx.transactions or []
         self.unspentCurrency = self.electrumx.unspentCurrency
         self.unspentAssets = self.electrumx.unspentAssets
+        # get mempool balance
+        self.currency = sum([x.get('value') for x in self.unspentCurrency])
+        self.balance = sum([
+            x.get('value') for x in self.unspentAssets
+            if x.get('name') == 'SATORI' and x.get('value') > 0])
+        self.currencyAmount = TxUtils.asAmount(self.currency or 0, 8)
+        self.balanceAmount = TxUtils.asAmount(
+            self.balance or 0, self.divisibility)
         # self.currencyVouts = self.electrumx.evrVouts
         # self.assetVouts = self.electrumx.assetVouts
         self.postGet()
@@ -929,13 +934,6 @@ class Wallet():
             # changeAddress if change address is none self.address
             return True
 
-        logging.debug(
-            '\nfeeSatsReserved', feeSatsReserved, type(feeSatsReserved),
-            '\nreportedFeeSats', reportedFeeSats, type(reportedFeeSats),
-            '\nchangeAddress', changeAddress, type(changeAddress),
-            '\ncompleterAddress', completerAddress, type(completerAddress),
-            color='yellow')
-        logging.debug('serialTx', serialTx, color='yellow')
         tx = self._deserialize(serialTx)
         if not _verifyFee():
             raise TransactionFailure(
@@ -949,13 +947,10 @@ class Wallet():
         # add rvn fee input
         gatheredCurrencyUnspent = self._gatherReservedCurrencyUnspent(
             exactSats=feeSatsReserved)
-        logging.debug('gatheredCurrencyUnspent',
-                      gatheredCurrencyUnspent, color='yellow')
         if gatheredCurrencyUnspent is None:
             raise TransactionFailure(f'unable to find sats {feeSatsReserved}')
         txins, txinScripts = self._compileInputs(
             gatheredCurrencyUnspents=[gatheredCurrencyUnspent])
-        logging.debug('txins', txins, color='yellow')
         tx = self._createPartialCompleterSimple(
             tx=tx,
             txins=txins,
@@ -1109,7 +1104,6 @@ class Wallet():
             x for x in self.unspentAssets if x.get('name') == 'SATORI']
         gatheredCurrencyUnspents = self.unspentCurrency
         currencySats = sum([x.get('value') for x in gatheredCurrencyUnspents])
-
         # compile inputs
         txins, txinScripts = self._compileInputs(
             gatheredCurrencyUnspents=gatheredCurrencyUnspents,
