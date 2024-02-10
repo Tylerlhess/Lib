@@ -109,8 +109,8 @@ class Wallet():
     def publicKeyBytes(self) -> bytes:
         return bytes.fromhex(self.publicKey)
 
-    def hash160ToAddress(self, hexStr: str) -> str:
-        return TxUtils.hash160ToAddress(hexStr, self.networkByte)
+    def hash160ToAddress(self, pubKeyHash: Union[str, bytes]) -> str:
+        return TxUtils.hash160ToAddress(pubKeyHash, self.networkByte)
 
     def showStats(self):
         ''' returns a string of stats properly formatted '''
@@ -932,14 +932,14 @@ class Wallet():
 
             for i, x in enumerate(tx.vout[-2].scriptPubKey):
                 if i == 2 and isinstance(x, bytes):
-                    return completerAddress == self.hash160ToAddress(x.hex())
+                    return completerAddress == self.hash160ToAddress(x)
             return False
 
         def _verifyChangeAddress():
             ''' verify the change output goes to us at changeAddress '''
             for i, x in enumerate(tx.vout[-1].scriptPubKey):
                 if i == 2 and isinstance(x, bytes):
-                    return changeAddress == self.hash160ToAddress(x.hex())
+                    return changeAddress == self.hash160ToAddress(x)
             return False
 
         completerAddress = completerAddress or self.address
