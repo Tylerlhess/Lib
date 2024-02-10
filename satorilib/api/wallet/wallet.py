@@ -819,6 +819,7 @@ class Wallet():
         pullFeeFromAmount: bool = False,
         feeSatsReserved: int = 0,
         completerAddress: str = None,
+        changeAddress: str = None,
     ) -> tuple[str, int]:
         '''
         if people do not have a balance of rvn, they can still send satori.
@@ -844,7 +845,7 @@ class Wallet():
         that the last output is the raven fee change and that the second to last
         output is the Satori fee for itself.
         '''
-        if completerAddress is None or feeSatsReserved == 0:
+        if completerAddress is None or changeAddress is None or feeSatsReserved == 0:
             raise TransactionFailure('need completer details')
         if (
             amount <= 0 or
@@ -878,8 +879,7 @@ class Wallet():
             inputCount=len(gatheredSatoriUnspents),
             outputCount=len(satoriOuts) + 2 +
             (1 if satoriChangeOut is not None else 0),
-            scriptPubKey=self._generateScriptPubKeyFromAddress(
-                completerAddress),
+            scriptPubKey=self._generateScriptPubKeyFromAddress(changeAddress),
             returnSats=True)
         if currencyChangeOut is None:
             raise TransactionFailure('unable to generate currency change')
@@ -895,9 +895,10 @@ class Wallet():
     def satoriOnlyCompleterSimple(
         self,
         serialTx: bytes,
-        address: str,
         feeSatsReserved: int,
         reportedFeeSats: int,
+        changeAddress: Union[str, None] = None,
+        completerAddress: Union[str, None] = None,
     ) -> str:
         '''
         a companion function to satoriOnlyPartialSimple which completes the 
@@ -918,12 +919,26 @@ class Wallet():
         def _verifyClaim():
             return self._checkSatoriValue(tx.vout[-2])
 
+        def _verifyClaimAddress():
+            # verify the claim output goes to us at completerAddress
+            # completerAddress if change address is none self.address
+            return True
+
+        def _verifyChangeAddress():
+            # verify the change output goes to us at changeAddress
+            # changeAddress if change address is none self.address
+            return True
+
         tx = self._deserialize(serialTx)
         if not _verifyFee():
             raise TransactionFailure(
                 f'fee mismatch, {reportedFeeSats}, {feeSatsReserved}')
         if not _verifyClaim():
             raise TransactionFailure(f'claim mismatch, {tx.vout[-2].value}')
+        if not _verifyClaimAddress():
+            raise TransactionFailure('claim mismatch, _verifyClaimAddress')
+        if not _verifyChangeAddress():
+            raise TransactionFailure('claim mismatch, _verifyChangeAddress')
         # add rvn fee input
         gatheredCurrencyUnspent = self._gatherReservedCurrencyUnspent(
             exactSats=feeSatsReserved)
@@ -1058,6 +1073,7 @@ class Wallet():
         address: str,
         feeSatsReserved: int = 0,
         completerAddress: str = None,
+        changeAddress: str = None,
     ) -> tuple[str, int]:
         '''
         sweeps all Satori and currency to the address. so it has to take the fee
@@ -1067,16 +1083,13 @@ class Wallet():
         general solution of SIGHASH_ANYONECANPAY | SIGHASH_SIGNLE if the server
         knows how to handle it.
         '''
+        if completerAddress is None or changeAddress is None or feeSatsReserved == 0:
+            raise TransactionFailure('need completer details')
         if not Validate.address(address, self.symbol):
             raise TransactionFailure('sendAllTransaction')
         logging.debug('currency', self.currency,
                       'self.reserve', self.reserve, color='yellow')
         if self.balanceAmount < self.satoriFee:
-            # what if they have 2 satoris in 2 different utxos?
-            # one goes to the destination, and what about the other?
-            # server supplies the fee claim so... we can't create this
-            # transaction unless we supply the fee claim, and the server detects
-            # it.
             raise TransactionFailure(
                 'sendAllTransaction: not enough Satori for fee')
         # grab everything
@@ -1100,8 +1113,7 @@ class Wallet():
             inputCount=len(gatheredSatoriUnspents) +
             len(gatheredCurrencyUnspents),
             outputCount=len(sweepOuts) + 2,
-            scriptPubKey=self._generateScriptPubKeyFromAddress(
-                completerAddress),
+            scriptPubKey=self._generateScriptPubKeyFromAddress(changeAddress),
             returnSats=True)
         # since it's a send all, there's no change outputs
         tx = self._createPartialOriginator(
@@ -1118,12 +1130,13 @@ class Wallet():
         sweep: bool = False,
         pullFeeFromAmount: bool = False,
         completerAddress: str = None,
+        changeAddress: str = None,
         feeSatsReserved: int = 0
     ) -> TransactionResult:
         if sweep:
             try:
                 if self.currency < self.reserve:
-                    if feeSatsReserved == 0 or completerAddress is None:
+                    if feeSatsReserved == 0 or completerAddress is None or changeAddress is None:
                         return TransactionResult(
                             result='try again',
                             success=True,
@@ -1132,7 +1145,9 @@ class Wallet():
                     result = self.sendAllPartialSimple(
                         address=address,
                         feeSatsReserved=feeSatsReserved,
-                        completerAddress=completerAddress)
+                        completerAddress=completerAddress,
+                        changeAddress=changeAddress,
+                    )
                     if result is None:
                         return TransactionResult(
                             result=None,
@@ -1173,7 +1188,8 @@ class Wallet():
                         address=address,
                         pullFeeFromAmount=pullFeeFromAmount,
                         feeSatsReserved=feeSatsReserved,
-                        completerAddress=completerAddress)
+                        completerAddress=completerAddress,
+                        changeAddress=changeAddress)
                     if result is None:
                         return TransactionResult(
                             result=None,
