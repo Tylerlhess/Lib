@@ -51,6 +51,23 @@ class EvrmoreWallet(Wallet):
             ])
 
     @property
+    def networkByte(self) -> bytes:
+        return self.networkByteP2PKH
+
+    @property
+    def networkByteP2PKH(self) -> bytes:
+        # evrmore.params.BASE58_PREFIXES['PUBKEY_ADDR']
+        # BASE58_PREFIXES = {'PUBKEY_ADDR': 111,
+        #               'SCRIPT_ADDR': 196,
+        #               'SECRET_KEY': 239}
+        # RVN = return b'\x3c'  # b'0x3c'
+        return (111).to_bytes(1, 'big')
+
+    @property
+    def networkByteP2SH(self) -> bytes:
+        return (196).to_bytes(1, 'big')
+
+    @property
     def symbol(self) -> str:
         return 'evr'
 
