@@ -31,10 +31,11 @@ class SatoriServerClient(object):
         json: Union[str, None] = None,
         challenge: str = None,
     ):
-        logging.info(
-            'outgoing Satori server message:',
-            json[0:40], f'{"..." if len(json) > 40 else ""}',
-            print=True)
+        if json is not None:
+            logging.info(
+                'outgoing Satori server message:',
+                json[0:40], f'{"..." if len(json) > 40 else ""}',
+                print=True)
         r = function(
             self.url + endpoint,
             headers=self.wallet.authPayload(
@@ -175,17 +176,17 @@ class SatoriServerClient(object):
     def removeWalletAlias(self):
         ''' removes the wallet alias from the server '''
         return self._makeAuthenticatedCall(
-            function=requests.request,
+            function=requests.get,
             endpoint='/remove_wallet_alias')
 
     def updateWalletAlias(self, alias: str):
         ''' removes the wallet alias from the server '''
         return self._makeAuthenticatedCall(
-            function=requests.request,
+            function=requests.get,
             endpoint='/update_wallet_alias/' + alias)
 
     def getWalletAlias(self):
         ''' removes the wallet alias from the server '''
         return self._makeAuthenticatedCall(
-            function=requests.request,
-            endpoint='/get_wallet_alias/').text
+            function=requests.get,
+            endpoint='/get_wallet_alias').text
