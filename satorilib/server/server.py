@@ -176,10 +176,16 @@ class SatoriServerClient(object):
         ''' removes the wallet alias from the server '''
         return self._makeAuthenticatedCall(
             function=requests.request,
-            endpoint='/remove/wallet/alias')
+            endpoint='/remove_wallet_alias')
 
     def updateWalletAlias(self, alias: str):
         ''' removes the wallet alias from the server '''
         return self._makeAuthenticatedCall(
             function=requests.request,
-            endpoint='/update/wallet/alias/' + alias)
+            endpoint='/update_wallet_alias/' + alias)
+
+    def getWalletAlias(self):
+        ''' removes the wallet alias from the server '''
+        return self._makeAuthenticatedCall(
+            function=requests.request,
+            endpoint='/get_wallet_alias/').text

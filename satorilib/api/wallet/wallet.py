@@ -54,6 +54,7 @@ class Wallet():
         self.address = None
         self.scripthash = None
         self.stats = None
+        self.alias = None
         self.banner = None
         self.currency = None
         self.balance = None
@@ -108,6 +109,9 @@ class Wallet():
     @property
     def publicKeyBytes(self) -> bytes:
         return bytes.fromhex(self.publicKey)
+
+    def setAlias(self, alias: Union[str, None] = None) -> None:
+        self.alias = alias
 
     def hash160ToAddress(self, pubKeyHash: Union[str, bytes]) -> str:
         return TxUtils.hash160ToAddress(pubKeyHash, self.networkByte)
