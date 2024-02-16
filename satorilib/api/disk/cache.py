@@ -402,6 +402,10 @@ class Cached:
             # must in order to get the start singleton).
             from satorineuron.init.start import getStart
             self._disk = getStart().cacheOf(self.streamId)
+            if not hasattr(self, '_disk') or self._disk is None:
+                logging.error(
+                    'self.disk for this stream missing, subscribed', 
+                    self.streamId)
         return self._disk
 
     @property
