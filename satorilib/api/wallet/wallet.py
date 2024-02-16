@@ -1,6 +1,7 @@
 from typing import Union
 import os
 import json
+from base64 import b64encode, b64decode
 from random import randrange
 import mnemonic
 from satoriwallet.lib import connection
@@ -66,7 +67,6 @@ class Wallet():
         self.assetTransactions = []
         self.walletPath = walletPath
         self.temporary = temporary
-        self.isEncrypted = False
         # maintain minimum amount of currency at all times to cover fees - server only
         self.reserve = TxUtils.asSats(reserve)
         self.initRaw()
@@ -110,6 +110,14 @@ class Wallet():
     def publicKeyBytes(self) -> bytes:
         return bytes.fromhex(self.publicKey)
 
+    @property
+    def isEncrypted(self) -> bool:
+        return ' ' not in self.words
+
+    @property
+    def isDecrypted(self) -> bool:
+        return not self.isEncrypted
+
     def setAlias(self, alias: Union[str, None] = None) -> None:
         self.alias = alias
 
@@ -137,13 +145,13 @@ class Wallet():
     Issuing Transactions: {self.stats.get('source', {}).get('tx_hash', self.satoriOriginalTxHash)}
     '''
 
-    def authPayload(self, asDict: bool = False, challenge: str = None) -> str:
+    def authPayload(self, asDict: bool = False, challenge: str = None) -> Union[str, dict]:
         payload = connection.authPayload(self, challenge)
         if asDict:
             return payload
         return json.dumps(payload)
 
-    def registerPayload(self, asDict: bool = False, challenge: str = None) -> str:
+    def registerPayload(self, asDict: bool = False, challenge: str = None) -> Union[str, dict]:
         payload = {
             **connection.authPayload(self, challenge),
             **system.devicePayload(asDict=True)}
@@ -199,9 +207,14 @@ class Wallet():
         self.yaml = self.getRaw()
         if self.yaml == False:
             return False
-        if self.password is not None:
-            self.isEncrypted = True
+        # leave this in for a few months then you can remove it.
+        self.cleanYaml()
         self._entropy = self.yaml.get('entropy')
+        if isinstance(self._entropy, bytes):
+            self._entropyStr = b64encode(self._entropy).decode('utf-8')
+        if isinstance(self._entropy, str):
+            self._entropyStr = self._entropy
+            self._entropy = b64decode(self._entropy)
         self.words = self.yaml.get('words')
         self.publicKey = self.yaml.get('publicKey')
         self.privateKey = self.yaml.get('privateKey')
@@ -213,19 +226,45 @@ class Wallet():
         logging.info('load', self.publicKey, self.walletPath)
         return True
 
+    def cleanYaml(self):
+        ''' here we clean the yaml file such that the entropy is a string '''
+        self.yaml = self.getRaw()
+        if isinstance(self.yaml.get('entropy'), bytes):
+            self.yaml['entropy'] = b64encode(
+                self.yaml.get('entropy')).decode('utf-8')
+            self._entropyStr = self.yaml.get('entropy')
+            WalletApi.save(
+                wallet={
+                    **(
+                        self.yaml
+                        if hasattr(self, 'yaml') and isinstance(self.yaml, dict)
+                        else {}),
+                    **(self.encryptWallet(
+                        content={
+                            'entropy': self._entropyStr,
+                        }) if self.password is not None else {})
+                },
+                walletPath=self.walletPath)
+
     def load(self):
         self.yaml = self.getRaw()
         if self.yaml == False:
             return False
         self.yaml = self.decryptWallet(self.yaml)
+
         self._entropy = self.yaml.get('entropy')
+        if isinstance(self._entropy, bytes):
+            self._entropyStr = b64encode(self._entropy).decode('utf-8')
+        if isinstance(self._entropy, str):
+            self._entropyStr = self._entropy
+            self._entropy = b64decode(self._entropy)
+
         # # these are regenerated from entropy in every case
-        # self.words = self.yaml.get('words')
-        # thisWallet = self.yaml.get(self.symbol, {})
-        # self.publicKey = self.yaml.get('publicKey')
-        # self.privateKey = self.yaml.get('privateKey')
-        # self.address = thisWallet.get('address')
-        # self.scripthash = self.yaml.get('scripthash')
+        self.words = self.yaml.get('words')
+        self.publicKey = self.yaml.get('publicKey')
+        self.privateKey = self.yaml.get('privateKey')
+        self.address = self.yaml.get(self.symbol, {}).get('address')
+        self.scripthash = self.yaml.get('scripthash')
         if self._entropy is None:
             return False
         logging.info('load', self.publicKey, self.walletPath)
@@ -240,7 +279,7 @@ class Wallet():
                     else {}),
                 **self.encryptWallet(
                     content={
-                        'entropy': self._entropy,
+                        'entropy': self._entropyStr,
                         'words': self.words,
                         'privateKey': self.privateKey,
                         'publicKey': self.publicKey,
@@ -262,6 +301,7 @@ class Wallet():
 
     def generate(self):
         self._entropy = self._entropy or self._generateEntropy()
+        self._entropyStr = b64encode(self._entropy).decode('utf-8')
         self._privateKeyObj = self._generatePrivateKey()
         self._addressObj = self._generateAddress()
         self.words = self.words or self._generateWords()
@@ -269,7 +309,6 @@ class Wallet():
         self.publicKey = self.publicKey or self._privateKeyObj.pub.hex()
         self.address = self.address or str(self._addressObj)
         self.scripthash = self.scripthash or self._generateScripthash()
-        self.isEncrypted = False
 
     def _generateScripthash(self):
         # possible shortcut:
@@ -336,25 +375,6 @@ class Wallet():
             self.balance or 0, self.divisibility)
         # self.currencyVouts = self.electrumx.evrVouts
         # self.assetVouts = self.electrumx.assetVouts
-        self.postGet()
-
-    def postGet(self):
-        if self.balanceAmount > self.satoriFee and self.autosecured():
-            self.executeAutosecure()
-
-    def getAutosecureEntry(self):
-        for k, v in WalletApi.config.get('autosecure').items():
-            if k == self.address or v.get('address') == self.address:
-                return v
-
-    def executeAutosecure(self):
-        result = self.typicalNeuronTransaction(
-            amount=self.balanceAmount,
-            address=self.getAutosecureEntry().get('address'),
-            sweep=False,
-            pullFeeFromAmount=True)
-        if result is None or result.result is None or not result.success:
-            logging.error('Unable to execute autosecure transaction')
 
     def sign(self, message: str):
         ''' signs a message with the private key '''
@@ -366,6 +386,17 @@ class Wallet():
         ''' 
         returns true if the output is a satori output of self.satoriFee
         '''
+
+    def shouldAutosecure(self):
+        return (
+            self.password is None and
+            self.balanceAmount > self.satoriFee and
+            self.autosecured())
+
+    def getAutosecureEntry(self):
+        for k, v in WalletApi.config.get('autosecure').items():
+            if k == self.address or v.get('address') == self.address:
+                return v
 
     def autosecured(self) -> bool:
         ''' verifies a message with the public key '''
@@ -1155,7 +1186,13 @@ class Wallet():
         changeAddress: str = None,
         feeSatsReserved: int = 0
     ) -> TransactionResult:
+        logging.debug('amount', amount, color='yellow')
+        logging.debug('address', address, color='yellow')
         logging.debug('sweep', sweep, color='yellow')
+        logging.debug('pullFeeFromAmount', pullFeeFromAmount, color='yellow')
+        logging.debug('completerAddress', completerAddress, color='yellow')
+        logging.debug('changeAddress', changeAddress, color='yellow')
+        logging.debug('feeSatsReserved', feeSatsReserved, color='yellow')
         if sweep:
             try:
                 if self.currency < self.reserve:
@@ -1198,16 +1235,20 @@ class Wallet():
                     msg=f'Send Failed: {e}')
         else:
             try:
+                logging.debug('1', self.currency, self.reserve, color='yellow')
                 if self.currency < self.reserve:
+                    logging.debug('2', color='yellow')
                     # if we have to make a partial we need more data so we need
                     # to return, telling them we need more data, asking for more
                     # information, and then if we get more data we can do this:
                     if feeSatsReserved == 0 or completerAddress is None:
+                        logging.debug('3', color='yellow')
                         return TransactionResult(
                             result='try again',
                             success=True,
                             tx=None,
                             msg='creating partial, need feeSatsReserved.')
+                    logging.debug('4', color='yellow')
                     result = self.satoriOnlyPartialSimple(
                         amount=amount,
                         address=address,
@@ -1218,10 +1259,12 @@ class Wallet():
                     logging.debug(
                         'result of satoriOnlyPartialSimple', result, color='yellow')
                     if result is None:
+                        logging.debug('5', color='yellow')
                         return TransactionResult(
                             result=None,
                             success=False,
                             msg='Send Failed: try again in a few minutes.')
+                    logging.debug('6', color='yellow')
                     return TransactionResult(
                         result=result,
                         success=True,
@@ -1229,13 +1272,17 @@ class Wallet():
                         reportedFeeSats=result[1],
                         msg='send transaction requires fee.')
                 result = self.satoriTransaction(amount=amount, address=address)
+                logging.debug('7', color='yellow')
                 if result is None:
+                    logging.debug('7.1', color='yellow')
                     return TransactionResult(
                         result=result,
                         success=False,
                         msg='Send Failed: try again in a few minutes.')
+                logging.debug('7.2', color='yellow')
                 return TransactionResult(result=str(result), success=True)
             except TransactionFailure as e:
+                logging.debug('8', color='yellow')
                 return TransactionResult(
                     result=None,
                     success=False,
