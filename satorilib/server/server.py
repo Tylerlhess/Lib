@@ -30,6 +30,7 @@ class SatoriServerClient(object):
         endpoint: str,
         json: Union[str, None] = None,
         challenge: str = None,
+        useWallet: Wallet = None,
     ):
         if json is not None:
             logging.info(
@@ -38,8 +39,9 @@ class SatoriServerClient(object):
                 print=True)
         r = function(
             self.url + endpoint,
-            headers=self.wallet.authPayload(
-                asDict=True, challenge=challenge or self._getChallenge()),
+            headers=(useWallet or self.wallet).authPayload(
+                asDict=True,
+                challenge=challenge or self._getChallenge()),
             json=json)
         r.raise_for_status()
         logging.info(
@@ -190,3 +192,17 @@ class SatoriServerClient(object):
         return self._makeAuthenticatedCall(
             function=requests.get,
             endpoint='/get_wallet_alias').text
+
+    def submitMaifestVote(self, wallet: Wallet, votes: dict[str, int]):
+        return self._makeAuthenticatedCall(
+            function=requests.post,
+            endpoint='/vote_on/manifest',
+            useWallet=wallet,
+            json=json.dumps(votes or {})).text
+
+    def submitStreamVote(self, wallet: Wallet, votes: dict[str, int]):
+        return self._makeAuthenticatedCall(
+            function=requests.post,
+            endpoint='/vote_on/stream',
+            useWallet=wallet,
+            json=json.dumps(votes or {})).text
