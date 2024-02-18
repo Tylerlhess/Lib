@@ -64,6 +64,7 @@ class Sqlite:
         params: Union[list[str], tuple[str, ...], dict[str, str], None] = None,
         data: pd.DataFrame = None,
         table: str = None,
+        if_exists: str = 'append',
     ):
         if query:
             return sql_io.execute(
@@ -79,6 +80,7 @@ class Sqlite:
             lock=self.lock,
             data=data,
             table=table,
+            if_exists=if_exists,
             database=self.database,
             index_col=self.index_col)
 
