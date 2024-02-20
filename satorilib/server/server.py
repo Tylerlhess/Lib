@@ -193,19 +193,17 @@ class SatoriServerClient(object):
             function=requests.get,
             endpoint='/get_wallet_alias').text
 
-    def getMaifestVote(self, wallet: Wallet):
+    def getManifestVote(self, wallet: Wallet):
         return self._makeAuthenticatedCall(
             function=requests.get,
-            endpoint='/votes_for/manifest',
-            useWallet=wallet,
-            json=json.dumps(votes or {})).text
+            endpoint=f'/votes_for/manifest/{wallet.publicKey}',
+            useWallet=wallet).text
 
-    def getSanctionVote(self, wallet: Wallet):
+    def getSanctionVote(self, wallet: Wallet, vault: Wallet):
         return self._makeAuthenticatedCall(
             function=requests.get,
-            endpoint='/votes_for/sanction',
-            useWallet=wallet,
-            json=json.dumps(votes or {})).text
+            endpoint=f'/votes_for/sanction/{wallet.publicKey}/{vault.publicKey}',
+            useWallet=wallet).text
 
     def submitMaifestVote(self, wallet: Wallet, votes: dict[str, int]):
         return self._makeAuthenticatedCall(
@@ -220,3 +218,9 @@ class SatoriServerClient(object):
             endpoint='/vote_on/sanction',
             useWallet=wallet,
             json=json.dumps(votes or {})).text
+
+    def removeSanctionVote(self, wallet: Wallet):
+        return self._makeAuthenticatedCall(
+            function=requests.Get,
+            endpoint='/clear_votes_on/sanction',
+            useWallet=wallet).text
