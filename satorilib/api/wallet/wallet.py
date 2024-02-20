@@ -310,7 +310,7 @@ class Wallet():
         self.address = self.address or str(self._addressObj)
         self.scripthash = self.scripthash or self._generateScripthash()
 
-    def _generateScripthash(self):
+    def _generateScripthash(self, forAddress: str = None):
         # possible shortcut:
         # self.scripthash = '76a914' + [s for s in self._addressObj.to_scriptPubKey().raw_iter()][2][1].hex() + '88ac'
         from base58 import b58decode_check
@@ -328,7 +328,7 @@ class Wallet():
             (OP_DUP, OP_HASH160, BYTES_TO_PUSH, DATA_TO_PUSH(address), OP_EQUALVERIFY, OP_CHECKSIG))
         def scripthash(address): return sha256(codecs.decode(
             sig_script_raw(address), 'hex_codec')).digest()[::-1].hex()
-        return scripthash(self.address)
+        return scripthash(forAddress or self.address)
 
     def _generateEntropy(self):
         # return m.to_entropy(m.generate())
