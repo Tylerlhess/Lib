@@ -73,6 +73,10 @@ class RavencoinWallet(Wallet):
     def _generateAddress(self):
         return P2PKHRavencoinAddress.from_pubkey(self._privateKeyObj.pub)
 
+    @staticmethod
+    def generateAddress(pubkey: Union[str, None] = None):
+        return P2PKHRavencoinAddress.from_pubkey(pubkey)
+
     def _generateScriptPubKeyFromAddress(self, address: str):
         return CRavencoinAddress(address).to_scriptPubKey()
 

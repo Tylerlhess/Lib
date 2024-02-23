@@ -87,6 +87,10 @@ class EvrmoreWallet(Wallet):
     def _generateAddress(self):
         return P2PKHEvrmoreAddress.from_pubkey(self._privateKeyObj.pub)
 
+    @staticmethod
+    def generateAddress(pubkey: Union[str, None] = None):
+        return P2PKHEvrmoreAddress.from_pubkey(pubkey)
+
     def _generateScriptPubKeyFromAddress(self, address: str):
         return CEvrmoreAddress(address).to_scriptPubKey()
 

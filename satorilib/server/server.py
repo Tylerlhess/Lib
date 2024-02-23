@@ -43,11 +43,16 @@ class SatoriServerClient(object):
                 asDict=True,
                 challenge=challenge or self._getChallenge()),
             json=json)
-        r.raise_for_status()
+        try:
+            r.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            logging.error('authenticated server err:', r.text, e, color='red')
+            r.raise_for_status()
         logging.info(
             'incoming Satori server message:',
             r.text[0:40], f'{"..." if len(r.text) > 40 else ""}',
             print=True)
+
         return r
 
     def _makeUnauthenticatedCall(
@@ -76,7 +81,11 @@ class SatoriServerClient(object):
             headers=headers,
             json=json,
             data=data)
-        r.raise_for_status()
+        try:
+            r.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            logging.error("unauth'ed server err:", r.text, e, color='red')
+            r.raise_for_status()
         logging.info(
             'incoming Satori server message:',
             r.text[0:40], f'{"..." if len(r.text) > 40 else ""}',
@@ -193,17 +202,23 @@ class SatoriServerClient(object):
             function=requests.get,
             endpoint='/get_wallet_alias').text
 
-    def getManifestVote(self, wallet: Wallet):
-        return self._makeAuthenticatedCall(
+    def getManifestVote(self, wallet: Wallet = None):
+        return self._makeUnauthenticatedCall(
             function=requests.get,
-            endpoint=f'/votes_for/manifest/{wallet.publicKey}',
-            useWallet=wallet).text
+            endpoint=(
+                f'/votes_for/manifest/{wallet.publicKey}'
+                if isinstance(wallet, Wallet) else '/votes_for/manifest')).json()
 
-    def getSanctionVote(self, wallet: Wallet, vault: Wallet):
-        return self._makeAuthenticatedCall(
+    def getSanctionVote(self, wallet: Wallet = None, vault: Wallet = None):
+        logging.debug('vault', vault, color='yellow')
+        walletPubkey = wallet.publicKey if isinstance(
+            wallet, Wallet) else 'None'
+        vaultPubkey = vault.publicKey if isinstance(vault, Wallet) else 'None'
+        logging.debug(
+            f'/votes_for/sanction/{walletPubkey}/{vaultPubkey}', color='yellow')
+        return self._makeUnauthenticatedCall(
             function=requests.get,
-            endpoint=f'/votes_for/sanction/{wallet.publicKey}/{vault.publicKey}',
-            useWallet=wallet).text
+            endpoint=f'/votes_for/sanction/{walletPubkey}/{vaultPubkey}').json()
 
     def submitMaifestVote(self, wallet: Wallet, votes: dict[str, int]):
         return self._makeAuthenticatedCall(
