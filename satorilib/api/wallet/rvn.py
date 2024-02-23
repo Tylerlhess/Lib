@@ -77,8 +77,6 @@ class RavencoinWallet(Wallet):
     def generateAddress(pubkey: Union[bytes, str]) -> str:
         if isinstance(pubkey, str):
             pubkey = bytes.fromhex(pubkey)
-        if isinstance(pubkey, str):
-            pubkey = bytes.fromhex(pubkey)
         return str(P2PKHRavencoinAddress.from_pubkey(pubkey))
 
     def _generateScriptPubKeyFromAddress(self, address: str):
