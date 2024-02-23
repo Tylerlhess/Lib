@@ -89,7 +89,7 @@ class EvrmoreWallet(Wallet):
 
     @staticmethod
     def generateAddress(pubkey: Union[bytes, str]) -> str:
-         if isinstance(pubkey, str):
+        if isinstance(pubkey, str):
             pubkey = bytes.fromhex(pubkey)
         return str(P2PKHEvrmoreAddress.from_pubkey(pubkey))
 
