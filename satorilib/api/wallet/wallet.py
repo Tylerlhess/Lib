@@ -366,6 +366,21 @@ class Wallet():
         self.unspentCurrency = self.electrumx.unspentCurrency
         self.unspentAssets = self.electrumx.unspentAssets
         # get mempool balance
+
+        logging.debug('currencyOnChain', self.currencyOnChain, color='magenta')
+        logging.debug('balanceOnChain', self.balanceOnChain, color='magenta')
+        logging.debug('stats', self.stats, color='magenta')
+        logging.debug('divisibility', self.divisibility, color='magenta')
+        logging.debug('banner', self.banner, color='magenta')
+        logging.debug('transactionHistory',
+                      self.transactionHistory, color='magenta')
+        logging.debug('transactions', self.transactions, color='magenta')
+        logging.debug('unspentCurrency', self.unspentCurrency, color='magenta')
+        logging.debug('unspentAssets', self.unspentAssets, color='magenta')
+        logging.debug('unspentCurrency item:', x, color='magenta')
+
+        for x in self.unspentCurrency:
+            logging.debug('unspentCurrency item:', x, color='magenta')
         self.currency = sum([x.get('value') for x in self.unspentCurrency])
         self.balance = sum([
             x.get('value') for x in self.unspentAssets
