@@ -377,7 +377,6 @@ class Wallet():
         logging.debug('transactions', self.transactions, color='magenta')
         logging.debug('unspentCurrency', self.unspentCurrency, color='magenta')
         logging.debug('unspentAssets', self.unspentAssets, color='magenta')
-        logging.debug('unspentCurrency item:', x, color='magenta')
 
         for x in self.unspentCurrency:
             logging.debug('unspentCurrency item:', x, color='magenta')
