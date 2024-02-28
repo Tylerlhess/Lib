@@ -183,7 +183,14 @@ class Wallet():
                 return secret.decryptMapValues(
                     encrypted=encrypted,
                     password=self.password,
-                    keys=['entropy', 'privateKey', 'words'])
+                    keys=['entropy', 'privateKey', 'words',
+                          'address' if len(encrypted.get(self.symbol, {}).get(
+                              'address', '')) != 34 else '',  # == 108 else '',
+                          'scripthash' if len(encrypted.get(
+                              'scripthash', '')) != 64 else '',  # == 152 else '',
+                          'publicKey' if len(encrypted.get(
+                              'publicKey', '')) != 66 else '',  # == 152 else '',
+                          ])
             except Exception as _:
                 return encrypted
         return encrypted
@@ -282,18 +289,23 @@ class Wallet():
                         'entropy': self._entropyStr,
                         'words': self.words,
                         'privateKey': self.privateKey,
-                        'publicKey': self.publicKey,
-                        'scripthash': self.scripthash,
-                        self.symbol: {
-                            'address': self.address,
-                        }
-                    })
+                    }),
+                **{
+                    'publicKey': self.publicKey,
+                    'scripthash': self.scripthash,
+                    self.symbol: {
+                        'address': self.address,
+                    }
+                }
             },
             walletPath=self.walletPath)
 
     def regenerate(self):
         saveIt = False
         if not hasattr(self, 'privateKey') or self.privateKey is None:
+            saveIt = True
+        # entire file is encrypted (only part is supposed to be encrypted)
+        elif self.isDecrypted and (self.getRaw() or {}).get('publicKey') != self.publicKey:
             saveIt = True
         self.generate()
         if saveIt:
@@ -366,20 +378,6 @@ class Wallet():
         self.unspentCurrency = self.electrumx.unspentCurrency
         self.unspentAssets = self.electrumx.unspentAssets
         # get mempool balance
-
-        logging.debug('currencyOnChain', self.currencyOnChain, color='magenta')
-        logging.debug('balanceOnChain', self.balanceOnChain, color='magenta')
-        logging.debug('stats', self.stats, color='magenta')
-        logging.debug('divisibility', self.divisibility, color='magenta')
-        logging.debug('banner', self.banner, color='magenta')
-        logging.debug('transactionHistory',
-                      self.transactionHistory, color='magenta')
-        logging.debug('transactions', self.transactions, color='magenta')
-        logging.debug('unspentCurrency', self.unspentCurrency, color='magenta')
-        logging.debug('unspentAssets', self.unspentAssets, color='magenta')
-
-        for x in self.unspentCurrency:
-            logging.debug('unspentCurrency item:', x, color='magenta')
         self.currency = sum([x.get('value') for x in self.unspentCurrency])
         self.balance = sum([
             x.get('value') for x in self.unspentAssets

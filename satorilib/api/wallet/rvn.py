@@ -30,10 +30,6 @@ class RavencoinWallet(Wallet):
             password=password)
 
     def connect(self):
-        logging.debug('CONNECTION: chain=', self.chain, color='magenta')
-        logging.debug('CONNECTION: address=', self.address, color='magenta')
-        logging.debug('CONNECTION: scripthash=',
-                      self.scripthash, color='magenta')
         self.electrumx = ElectrumXAPI(
             chain=self.chain,
             address=self.address,
