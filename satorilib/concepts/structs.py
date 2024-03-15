@@ -143,9 +143,10 @@ class StreamId:
             self.__stream +
             (self.__target or ''))
 
-    # @property
-    # def generateHash(self) -> str:
-    #    return generatePathId(streamId=self)
+    @property
+    def generateHash(self) -> str:
+        from satorilib.api.hash import generatePathId, hashIt
+        return generatePathId(streamId=self)
 
     @property
     def key(self):
@@ -347,23 +348,124 @@ class Stream:
             **({'topic': self.streamId.topic()} if includeTopic else {})}
 
 
-class StreamsOverview():
+class StreamOverview():
+
+    def __init__(
+        self,
+        streamId: StreamId,
+        value,
+        values=None,
+        errs=None,
+        pinned=False,
+        predictions=None,
+        subscribers: int = '-',
+        accuracy: float = '-',
+        prediction: float = '-',
+    ):
+        self.streamId = streamId
+        self.subscribers = subscribers
+        self.accuracy = accuracy
+        self.prediction = prediction
+        self.value = value
+        self.pinned = pinned
+        self.values = values or []
+        self.errs = errs or []
+        self.predictions = predictions or []
+
+    def __str__(self):
+        # return str(vars(self))
+        return str({
+            **{k: v for k, v in vars(self).items() if k != 'streamId' and k != 'pinned'},
+            **{
+                'pinned': 1 if self.pinned else 0
+                'hashed': self.hashed, 
+                'topic': self.topic},
+            **{
+                'source': self.streamId.source,
+                'author': self.streamId.author,
+                'stream': self.streamId.stream,
+                'target': self.streamId.target},
+        })
+
+    def __repr__(self):
+        return self.__str__()
+
+    @property
+    def author(self):
+        return self.streamId.author
+
+    @property
+    def source(self):
+        return self.streamId.source
+
+    @property
+    def stream(self):
+        return self.streamId.stream
+
+    @property
+    def target(self):
+        return self.streamId.target
+
+    @property
+    def topic(self):
+        return self.streamId.topic()
+
+    @property
+    def hashed(self):
+        return self.streamId.generateHash
+
+
+class StreamOverviews():
 
     def __init__(self, engine):
         self.engine = engine
-        # self.demo = [{'source': 'Streamr', 'stream': 'DATAUSD/binance/ticker', 'target': 'Close', 'subscribers': '99', 'accuracy': [.5, .7, .8, .85, .87, .9, .91, .92, .93],
-        #              'prediction': 15.25, 'value': 15, 'values': [12, 13, 12.5, 13.25, 14, 13.5, 13.4, 13.7, 14.2, 13.5, 14.5, 14.75, 14.6, 15.1], 'predictions': [3, 2, 1]}]
-        self.overview = [{'source': '-', 'stream': '-', 'target': '-', 'subscribers': '-',
-                          'accuracy': '-', 'prediction': '-', 'value': '-', 'values': [3, 2, 1], 'predictions': [3, 2, 1]}]
+        self.overview = StreamOverviews.blank()
         self.viewed = False
         self.setIt()
 
     def setIt(self):
+        print('setIt')
         self.overview = [model.overview() for model in self.engine.models]
+        print('overview', len(self.overview))
         self.viewed = False
 
     def setViewed(self):
         self.viewed = True
+
+    @staticmethod
+    def demo():
+        return [
+            StreamOverview(
+                streamId=StreamId(
+                    source='Streamr',
+                    author='DATAUSD',
+                    stream='DATAUSD/binance/ticker',
+                    target='Close'),
+                subscribers=3,
+                accuracy=97.062,
+                prediction='3621.00',
+                value='3548.00',
+                pinned=True,
+                errs=[],
+                values=[1, 2, 3],
+                predictions=[1, 2, 3])]
+
+    @staticmethod
+    def blank():
+        return [StreamOverview(
+                streamId=StreamId(
+                    source='-',
+                    author='-',
+                    stream='-',
+                    target='-'),
+                subscribers='-',
+                accuracy='-',
+                prediction='-',
+                value='-',
+                pinned=False,
+                errs=[],
+                values=[1, 1, 1],
+                predictions=[1, 1, 1])]
 
 
 class Observation:

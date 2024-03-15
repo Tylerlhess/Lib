@@ -239,3 +239,12 @@ class SatoriServerClient(object):
             function=requests.Get,
             endpoint='/clear_votes_on/sanction',
             useWallet=wallet).text
+
+    def pinDepinStream(self, stream: dict = None):
+        ''' removes a stream from the server '''
+        if stream is None:
+            raise ValueError('stream must be provided')
+        return self._makeAuthenticatedCall(
+            function=requests.post,
+            endpoint='/register/subscription/pindepin',
+            json=json.dumps(stream))
