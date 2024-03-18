@@ -404,7 +404,7 @@ class Cached:
             self._disk = getStart().cacheOf(self.streamId)
             if not hasattr(self, '_disk') or self._disk is None:
                 logging.error(
-                    'self.disk for this stream missing, subscribed', 
+                    'self.disk for this stream missing, subscribed',
                     self.streamId)
         return self._disk
 

@@ -372,15 +372,24 @@ class StreamOverview():
         self.errs = errs or []
         self.predictions = predictions or []
 
+    def load(self, streamOverview: 'StreamOverview'):
+        self.streamId = streamOverview.streamId
+        self.subscribers = streamOverview.subscribers
+        self.accuracy = streamOverview.accuracy
+        self.prediction = streamOverview.prediction
+        self.value = streamOverview.value
+        self.pinned = streamOverview.pinned
+        self.values = streamOverview.values
+        self.errs = streamOverview.errs
+        self.predictions = streamOverview.predictions
+
     def __str__(self):
         # return str(vars(self))
         return str({
             **{k: v for k, v in vars(self).items() if k != 'streamId' and k != 'pinned'},
             **{
-                'pinned': 1 if self.pinned else 0
-                'hashed': self.hashed, 
-                'topic': self.topic},
-            **{
+                'pinned': 1 if self.pinned else 0,
+                'hashed': self.hashed,
                 'source': self.streamId.source,
                 'author': self.streamId.author,
                 'stream': self.streamId.stream,

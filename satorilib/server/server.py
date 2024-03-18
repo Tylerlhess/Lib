@@ -52,7 +52,6 @@ class SatoriServerClient(object):
             'incoming Satori server message:',
             r.text[0:40], f'{"..." if len(r.text) > 40 else ""}',
             print=True)
-
         return r
 
     def _makeUnauthenticatedCall(
@@ -240,11 +239,14 @@ class SatoriServerClient(object):
             endpoint='/clear_votes_on/sanction',
             useWallet=wallet).text
 
-    def pinDepinStream(self, stream: dict = None):
+    def pinDepinStream(self, stream: dict = None) -> tuple[bool, str]:
         ''' removes a stream from the server '''
         if stream is None:
             raise ValueError('stream must be provided')
-        return self._makeAuthenticatedCall(
+        response = self._makeAuthenticatedCall(
             function=requests.post,
             endpoint='/register/subscription/pindepin',
             json=json.dumps(stream))
+        if response.status_code < 400:
+            # extract success, result 'pinned' 'depinned'
+            return response.json().get('success'), response.json().get('result')
