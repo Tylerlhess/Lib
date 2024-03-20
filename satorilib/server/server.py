@@ -243,10 +243,11 @@ class SatoriServerClient(object):
         ''' removes a stream from the server '''
         if stream is None:
             raise ValueError('stream must be provided')
-        response = self._makeAuthenticatedCall(
-            function=requests.post,
-            endpoint='/register/subscription/pindepin',
-            json=json.dumps(stream))
-        if response.status_code < 400:
-            # extract success, result 'pinned' 'depinned'
-            return response.json().get('success'), response.json().get('result')
+        logging.debug('sending:', json.dumps(stream), color='magenta')
+        # response = self._makeAuthenticatedCall(
+        #    function=requests.post,
+        #    endpoint='/register/subscription/pindepin',
+        #    json=json.dumps(stream))
+        # if response.status_code < 400:
+        #    # extract success, result 'pinned' 'depinned'
+        #    return response.json().get('success'), response.json().get('result')
