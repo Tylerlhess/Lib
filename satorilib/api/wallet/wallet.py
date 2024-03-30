@@ -360,6 +360,14 @@ class Wallet():
 
     def get(self, allWalletInfo=False):
         ''' gets data from the blockchain, saves to attributes '''
+
+        def openSafely(supposedDict: dict, key: str, default: Union[str, int, dict, list] = None):
+            try:
+                return supposedDict.get(key, default)
+            except Exception as e:
+                logging.error('openSafely err:', supposedDict, e)
+                return None
+
         # x = Evrmore(self.address, self.scripthash, config.electrumxServers())
         # todo: this list of servers should be parameterized from configuration
 
@@ -370,7 +378,9 @@ class Wallet():
         self.currencyOnChain = self.electrumx.currency
         self.balanceOnChain = self.electrumx.balance
         self.stats = self.electrumx.stats
-        self.divisibility = self.stats.get('divisions', 8)
+        # self.divisibility = self.stats.get('divisions', 8)
+        self.divisibility = openSafely(self.stats, 'divisions', 8)
+        self.divisibility = self.divisibility if self.divisibility is not None else 8
         # self.assetTransactions = self.electrumx.assetTransactions
         self.banner = self.electrumx.banner
         self.transactionHistory = self.electrumx.transactionHistory
@@ -378,7 +388,14 @@ class Wallet():
         self.unspentCurrency = self.electrumx.unspentCurrency
         self.unspentAssets = self.electrumx.unspentAssets
         # get mempool balance
+        # for logging purposes
+        for x in self.unspentCurrency:
+            openSafely(x, 'value')
         self.currency = sum([x.get('value') for x in self.unspentCurrency])
+        # for logging purposes
+        for x in self.unspentAssets:
+            openSafely(x, 'value')
+            openSafely(x, 'name')
         self.balance = sum([
             x.get('value') for x in self.unspentAssets
             if x.get('name') == 'SATORI' and x.get('value') > 0])

@@ -36,8 +36,13 @@ class EvrmoreWallet(Wallet):
             scripthash=self.scripthash,
             servers=[
                 'moontree.com:50022',  # mainnet ssl evr
-                'electrum1-mainnet.evrmorecoin.org:50002',  # ssl
-                'electrum2-mainnet.evrmorecoin.org:50002',  # ssl
+                
+                # updated to more recent version, now getting errors:
+                # """{'code': -32601, 'message': 'unknown method "blockchain.scripthash.listassets"'} <class 'dict'>"""
+                # 'electrum1-mainnet.evrmorecoin.org:50002',  # ssl
+                # 'electrum2-mainnet.evrmorecoin.org:50002',  # ssl
+                
+                # no good:
                 # 'electrum1-mainnet.evrmorecoin.org:50001',  # tcp
                 # 'electrum2-mainnet.evrmorecoin.org:50001',  # tcp
                 # 'moontree.com:50021',  # mainnet tcp evr
