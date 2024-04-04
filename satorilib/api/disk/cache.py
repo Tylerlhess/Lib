@@ -6,8 +6,8 @@ import pandas as pd
 from satorilib import logging
 from satorilib.concepts import StreamId
 from satorilib.api import memory
-from satorilib.api.time import datetimeToTimestamp, now, datetimeToTimestamp, earliestDate
-from satorilib.api.hash import hashIt, generatePathId, historyHashes, verifyHashes, cleanHashes, verifyRoot, verifyHashesReturnError
+from satorilib.api.time import datetimeToTimestamp, earliestDate, now
+from satorilib.api.hash import hashIt, generatePathId, historyHashes, verifyHashes, cleanHashes, verifyRoot, verifyHashesReturnError, verifyHashesReturnLastGood
 from satorilib.api.disk import Disk
 from satorilib.api.disk.utils import safetify, safetifyWithResult
 from satorilib.api.disk.model import ModelApi
@@ -160,6 +160,10 @@ class Cache(Disk):
     def validateAllHashesReturnError(self, df: pd.DataFrame = None, priorRowHash: str = '') -> tuple[bool, Union[pd.DataFrame, None]]:
         ''' passthrough for hashing verification '''
         return verifyHashesReturnError(df=df if isinstance(df, pd.DataFrame) else self.df, priorRowHash=priorRowHash)
+
+    def verifyHashesReturnLastGood(self, df: pd.DataFrame = None, priorRowHash: str = '') -> tuple[bool, Union[pd.DataFrame, None]]:
+        ''' passthrough for hashing verification '''
+        return verifyHashesReturnLastGood(df=df if isinstance(df, pd.DataFrame) else self.df, priorRowHash=priorRowHash)
 
     def cleanByHashes(self, df: pd.DataFrame = None) -> tuple[bool, Union[pd.DataFrame, None]]:
         ''' passthrough for hash cleaning '''

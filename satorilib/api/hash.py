@@ -33,6 +33,10 @@ def generateCheckinTime(streamId: 'StreamId'):
                 streamId.idString)))
 
 
+def hashRow(priorRowHash: str, ts: str, value: str) -> str:
+    return hashIt(priorRowHash + ts + value)
+
+
 def hashIt(string: str) -> str:
     # return hashlib.sha256(rowStr.encode()).hexdigest() # 74mb
     # return hashlib.md5(rowStr.encode()).hexdigest() # 42mb
@@ -77,8 +81,7 @@ def verifyHashes(df: pd.DataFrame, priorRowHash: str = None) -> tuple[bool, Unio
     priorRowHash = priorRowHash or ''
     priorRow = None
     for index, row in df.iterrows():
-        rowStr = priorRowHash + str(index) + str(row['value'])
-        rowHash = hashIt(rowStr)
+        rowHash = hashIt(priorRowHash + str(index) + str(row['value']))
         if rowHash != row['hash']:
             return False, priorRow.to_frame().T if isinstance(priorRow, pd.Series) else None
         priorRowHash = rowHash
@@ -97,14 +100,27 @@ def verifyHashesReturnError(df: pd.DataFrame, priorRowHash: str = None) -> tuple
     '''
     priorRowHash = priorRowHash or ''
     for index, row in df.iterrows():
-        rowStr = priorRowHash + str(index) + str(row['value'])
-        rowHash = hashIt(rowStr)
+        rowHash = hashIt(priorRowHash + str(index) + str(row['value']))
         if rowHash != row['hash']:
             return False, row.to_frame().T
         priorRowHash = rowHash
     return True, None
 
 # verifyHashes(pd.DataFrame({'value':[1,2,3,4,5,6], 'hash':['ce8efc6eeb9fc30b','e2cc1a4e70bdba14','42359a663f6c3e30','6278827c73894e0c','c7a6682880ee6f8d','d607268c4f2e75ed']}, index=[0,1,2,3,4,9,5]))
+
+
+def verifyHashesReturnLastGood(df: pd.DataFrame, priorRowHash: str = None) -> tuple[bool, Union[pd.DataFrame, None]]:
+    ''' returns success flag and the last known good row as DataFrame '''
+    if df.empty:
+        return True, None
+    priorRowHash = priorRowHash or ''
+    for index, row in df.iterrows():
+        rowHash = hashIt(priorRowHash + str(index) + str(row['value']))
+        if rowHash != row['hash']:
+            return False, priorRow.to_frame().T
+        priorRowHash = rowHash
+        priorRow = row
+    return True, row
 
 
 def cleanHashes(df: pd.DataFrame) -> tuple[bool, Union[pd.DataFrame, None]]:
