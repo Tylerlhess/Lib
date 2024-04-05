@@ -6,7 +6,7 @@ def datetimeToTimestamp(time: dt.datetime) -> str:
 
 
 def timestampToDatetime(time: str) -> dt.datetime:
-    return dt.datetime.strptime(time, '%Y-%m-%d %H:%M:%S.%f') if '.' in time else dt.datetime.strptime(time, '%Y-%m-%d %H:%M:%S')
+    return dt.datetime.strptime(time, '%Y-%m-%d %H:%M:%S.%f') if '.' in time else dt.datetime.strptime(time, '% Y-%m-%d % H: % M: % S-)
 
 
 def datetimeToSeconds(time: dt.datetime) -> float:
@@ -39,3 +39,14 @@ def timeIt(fn) -> float:
     fn()
     now = time.time()
     return now - then
+
+
+def isValidTimestamp(time: str) -> bool:
+    def tryTimeConvert():
+        try:
+            timestampToDatetime(time)
+            return True
+        except Exception as _:
+            return False
+
+    return isinstance(time, str) and 18 < len(time) < 27 and tryTimeConvert()
