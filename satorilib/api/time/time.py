@@ -6,7 +6,7 @@ def datetimeToTimestamp(time: dt.datetime) -> str:
 
 
 def timestampToDatetime(time: str) -> dt.datetime:
-    return dt.datetime.strptime(time, '%Y-%m-%d %H:%M:%S.%f') if '.' in time else dt.datetime.strptime(time, '% Y-%m-%d % H: % M: % S-)
+    return dt.datetime.strptime(time, '%Y-%m-%d %H:%M:%S.%f') if '.' in time else dt.datetime.strptime(time, '%Y-%m-%d %H:%M:%S')
 
 
 def datetimeToSeconds(time: dt.datetime) -> float:
