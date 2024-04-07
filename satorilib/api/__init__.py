@@ -5,5 +5,3 @@ from satorilib.api import servers
 from satorilib.api import hash
 from satorilib.api import interfaces
 from satorilib.api import time
-from satorilib.api.udp import client
-from satorilib.api.udp import rendezvous
