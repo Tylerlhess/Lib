@@ -19,7 +19,7 @@ class RavencoinWallet(Wallet):
         walletPath: str,
         temporary: bool = False,
         reserve: float = .1,
-        isTestnet: bool = False,
+        isTestnet: bool = True,
         password: Union[str, None] = None,
     ):
         super().__init__(

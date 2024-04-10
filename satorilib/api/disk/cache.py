@@ -409,7 +409,7 @@ class Cached:
             if not hasattr(self, '_disk') or self._disk is None:
                 logging.error(
                     'self.disk for this stream missing, subscribed',
-                    self.streamId)
+                    self.streamId, self.streamId.generateHash)
         return self._disk
 
     @property
