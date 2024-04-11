@@ -30,8 +30,8 @@ class SynergyProtocol:
 
     @staticmethod
     def fromStreamId(
-        streamId: StreamId, 
-        subscriber: str, 
+        streamId: StreamId,
+        subscriber: str,
         subscriberPort: int = None
     ) -> 'SynergyProtocol':
         return SynergyProtocol(
@@ -39,7 +39,7 @@ class SynergyProtocol:
             stream=streamId.stream,
             target=streamId.target,
             author=streamId.author,
-            subscriber=subscriber
+            subscriber=subscriber,
             subscriberPort=subscriberPort or 24600)
 
     @staticmethod
