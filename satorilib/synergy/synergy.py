@@ -29,20 +29,34 @@ class SynergyProtocol:
         self.authorIp = authorIp
 
     @staticmethod
+    def fromStreamId(
+        streamId: StreamId, 
+        subscriber: str, 
+        subscriberPort: int = None
+    ) -> 'SynergyProtocol':
+        return SynergyProtocol(
+            source=streamId.source,
+            stream=streamId.stream,
+            target=streamId.target,
+            author=streamId.author,
+            subscriber=subscriber
+            subscriberPort=subscriberPort or 24600)
+
+    @staticmethod
     def fromJson(jsonStr: str) -> 'SynergyProtocol':
         return SynergyProtocol(**json.loads(jsonStr))
 
     def toDict(self) -> dict:
         return {
-            self.source: self.source,
-            self.stream: self.stream,
-            self.target: self.target,
-            self.author: self.author,
-            self.subscriber: self.subscriber,
-            self.subscriberPort: self.subscriberPort,
-            self.subscriberIp: self.subscriberIp,
-            self.authorPort: self.authorPort,
-            self.authorIp: self.authorIp}
+            'source': self.source,
+            'stream': self.stream,
+            'target': self.target,
+            'author': self.author,
+            'subscriber': self.subscriber,
+            'subscriberPort': self.subscriberPort,
+            'subscriberIp': self.subscriberIp,
+            'authorPort': self.authorPort,
+            'authorIp': self.authorIp}
 
     def toJson(self) -> str:
         return json.dumps(self.toDict())
