@@ -216,6 +216,16 @@ class Cache(Disk):
         with open(path, 'a') as f:
             f.write(prediction)
 
+    def overwriteClean(self) -> bool:
+        success, result = self.cleanByHashes()
+        if success == False and isinstance(result, pd.DataFrame):
+            return self.overwrite(result)
+
+    def overwrite(self, df: pd.DataFrame) -> bool:
+        return self.csv.write(
+            filePath=self.path(),
+            data=self.updateCache(df))
+
     def write(self, df: pd.DataFrame = None) -> bool:
         return self.csv.write(
             filePath=self.path(),
@@ -284,6 +294,10 @@ class Cache(Disk):
                 data=self.updateCacheShowDifference(pd.concat([self.df, df]))),
             timestamp,
             observationHash)
+
+    def clear(self) -> Union[bool, None]:
+        self.updateCacheSimple(self.df[0:0])
+        self.csv.write(filePath=self.path(), data=self.df)
 
     def remove(self) -> Union[bool, None]:
         self.csv.remove(filePath=self.path())

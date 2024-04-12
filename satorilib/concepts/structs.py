@@ -274,6 +274,7 @@ class Stream:
         history: str = None,
         ts: str = None,
         predicting: StreamId = None,
+        pinned: int = None,
         reason: StreamId = None,
         reason_is_primary: bool = None,
         **kwargs
@@ -292,6 +293,7 @@ class Stream:
         self.history = history
         self.ts = ts
         self.predicting = predicting
+        self.pinned = pinned
         self.reason = reason
         self.reason_is_primary = reason_is_primary
         self.kwargs = kwargs
