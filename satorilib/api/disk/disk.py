@@ -195,7 +195,6 @@ class Disk(ModelDataDiskApi):
 
     def append(self, df: pd.DataFrame, hashThis: bool = False) -> bool:
         ''' appends to the end of the file while also hashing '''
-        logging.info('called append', df, hashThis, color='teal')
         if df.shape[0] == 0:
             return False
         # assumes no duplicates...

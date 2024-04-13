@@ -251,7 +251,6 @@ class Cache(Disk):
 
     def append(self, df: pd.DataFrame, hashThis: bool = False) -> bool:
         ''' appends to the end of the file while also hashing '''
-        logging.info('called append', df, hashThis, color='magenta')
         if self.df.empty:
             self.loadCache()
             if self.df.empty:
@@ -284,7 +283,6 @@ class Cache(Disk):
         appends to the end of the file while also hashing, 
         returns success and timestamp and observationHash
         '''
-        logging.info('called appendByAttributes', value, timestamp, observationHash, hashThis, color='magenta')
         timestamp = timestamp or datetimeToTimestamp(now())
         if timestamp in self.df.index:
             return (False, timestamp, observationHash)

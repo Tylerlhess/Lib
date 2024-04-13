@@ -489,7 +489,7 @@ class Observation:
         self.time: Union[str, None] = None
         self.streamId: Union[StreamId, None] = None
         self.observationHash: Union[int, None] = None
-        self.df: pd.Union[DataFrame, None] = None
+        self.df: pd.Union[pd.DataFrame, None] = None
         self.observationTime: Union[str, None] = None
         self.target: Union[str, None] = None
         for key, value in kwargs.items():
@@ -603,9 +603,7 @@ class Observation:
                         streamId.stream,
                         target): values
                     for target, values in list(
-                        content.items()) + (
-                            [('StreamObservationId', observationHash)]
-                            if observationHash is not None else [])},
+                        content.items()) + ([])},
                 index=[observationTime])
         # todo: handle list
             # elif isinstance(content, list): ...
