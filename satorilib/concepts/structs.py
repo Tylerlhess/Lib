@@ -497,16 +497,18 @@ class Observation:
 
     @staticmethod
     def parse(raw):
-        if (isinstance(raw, dict) and
+        if (
+            isinstance(raw, dict) and
             'topic' in raw.keys() and
-            'data' in raw.keys()
-            # 'hash' in raw.keys() and 'time' in row.keys() # should be required
-            ) or (
+            'data' in raw.keys() and
+            'hash' in raw.keys() and
+            'time' in raw.keys()
+        ) or (
             isinstance(raw, str) and
             '"topic":' in raw and
-            '"data":' in raw
-            # '"hash":' in raw and '"time":' in row # should be required
-
+            '"data":' in raw and
+            '"hash":' in raw and
+            '"time":' in raw
         ):
             return Observation.fromTopic(raw)
         return Observation.fromGuess(raw)
@@ -516,6 +518,7 @@ class Observation:
         '''
         this is the structur that hte Satori PubSub delivers data in: {
             'topic': '{"source": "satori", "author": "02a85fb71485c6d7c62a3784c5549bd3849d0afa3ee44ce3f9ea5541e4c56402d8", "stream": "WeatherBerlin", "target": "temperature"}',
+            'time': '2024-04-13 17:53:00.661619',
             'data': 4.2,
             'hash': 'abc'}
         '''
@@ -526,7 +529,7 @@ class Observation:
         topic = j.get('topic', None)
         streamId = StreamId.fromTopic(topic)
         observationTime = j.get('time', str(dt.datetime.utcnow()))
-        observationHash = j.get('observationHash', None)
+        observationHash = j.get('observationHash', j.get('hash', None))
         value = j.get('data', None)
         target = None
         df = pd.DataFrame(
@@ -535,10 +538,8 @@ class Observation:
                     streamId.source,
                     streamId.author,
                     streamId.stream,
-                    streamId.target):
-                [value] + (
-                    [('StreamObservationId', observationHash)]
-                    if observationHash is not None else [])},
+                    streamId.target
+                ): [value]},
             index=[observationTime])
         # I don't understand whey we still have a StreamObservationId
         # or the multicolumn identifier... maybe it's for the engine?
@@ -582,7 +583,7 @@ class Observation:
         else:
             j = raw
         observationTime = j.get('time', str(dt.datetime.utcnow()))
-        observationHash = j.get('observationHash', None)
+        observationHash = j.get('observationHash', j.get('hash', None))
         content = j.get('content', {})
         streamId = StreamId(
             source=j.get('source', None),

@@ -249,8 +249,9 @@ class Cache(Disk):
         self.df = self.df.combine_first(df)  # add rows that are not in self.df
         return self.write(self.df)
 
-    def append(self, df: pd.DataFrame) -> bool:
+    def append(self, df: pd.DataFrame, hashThis: bool = False) -> bool:
         ''' appends to the end of the file while also hashing '''
+        logging.info('called append', df, hashThis, color='magenta')
         if self.df.empty:
             self.loadCache()
             if self.df.empty:
@@ -261,26 +262,35 @@ class Cache(Disk):
             return False
         df = df.sort_index()
         if 'hash' not in df.columns:
-            df = self.hashDataFrame(
-                df=df,
-                priorRowHash=self.getHashBefore(df.index[0]))
+            if hashThis:
+                df = self.hashDataFrame(
+                    df=df,
+                    priorRowHash=self.getHashBefore(df.index[0]))
+            else:
+                df['hash'] = ''
         combined = pd.concat([self.df, df])
         return self.csv.append(
             filePath=self.path(),
             data=self.updateCacheShowDifference(combined))
 
     def appendByAttributes(
-        self, value: str, timestamp: str = None, observationHash: str = None
+        self,
+        value: str,
+        timestamp: str = None,
+        observationHash: str = None,
+        hashThis: bool = False,
     ) -> tuple[bool, str, str]:
         '''
         appends to the end of the file while also hashing, 
         returns success and timestamp and observationHash
         '''
+        logging.info('called appendByAttributes', value, timestamp, observationHash, hashThis, color='magenta')
         timestamp = timestamp or datetimeToTimestamp(now())
         if timestamp in self.df.index:
             return (False, timestamp, observationHash)
-        observationHash = observationHash or hashIt(
-            self.getHashBefore(timestamp) + str(timestamp) + str(value))
+        observationHash = observationHash or (
+            hashIt(self.getHashBefore(timestamp) + str(timestamp) + str(value))
+            if hashThis else '')
         df = pd.DataFrame(
             {'value': [value], 'hash': [observationHash]},
             index=[timestamp])

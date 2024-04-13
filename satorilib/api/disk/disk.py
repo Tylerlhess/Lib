@@ -193,8 +193,9 @@ class Disk(ModelDataDiskApi):
             filePath=self.path(),
             data=self.updateCache(self.hashDataFrame(df.sort_index())))
 
-    def append(self, df: pd.DataFrame) -> bool:
+    def append(self, df: pd.DataFrame, hashThis: bool = False) -> bool:
         ''' appends to the end of the file while also hashing '''
+        logging.info('called append', df, hashThis, color='teal')
         if df.shape[0] == 0:
             return False
         # assumes no duplicates...
@@ -202,11 +203,15 @@ class Disk(ModelDataDiskApi):
         self.addToCacheCount(df.shape[0])
         if 'hash' in df.columns:
             return self.csv.append(filePath=self.path(), data=df)
+        if hashThis:
+            df = self.hashDataFrame(
+                df=df,
+                priorRowHash=self.getHashBefore(df.index[0]))
+        else:
+            df['hash'] = ''
         return self.csv.append(
             filePath=self.path(),
-            data=self.hashDataFrame(
-                df=df,
-                priorRowHash=self.getHashBefore(df.index[0])))
+            data=df)
 
     def remove(self) -> Union[bool, None]:
         self.csv.remove(filePath=self.path())
