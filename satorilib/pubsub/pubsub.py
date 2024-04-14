@@ -21,7 +21,7 @@ class SatoriPubSubConn(object):
     def __init__(
         self, uid: str, payload: Union[dict, str], url: Union[str, None] = None,
         router: Union['function', None] = None, listening: bool = True,
-        then: Union[str, None] = None, command: str = 'key',
+        then: Union[str, None] = None, command: str = 'key', threaded: bool = True,
         *args, **kwargs
     ):
         super(SatoriPubSubConn, self).__init__(*args, **kwargs)
@@ -30,8 +30,10 @@ class SatoriPubSubConn(object):
         self.router = router
         self.ws = self.connect()
         self.listening = listening
-        self.ear = threading.Thread(target=self.listen, daemon=True)
-        self.ear.start()
+        self.threaded = threaded
+        if self.threaded:
+            self.ear = threading.Thread(target=self.listen, daemon=True)
+            self.ear.start()
         self.payload = payload
         self.command = command
         self.send(self.command + ':' + self.payload)
@@ -75,11 +77,13 @@ class SatoriPubSubConn(object):
                 break
             try:
                 self.router(response)
-            except Exception as e:
+            except Exception as _:
                 pass
                 # logging.debug('pubsub broke because of router behavior:', e)
         # logging.debug('restarting')
         self.restart()
+        if self.threaded:
+            raise Exception('pubsub restarted, start listening again.')
 
     def connect(self):
         import websocket
