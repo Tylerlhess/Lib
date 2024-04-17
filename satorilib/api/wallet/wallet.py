@@ -1037,8 +1037,8 @@ class Wallet():
         '''
         if not Validate.address(address, self.symbol):
             raise TransactionFailure('sendAllTransaction')
-        logging.debug('currency', self.currency,
-                      'self.reserve', self.reserve, color='yellow')
+        #logging.debug('currency', self.currency,
+        #              'self.reserve', self.reserve, color='yellow')
         if self.currency < self.reserve:
             raise TransactionFailure(
                 'sendAllTransaction: not enough currency for fee')
@@ -1167,8 +1167,8 @@ class Wallet():
             raise TransactionFailure('need completer details')
         if not Validate.address(address, self.symbol):
             raise TransactionFailure('sendAllTransaction')
-        logging.debug('currency', self.currency,
-                      'self.reserve', self.reserve, color='yellow')
+        #logging.debug('currency', self.currency,
+        #              'self.reserve', self.reserve, color='yellow')
         if self.balanceAmount < self.satoriFee:
             raise TransactionFailure(
                 'sendAllTransaction: not enough Satori for fee')
@@ -1215,13 +1215,13 @@ class Wallet():
         changeAddress: str = None,
         feeSatsReserved: int = 0
     ) -> TransactionResult:
-        logging.debug('amount', amount, color='yellow')
-        logging.debug('address', address, color='yellow')
-        logging.debug('sweep', sweep, color='yellow')
-        logging.debug('pullFeeFromAmount', pullFeeFromAmount, color='yellow')
-        logging.debug('completerAddress', completerAddress, color='yellow')
-        logging.debug('changeAddress', changeAddress, color='yellow')
-        logging.debug('feeSatsReserved', feeSatsReserved, color='yellow')
+        # logging.debug('amount', amount, color='yellow')
+        # logging.debug('address', address, color='yellow')
+        # logging.debug('sweep', sweep, color='yellow')
+        # logging.debug('pullFeeFromAmount', pullFeeFromAmount, color='yellow')
+        # logging.debug('completerAddress', completerAddress, color='yellow')
+        # logging.debug('changeAddress', changeAddress, color='yellow')
+        # logging.debug('feeSatsReserved', feeSatsReserved, color='yellow')
         if sweep:
             try:
                 if self.currency < self.reserve:
@@ -1237,8 +1237,8 @@ class Wallet():
                         completerAddress=completerAddress,
                         changeAddress=changeAddress,
                     )
-                    logging.debug('result of sendAllPartialSimple',
-                                  result, color='yellow')
+                    # logging.debug('result of sendAllPartialSimple',
+                    #               result, color='yellow')
                     if result is None:
                         return TransactionResult(
                             result=None,
@@ -1264,20 +1264,16 @@ class Wallet():
                     msg=f'Send Failed: {e}')
         else:
             try:
-                logging.debug('1', self.currency, self.reserve, color='yellow')
                 if self.currency < self.reserve:
-                    logging.debug('2', color='yellow')
                     # if we have to make a partial we need more data so we need
                     # to return, telling them we need more data, asking for more
                     # information, and then if we get more data we can do this:
                     if feeSatsReserved == 0 or completerAddress is None:
-                        logging.debug('3', color='yellow')
                         return TransactionResult(
                             result='try again',
                             success=True,
                             tx=None,
                             msg='creating partial, need feeSatsReserved.')
-                    logging.debug('4', color='yellow')
                     result = self.satoriOnlyPartialSimple(
                         amount=amount,
                         address=address,
@@ -1285,15 +1281,11 @@ class Wallet():
                         feeSatsReserved=feeSatsReserved,
                         completerAddress=completerAddress,
                         changeAddress=changeAddress)
-                    logging.debug(
-                        'result of satoriOnlyPartialSimple', result, color='yellow')
                     if result is None:
-                        logging.debug('5', color='yellow')
                         return TransactionResult(
                             result=None,
                             success=False,
                             msg='Send Failed: try again in a few minutes.')
-                    logging.debug('6', color='yellow')
                     return TransactionResult(
                         result=result,
                         success=True,
@@ -1301,17 +1293,13 @@ class Wallet():
                         reportedFeeSats=result[1],
                         msg='send transaction requires fee.')
                 result = self.satoriTransaction(amount=amount, address=address)
-                logging.debug('7', color='yellow')
                 if result is None:
-                    logging.debug('7.1', color='yellow')
                     return TransactionResult(
                         result=result,
                         success=False,
                         msg='Send Failed: try again in a few minutes.')
-                logging.debug('7.2', color='yellow')
                 return TransactionResult(result=str(result), success=True)
             except TransactionFailure as e:
-                logging.debug('8', color='yellow')
                 return TransactionResult(
                     result=None,
                     success=False,

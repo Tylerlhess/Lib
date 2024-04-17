@@ -209,12 +209,12 @@ class SatoriServerClient(object):
                 if isinstance(wallet, Wallet) else '/votes_for/manifest')).json()
 
     def getSanctionVote(self, wallet: Wallet = None, vault: Wallet = None):
-        logging.debug('vault', vault, color='yellow')
+        # logging.debug('vault', vault, color='yellow')
         walletPubkey = wallet.publicKey if isinstance(
             wallet, Wallet) else 'None'
         vaultPubkey = vault.publicKey if isinstance(vault, Wallet) else 'None'
-        logging.debug(
-            f'/votes_for/sanction/{walletPubkey}/{vaultPubkey}', color='yellow')
+        # logging.debug(
+        #    f'/votes_for/sanction/{walletPubkey}/{vaultPubkey}', color='yellow')
         return self._makeUnauthenticatedCall(
             function=requests.get,
             endpoint=f'/votes_for/sanction/{walletPubkey}/{vaultPubkey}').json()

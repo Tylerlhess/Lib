@@ -435,9 +435,7 @@ class StreamOverviews():
         self.setIt()
 
     def setIt(self):
-        print('setIt')
         self.overview = [model.overview() for model in self.engine.models]
-        print('overview', len(self.overview))
         self.viewed = False
 
     def setViewed(self):
