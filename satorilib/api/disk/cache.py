@@ -13,6 +13,25 @@ from satorilib.api.disk.utils import safetify, safetifyWithResult
 from satorilib.api.disk.model import ModelApi
 from satorilib.api.disk.wallet import WalletApi
 from satorilib.api.disk.filetypes.csv import CSVManager
+from satorilib.concepts import Observation
+
+
+class CachedResult():
+    def __init__(
+        self,
+        time: str,
+        data: str,
+        hash: str,
+        success: bool,
+        validated: Union[bool, None] = None,
+        validatedFrame: Union[pd.DataFrame, None] = None,
+    ):
+        self.time = time
+        self.data = data
+        self.hash = hash
+        self.success = success
+        self.validated = validated
+        self.validatedFrame = validatedFrame
 
 
 class Cache(Disk):
@@ -36,6 +55,8 @@ class Cache(Disk):
     ):
         super().__init__(df=df, id=id, loc=loc, ext=ext, **kwargs)
         self.loadCache()
+        self.checkedHash = ''
+        self.checkedIndex = None
 
     def __str__(self):
         return f'Cache({self.id}, {self.df.tail()})'
@@ -278,14 +299,18 @@ class Cache(Disk):
         timestamp: str = None,
         observationHash: str = None,
         hashThis: bool = False,
-    ) -> tuple[bool, str, str]:
+    ) -> CachedResult:
         '''
         appends to the end of the file while also hashing, 
         returns success and timestamp and observationHash
         '''
         timestamp = timestamp or datetimeToTimestamp(now())
         if timestamp in self.df.index:
-            return (False, timestamp, observationHash)
+            return CachedResult(
+                success=False,
+                time=timestamp,
+                hash=observationHash,
+                data=value)
         observationHash = observationHash or (
             hashIt(self.getHashBefore(timestamp) + str(timestamp) + str(value))
             if hashThis else '')
@@ -295,13 +320,52 @@ class Cache(Disk):
         if self.df.empty:
             self.loadCache()
             if self.df.empty:
-                return (self.write(df), timestamp, observationHash)
-        return (
-            self.csv.append(
-                filePath=self.path(),
-                data=self.updateCacheShowDifference(pd.concat([self.df, df]))),
-            timestamp,
-            observationHash)
+                return CachedResult(
+                    success=self.write(df),
+                    time=timestamp,
+                    hash=observationHash,
+                    data=value,
+                    validated=True)
+        success = self.csv.append(
+            filePath=self.path(),
+            data=self.updateCacheShowDifference(pd.concat([self.df, df]))),
+        validated, validatedFrame = self.performValidation()
+        return CachedResult(
+            time=timestamp,
+            data=value,
+            hash=observationHash,
+            success=success,
+            validated=validated,
+            validatedFrame=validatedFrame)
+
+    def performValidation(self, entire: bool = False) -> tuple[bool, Union[pd.DataFrame, None]]:
+        ''' validates the hashes (efficiently using cached) returns results'''
+        if self.df.empty:
+            return True, None
+        if entire:
+            success, df = self.validateAllHashes()
+        else:
+            success, df = self.validateAllHashes(
+                df=(self.df[self.df.index > self.checkedIndex]
+                    if self.checkedIndex is not None else None),
+                priorRowHash=self.checkedHash)
+        return success, df
+
+    def modifyBasedValidation(self, success: bool, df: Union[pd.DataFrame, None] = None):
+        ''' modification done separately '''
+        if success:
+            self.checkedHash = self.df.iloc[-1].hash
+            self.checkedIndex = self.df.index[-1]
+        else:
+            # logging.debug('validation failed', df, color='yellow')
+            if df is None or df.empty:
+                self.checkedHash = ''
+                self.checkedIndex = None
+            else:
+                self.removeItAndAfter(df.index[-1])
+                self.checkedHash = df.iloc[-1].hash
+                self.checkedIndex = df.index[-1]
+        return success
 
     def clear(self) -> Union[bool, None]:
         self.updateCacheSimple(self.df[0:0])
