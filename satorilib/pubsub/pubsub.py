@@ -31,6 +31,7 @@ class SatoriPubSubConn(object):
         self.ws = self.connect()
         self.listening = listening
         self.threaded = threaded
+        self.shouldReconnect = True
         if self.threaded:
             self.ear = threading.Thread(target=self.listen, daemon=True)
             self.ear.start()
@@ -81,9 +82,10 @@ class SatoriPubSubConn(object):
                 pass
                 # logging.debug('pubsub broke because of router behavior:', e)
         # logging.debug('restarting')
-        self.restart()
-        if self.threaded:
-            raise Exception('pubsub restarted, start listening again.')
+        if self.shouldReconnect:
+            self.restart()
+            if self.threaded:
+                raise Exception('pubsub restarted, start listening again.')
 
     def connect(self):
         import websocket
@@ -132,7 +134,8 @@ class SatoriPubSubConn(object):
         self.send(title='publish', topic=topic, data=data,
                   time=time, observationHash=observationHash)
 
-    def disconnect(self):
+    def disconnect(self, reconnect: bool = False):
+        self.shouldReconnect = reconnect
         self.listening = False
         self.send(title='notify', topic='connection', data='False')
         self.ws.close()  # server should detect we closed the connection
