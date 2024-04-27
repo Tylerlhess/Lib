@@ -30,7 +30,13 @@ def earliestDate() -> dt.datetime:
 
 
 def now() -> dt.datetime:
-    return dt.datetime.utcnow()
+    # return dt.datetime.utcnow()
+    return dt.datetime.now(dt.UTC)
+
+
+def nowStr() -> str:
+    # return str(now()).split('+')[0]
+    return str(now()).strftime('%Y-%m-%d %H:%M:%S.%f')
 
 
 def timeIt(fn) -> float:

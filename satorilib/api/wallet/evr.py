@@ -36,12 +36,12 @@ class EvrmoreWallet(Wallet):
             scripthash=self.scripthash,
             servers=[
                 'moontree.com:50022',  # mainnet ssl evr
-                
+
                 # updated to more recent version, now getting errors:
                 # """{'code': -32601, 'message': 'unknown method "blockchain.scripthash.listassets"'} <class 'dict'>"""
                 # 'electrum1-mainnet.evrmorecoin.org:50002',  # ssl
                 # 'electrum2-mainnet.evrmorecoin.org:50002',  # ssl
-                
+
                 # no good:
                 # 'electrum1-mainnet.evrmorecoin.org:50001',  # tcp
                 # 'electrum2-mainnet.evrmorecoin.org:50001',  # tcp
@@ -62,15 +62,15 @@ class EvrmoreWallet(Wallet):
     @property
     def networkByteP2PKH(self) -> bytes:
         # evrmore.params.BASE58_PREFIXES['PUBKEY_ADDR']
-        # BASE58_PREFIXES = {'PUBKEY_ADDR': 111,
-        #               'SCRIPT_ADDR': 196,
-        #               'SECRET_KEY': 239}
+        # BASE58_PREFIXES = {'PUBKEY_ADDR': 33,
+        #                   'SCRIPT_ADDR': 92,
+        #                   'SECRET_KEY': 128}
         # RVN = return b'\x3c'  # b'0x3c'
-        return (111).to_bytes(1, 'big')
+        return (33).to_bytes(1, 'big')
 
     @property
     def networkByteP2SH(self) -> bytes:
-        return (196).to_bytes(1, 'big')
+        return (92).to_bytes(1, 'big')
 
     @property
     def symbol(self) -> str:
