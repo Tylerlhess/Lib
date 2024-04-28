@@ -56,6 +56,14 @@ class EvrmoreWallet(Wallet):
             ])
 
     @property
+    def symbol(self) -> str:
+        return 'evr'
+
+    @property
+    def chain(self) -> str:
+        return 'Evrmore'
+
+    @property
     def networkByte(self) -> bytes:
         return self.networkByteP2PKH
 
@@ -71,14 +79,6 @@ class EvrmoreWallet(Wallet):
     @property
     def networkByteP2SH(self) -> bytes:
         return (92).to_bytes(1, 'big')
-
-    @property
-    def symbol(self) -> str:
-        return 'evr'
-
-    @property
-    def chain(self) -> str:
-        return 'Evrmore'
 
     @property
     def satoriOriginalTxHash(self) -> str:
@@ -112,7 +112,7 @@ class EvrmoreWallet(Wallet):
         returns true if the output is a satori output of self.satoriFee
         '''
         nextOne = False
-        for i, x in enumerate(s.scriptPubKey):
+        for i, x in enumerate(output.scriptPubKey):
             if nextOne:
                 # doesn't padd with 0s at the end
                 # b'rvnt\x06SATORI\x00\xe1\xf5\x05'
@@ -122,7 +122,7 @@ class EvrmoreWallet(Wallet):
                     TxUtils.padHexStringTo8Bytes(
                         TxUtils.intToLittleEndianHex(
                             TxUtils.toSats(self.satoriFee)))))
-            if x == OP_RVN_ASSET:
+            if x == OP_EVR_ASSET:
                 nextOne = True
         return False
 
@@ -138,20 +138,20 @@ class EvrmoreWallet(Wallet):
             txin = CMutableTxIn(COutPoint(lx(
                 utxo.get('tx_hash')),
                 utxo.get('tx_pos')))
-            txin_scriptPubKey = CScript([
+            txinScriptPubKey = CScript([
                 OP_DUP,
                 OP_HASH160,
                 Hash160(self.publicKeyBytes),
                 OP_EQUALVERIFY,
                 OP_CHECKSIG])
             txins.append(txin)
-            txinScripts.append(txin_scriptPubKey)
+            txinScripts.append(txinScriptPubKey)
         # satori vins
         for utxo in (gatheredSatoriUnspents or []):
             txin = CMutableTxIn(COutPoint(lx(
                 utxo.get('tx_hash')),
                 utxo.get('tx_pos')))
-            txin_scriptPubKey = CScript([
+            txinScriptPubKey = CScript([
                 OP_DUP,
                 OP_HASH160,
                 Hash160(self.publicKeyBytes),
@@ -161,12 +161,11 @@ class EvrmoreWallet(Wallet):
                 bytes.fromhex(
                     AssetTransaction.satoriHex(self.symbol) +
                     TxUtils.padHexStringTo8Bytes(
-                        TxUtils.intToLittleEndianHex(
-                            int(utxo.get('value'))))),
+                        TxUtils.intToLittleEndianHex(int(utxo.get('value'))))),
                 OP_DROP,
             ])
             txins.append(txin)
-            txinScripts.append(txin_scriptPubKey)
+            txinScripts.append(txinScriptPubKey)
         return txins, txinScripts
 
     def _compileSatoriOutputs(self, amountByAddress: dict[str, float] = None) -> list:
@@ -182,8 +181,7 @@ class EvrmoreWallet(Wallet):
                     bytes.fromhex(
                         AssetTransaction.satoriHex(self.symbol) +
                         TxUtils.padHexStringTo8Bytes(
-                            TxUtils.intToLittleEndianHex(
-                                sats))),
+                            TxUtils.intToLittleEndianHex(sats))),
                     OP_DROP]))
             txouts.append(txout)
         return txouts
@@ -210,8 +208,7 @@ class EvrmoreWallet(Wallet):
                     bytes.fromhex(
                         AssetTransaction.satoriHex(self.symbol) +
                         TxUtils.padHexStringTo8Bytes(
-                            TxUtils.intToLittleEndianHex(
-                                satoriChange))),
+                            TxUtils.intToLittleEndianHex(satoriChange))),
                     OP_DROP]))
         if satoriChange < 0:
             raise TransactionFailure('tx: not enough satori to send')
@@ -307,8 +304,10 @@ class EvrmoreWallet(Wallet):
         sig = self._privateKeyObj.sign(sighash) + bytes([sighashFlag])
         txin.scriptSig = CScript([sig, self._privateKeyObj.pub])
         try:
-            VerifyScript(txin.scriptSig, txinScriptPubKey,
-                         tx, i, (SCRIPT_VERIFY_P2SH,))
+            VerifyScript(
+                txin.scriptSig,
+                txinScriptPubKey,
+                tx, i, (SCRIPT_VERIFY_P2SH,))
         except EvalScriptError as e:
             # python-ravencoinlib doesn't support OP_RVN_ASSET in txinScriptPubKey
             if str(e) != 'EvalScript: unsupported opcode 0xc0':
@@ -317,10 +316,10 @@ class EvrmoreWallet(Wallet):
     # def _createPartialOriginator(self, txins: list, txinScripts: list, txouts: list) -> CMutableTransaction:
     #    ''' not completed - complex version SIGHASH_ANYONECANPAY | SIGHASH_SINGLE '''
     #    tx = CMutableTransaction(txins, txouts)
-    #    for i, (txin, txin_scriptPubKey) in enumerate(zip(tx.vin, txinScripts)):
+    #    for i, (txin, txinScriptPubKey) in enumerate(zip(tx.vin, txinScripts)):
     #        # Use SIGHASH_SINGLE for the originator's inputs
     #        sighash_type = SIGHASH_SINGLE
-    #        sighash = SignatureHash(txin_scriptPubKey, tx, i, sighash_type)
+    #        sighash = SignatureHash(txinScriptPubKey, tx, i, sighash_type)
     #        sig = self._privateKeyObj.sign(sighash) + bytes([sighash_type])
     #        txin.scriptSig = CScript([sig, self._privateKeyObj.pub])
     #    return tx
@@ -332,9 +331,9 @@ class EvrmoreWallet(Wallet):
     #    # Sign new inputs with SIGHASH_ANYONECANPAY and possibly SIGHASH_SINGLE
     #    # Assuming the completer's inputs start from len(tx.vin) - len(txins)
     #    startIndex = len(tx.vin) - len(txins)
-    #    for i, (txin, txin_scriptPubKey) in enumerate(zip(tx.vin[startIndex:], txinScripts), start=startIndex):
+    #    for i, (txin, txinScriptPubKey) in enumerate(zip(tx.vin[startIndex:], txinScripts), start=startIndex):
     #        sighash_type = SIGHASH_ANYONECANPAY  # Or SIGHASH_ANYONECANPAY | SIGHASH_SINGLE
-    #        sighash = SignatureHash(txin_scriptPubKey, tx, i, sighash_type)
+    #        sighash = SignatureHash(txinScriptPubKey, tx, i, sighash_type)
     #        sig = self._privateKeyObj.sign(sighash) + bytes([sighash_type])
     #        txin.scriptSig = CScript([sig, self._privateKeyObj.pub])
     #    return tx

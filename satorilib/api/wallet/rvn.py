@@ -47,6 +47,10 @@ class RavencoinWallet(Wallet):
         return 'rvn'
 
     @property
+    def chain(self) -> str:
+        return 'Ravencoin'
+
+    @property
     def networkByte(self) -> bytes:
         return self.networkByteP2PKH
 
@@ -57,10 +61,6 @@ class RavencoinWallet(Wallet):
     @property
     def networkByteP2SH(self) -> bytes:
         return b'\x7a'  # b'0x7a'
-
-    @property
-    def chain(self) -> str:
-        return 'Ravencoin'
 
     @property
     def satoriOriginalTxHash(self) -> str:
@@ -119,20 +119,20 @@ class RavencoinWallet(Wallet):
             txin = CMutableTxIn(COutPoint(lx(
                 utxo.get('tx_hash')),
                 utxo.get('tx_pos')))
-            txin_scriptPubKey = CScript([
+            txinScriptPubKey = CScript([
                 OP_DUP,
                 OP_HASH160,
                 Hash160(self.publicKeyBytes),
                 OP_EQUALVERIFY,
                 OP_CHECKSIG])
             txins.append(txin)
-            txinScripts.append(txin_scriptPubKey)
+            txinScripts.append(txinScriptPubKey)
         # satori vins
         for utxo in (gatheredSatoriUnspents or []):
             txin = CMutableTxIn(COutPoint(lx(
                 utxo.get('tx_hash')),
                 utxo.get('tx_pos')))
-            txin_scriptPubKey = CScript([
+            txinScriptPubKey = CScript([
                 OP_DUP,
                 OP_HASH160,
                 Hash160(self.publicKeyBytes),
@@ -142,12 +142,11 @@ class RavencoinWallet(Wallet):
                 bytes.fromhex(
                     AssetTransaction.satoriHex(self.symbol) +
                     TxUtils.padHexStringTo8Bytes(
-                        TxUtils.intToLittleEndianHex(
-                            int(utxo.get('value'))))),
+                        TxUtils.intToLittleEndianHex(int(utxo.get('value'))))),
                 OP_DROP,
             ])
             txins.append(txin)
-            txinScripts.append(txin_scriptPubKey)
+            txinScripts.append(txinScriptPubKey)
         return txins, txinScripts
 
     def _compileSatoriOutputs(self, amountByAddress: dict[str, float] = None) -> list:
@@ -163,8 +162,7 @@ class RavencoinWallet(Wallet):
                     bytes.fromhex(
                         AssetTransaction.satoriHex(self.symbol) +
                         TxUtils.padHexStringTo8Bytes(
-                            TxUtils.intToLittleEndianHex(
-                                sats))),
+                            TxUtils.intToLittleEndianHex(sats))),
                     OP_DROP]))
             txouts.append(txout)
         return txouts
@@ -191,8 +189,7 @@ class RavencoinWallet(Wallet):
                     bytes.fromhex(
                         AssetTransaction.satoriHex(self.symbol) +
                         TxUtils.padHexStringTo8Bytes(
-                            TxUtils.intToLittleEndianHex(
-                                satoriChange))),
+                            TxUtils.intToLittleEndianHex(satoriChange))),
                     OP_DROP]))
         if satoriChange < 0:
             raise TransactionFailure('tx: not enough satori to send')
@@ -316,10 +313,10 @@ class RavencoinWallet(Wallet):
     # def _createPartialOriginator(self, txins: list, txinScripts: list, txouts: list) -> CMutableTransaction:
     #    ''' not completed - complex version SIGHASH_ANYONECANPAY | SIGHASH_SINGLE '''
     #    tx = CMutableTransaction(txins, txouts)
-    #    for i, (txin, txin_scriptPubKey) in enumerate(zip(tx.vin, txinScripts)):
+    #    for i, (txin, txinScriptPubKey) in enumerate(zip(tx.vin, txinScripts)):
     #        # Use SIGHASH_SINGLE for the originator's inputs
     #        sighash_type = SIGHASH_SINGLE
-    #        sighash = SignatureHash(txin_scriptPubKey, tx, i, sighash_type)
+    #        sighash = SignatureHash(txinScriptPubKey, tx, i, sighash_type)
     #        sig = self._privateKeyObj.sign(sighash) + bytes([sighash_type])
     #        txin.scriptSig = CScript([sig, self._privateKeyObj.pub])
     #    return tx
@@ -331,9 +328,9 @@ class RavencoinWallet(Wallet):
     #    # Sign new inputs with SIGHASH_ANYONECANPAY and possibly SIGHASH_SINGLE
     #    # Assuming the completer's inputs start from len(tx.vin) - len(txins)
     #    startIndex = len(tx.vin) - len(txins)
-    #    for i, (txin, txin_scriptPubKey) in enumerate(zip(tx.vin[startIndex:], txinScripts), start=startIndex):
+    #    for i, (txin, txinScriptPubKey) in enumerate(zip(tx.vin[startIndex:], txinScripts), start=startIndex):
     #        sighash_type = SIGHASH_ANYONECANPAY  # Or SIGHASH_ANYONECANPAY | SIGHASH_SINGLE
-    #        sighash = SignatureHash(txin_scriptPubKey, tx, i, sighash_type)
+    #        sighash = SignatureHash(txinScriptPubKey, tx, i, sighash_type)
     #        sig = self._privateKeyObj.sign(sighash) + bytes([sighash_type])
     #        txin.scriptSig = CScript([sig, self._privateKeyObj.pub])
     #    return tx
