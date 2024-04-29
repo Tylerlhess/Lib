@@ -30,8 +30,8 @@ def earliestDate() -> dt.datetime:
 
 
 def now() -> dt.datetime:
-    # return dt.datetime.utcnow()
-    return dt.datetime.now(dt.UTC)
+    return dt.datetime.utcnow()
+    # return dt.datetime.now(dt.UTC)
 
 
 def nowStr() -> str:

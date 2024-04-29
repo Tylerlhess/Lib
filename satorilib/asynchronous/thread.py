@@ -65,7 +65,7 @@ class AsyncThread():
 
     async def dailyWrapper(self, *args, func: callable, times: list[str], **kwargs):
         while True:
-            now = dt.datetime.now(dt.UTC)
+            now = dt.datetime.utcnow()
             nextRunTime = None
             for timeString in times:
                 runTime = (

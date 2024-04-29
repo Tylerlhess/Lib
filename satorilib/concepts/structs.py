@@ -3,7 +3,6 @@ import json
 import pandas as pd
 import datetime as dt
 from functools import partial
-from satorilib.api.time import nowStr
 # from satorilib.api.hash import generatePathId
 
 
@@ -527,7 +526,8 @@ class Observation:
             j = raw
         topic = j.get('topic', None)
         streamId = StreamId.fromTopic(topic)
-        observationTime = j.get('time', nowStr())
+        observationTime = j.get('time', str(
+            now()).strftime('%Y-%m-%d %H:%M:%S.%f'))
         observationHash = j.get('observationHash', j.get('hash', None))
         value = j.get('data', None)
         target = None
@@ -581,7 +581,8 @@ class Observation:
                 j[k] = v
         else:
             j = raw
-        observationTime = j.get('time', nowStr())
+        observationTime = j.get('time', str(
+            now()).strftime('%Y-%m-%d %H:%M:%S.%f'))
         observationHash = j.get('observationHash', j.get('hash', None))
         content = j.get('content', {})
         streamId = StreamId(
