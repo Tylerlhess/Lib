@@ -36,7 +36,7 @@ def now() -> dt.datetime:
 
 def nowStr() -> str:
     # return str(now()).split('+')[0]
-    return str(now()).strftime('%Y-%m-%d %H:%M:%S.%f')
+    return now().strftime('%Y-%m-%d %H:%M:%S.%f')
 
 
 def timeIt(fn) -> float:
