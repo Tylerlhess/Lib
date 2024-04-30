@@ -149,10 +149,9 @@ class RavencoinWallet(Wallet):
             txinScripts.append(txinScriptPubKey)
         return txins, txinScripts
 
-    def _compileSatoriOutputs(self, amountByAddress: dict[str, float] = None) -> list:
+    def _compileSatoriOutputs(self, satsByAddress: dict[str, int] = None) -> list:
         txouts = []
-        for address, amount in amountByAddress.items():
-            sats = TxUtils.asSats(amount)
+        for address, sats in satsByAddress.items():
             txout = CMutableTxOut(
                 0,
                 CScript([

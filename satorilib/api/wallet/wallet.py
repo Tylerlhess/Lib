@@ -527,7 +527,7 @@ class Wallet():
         ''' compile inputs '''
         # see https://github.com/sphericale/python-evrmorelib/blob/master/examples/spend-p2pkh-txout.py
 
-    def _compileSatoriOutputs(self, amountByAddress: dict[str, float] = None) -> list:
+    def _compileSatoriOutputs(self, satsByAddress: dict[str, int] = None) -> list:
         ''' compile satori outputs'''
         # see https://github.com/sphericale/python-evrmorelib/blob/master/examples/spend-p2pkh-txout.py
         # vouts
@@ -611,18 +611,22 @@ class Wallet():
         ''' creates a transaction with multiple SATORI asset recipients '''
         if len(amountByAddress) == 0 or len(amountByAddress) > 1000:
             raise TransactionFailure('too many or too few recipients')
+        satsByAddress: dict[str: int] = {}
         for address, amount in amountByAddress.items():
             if (
                 amount <= 0 or
-                not TxUtils.isAmountDivisibilityValid(
-                    amount=amount,
-                    divisibility=self.divisibility) or
+                # not TxUtils.isAmountDivisibilityValid(
+                #    amount=amount,
+                #    divisibility=self.divisibility) or
                 not Validate.address(address, self.symbol)
             ):
                 print('amount', amount, 'divisibility', self.divisibility, 'address', address, 'address valid:', Validate.address(address, self.symbol),
                       'TxUtils.isAmountDivisibilityValid(amount=amount,divisibility=self.divisibility)', TxUtils.isAmountDivisibilityValid(amount=amount, divisibility=self.divisibility))
                 raise TransactionFailure('satoriDistribution bad params')
-        satoriSats = TxUtils.asSats(sum(amountByAddress.values()))
+            satsByAddress[address] = TxUtils.roundSatsDownToDivisibility(
+                sats=TxUtils.asSats(amount),
+                divisibility=self.divisibility)
+        satoriSats = sum(satsByAddress.values())
         (
             gatheredSatoriUnspents,
             gatheredSatoriSats) = self._gatherSatoriUnspents(satoriSats)
@@ -630,18 +634,18 @@ class Wallet():
             gatheredCurrencyUnspents,
             gatheredCurrencySats) = self._gatherCurrencyUnspents(
                 inputCount=len(gatheredSatoriUnspents),
-                outputCount=len(amountByAddress) + 3)
+                outputCount=len(satsByAddress) + 3)
         txins, txinScripts = self._compileInputs(
             gatheredCurrencyUnspents=gatheredCurrencyUnspents,
             gatheredSatoriUnspents=gatheredSatoriUnspents)
-        satoriOuts = self._compileSatoriOutputs(amountByAddress)
+        satoriOuts = self._compileSatoriOutputs(satsByAddress)
         satoriChangeOut = self._compileSatoriChangeOutput(
             satoriSats=satoriSats,
             gatheredSatoriSats=gatheredSatoriSats)
         currencyChangeOut = self._compileCurrencyChangeOutput(
             gatheredCurrencySats=gatheredCurrencySats,
             inputCount=len(txins),
-            outputCount=len(amountByAddress) + 3)  # satoriChange, currencyChange, memo
+            outputCount=len(satsByAddress) + 3)  # satoriChange, currencyChange, memo
         memoOut = self._compileMemoOutput(memo)
         tx = self._createTransaction(
             txins=txins,
@@ -691,13 +695,15 @@ class Wallet():
         ''' creates a transaction to send satori to one address '''
         if (
             amount <= 0 or
-            not TxUtils.isAmountDivisibilityValid(
-                amount=amount,
-                divisibility=self.divisibility) or
+            # not TxUtils.isAmountDivisibilityValid(
+            #    amount=amount,
+            #    divisibility=self.divisibility) or
             not Validate.address(address, self.symbol)
         ):
             raise TransactionFailure('satoriTransaction bad params')
-        satoriSats = TxUtils.asSats(amount)
+        satoriSats = TxUtils.roundSatsDownToDivisibility(
+            sats=TxUtils.asSats(amount),
+            divisibility=self.divisibility)
         (
             gatheredSatoriUnspents,
             gatheredSatoriSats) = self._gatherSatoriUnspents(satoriSats)
@@ -710,7 +716,7 @@ class Wallet():
         txins, txinScripts = self._compileInputs(
             gatheredCurrencyUnspents=gatheredCurrencyUnspents,
             gatheredSatoriUnspents=gatheredSatoriUnspents)
-        satoriOuts = self._compileSatoriOutputs({address: amount})
+        satoriOuts = self._compileSatoriOutputs({address: satoriSats})
         satoriChangeOut = self._compileSatoriChangeOutput(
             satoriSats=satoriSats,
             gatheredSatoriSats=gatheredSatoriSats)
@@ -741,7 +747,9 @@ class Wallet():
             not Validate.address(address, self.symbol)
         ):
             raise TransactionFailure('satoriAndCurrencyTransaction bad params')
-        satoriSats = TxUtils.asSats(satoriAmount)
+        satoriSats = TxUtils.roundSatsDownToDivisibility(
+            sats=TxUtils.asSats(satoriAmount),
+            divisibility=self.divisibility)
         currencySats = TxUtils.asSats(currencyAmount)
         (
             gatheredSatoriUnspents,
@@ -755,7 +763,7 @@ class Wallet():
         txins, txinScripts = self._compileInputs(
             gatheredCurrencyUnspents=gatheredCurrencyUnspents,
             gatheredSatoriUnspents=gatheredSatoriUnspents)
-        satoriOuts = self._compileSatoriOutputs({address: satoriAmount})
+        satoriOuts = self._compileSatoriOutputs({address: satoriSats})
         currencyOuts = self._compileCurrencyOutputs(currencySats, address)
         satoriChangeOut = self._compileSatoriChangeOutput(
             satoriSats=satoriSats,
@@ -932,19 +940,21 @@ class Wallet():
         if pullFeeFromAmount:
             amount -= self.satoriFee
         satoriTotalSats = TxUtils.asSats(amount + self.satoriFee)
-        satoriSats = TxUtils.asSats(amount)
+        satoriSats = TxUtils.roundSatsDownToDivisibility(
+            sats=TxUtils.asSats(amount),
+            divisibility=self.divisibility)
         (
             gatheredSatoriUnspents,
             gatheredSatoriSats) = self._gatherSatoriUnspents(satoriTotalSats)
         txins, txinScripts = self._compileInputs(
             gatheredSatoriUnspents=gatheredSatoriUnspents)
-        satoriOuts = self._compileSatoriOutputs({address: amount})
+        satoriOuts = self._compileSatoriOutputs({address: satoriSats})
         satoriChangeOut = self._compileSatoriChangeOutput(
             satoriSats=satoriSats,
             gatheredSatoriSats=gatheredSatoriSats - TxUtils.asSats(self.satoriFee))
         # fee out to server
         satoriFeeOut = self._compileSatoriOutputs(
-            {completerAddress: self.satoriFee})[0]
+            {completerAddress: TxUtils.asSats(self.satoriFee)})[0]
         if satoriFeeOut is None:
             raise TransactionFailure('unable to generate satori fee')
         # change out to server
@@ -1068,7 +1078,10 @@ class Wallet():
         # since it's a send all, there's no change outputs
         if len(gatheredSatoriUnspents) > 0:
             txouts = (
-                self._compileSatoriOutputs({address: self.balanceAmount}) +
+                self._compileSatoriOutputs({
+                    address: TxUtils.roundSatsDownToDivisibility(
+                        sats=TxUtils.asSats(self.balanceAmount),
+                        divisibility=self.divisibility)}) +
                 (
                     self._compileCurrencyOutputs(currencySatsLessFee, address)
                     if currencySatsLessFee > 0 else []))
@@ -1188,9 +1201,13 @@ class Wallet():
                 self._compileCurrencyOutputs(currencySats, address)
                 if currencySats > 0 else []) +
             self._compileSatoriOutputs(
-                {address: self.balanceAmount - self.satoriFee}))
+                {address:
+                    TxUtils.roundSatsDownToDivisibility(
+                        sats=TxUtils.asSats(
+                            self.balanceAmount - self.satoriFee),
+                        divisibility=self.divisibility)}))
         satoriFeeOut = self._compileSatoriOutputs(
-            {completerAddress: self.satoriFee})[0]
+            {completerAddress: TxUtils.asSats(self.satoriFee)})[0]
         # change out to server
         currencyChangeOut, currencyChange = self._compileCurrencyChangeOutput(
             gatheredCurrencySats=feeSatsReserved,
