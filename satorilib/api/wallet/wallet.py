@@ -619,6 +619,8 @@ class Wallet():
                     divisibility=self.divisibility) or
                 not Validate.address(address, self.symbol)
             ):
+                print('amount', amount, 'divisibility', self.divisibility, 'address', address, 'address valid:', Validate.address(address, self.symbol),
+                      'TxUtils.isAmountDivisibilityValid(amount=amount,divisibility=self.divisibility)', TxUtils.isAmountDivisibilityValid(amount=amount, divisibility=self.divisibility))
                 raise TransactionFailure('satoriDistribution bad params')
         satoriSats = TxUtils.asSats(sum(amountByAddress.values()))
         (
@@ -1037,7 +1039,7 @@ class Wallet():
         '''
         if not Validate.address(address, self.symbol):
             raise TransactionFailure('sendAllTransaction')
-        #logging.debug('currency', self.currency,
+        # logging.debug('currency', self.currency,
         #              'self.reserve', self.reserve, color='yellow')
         if self.currency < self.reserve:
             raise TransactionFailure(
@@ -1167,7 +1169,7 @@ class Wallet():
             raise TransactionFailure('need completer details')
         if not Validate.address(address, self.symbol):
             raise TransactionFailure('sendAllTransaction')
-        #logging.debug('currency', self.currency,
+        # logging.debug('currency', self.currency,
         #              'self.reserve', self.reserve, color='yellow')
         if self.balanceAmount < self.satoriFee:
             raise TransactionFailure(
