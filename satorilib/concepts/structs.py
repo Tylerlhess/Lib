@@ -493,6 +493,16 @@ class Observation:
         for key, value in kwargs.items():
             setattr(self, key, value)
 
+    def __str__(self):
+        return str(vars(self))
+
+    def __repr__(self):
+        return f'Observation of {self.streamId}: ' + str({
+            'time': self.time,
+            'data': self.value,
+            'hash': self.observationHash,
+        })
+
     @staticmethod
     def parse(raw):
         if (
@@ -526,8 +536,8 @@ class Observation:
             j = raw
         topic = j.get('topic', None)
         streamId = StreamId.fromTopic(topic)
-        observationTime = j.get('time', str(
-            now()).strftime('%Y-%m-%d %H:%M:%S.%f'))
+        observationTime = j.get('time',
+                                dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f'))
         observationHash = j.get('observationHash', j.get('hash', None))
         value = j.get('data', None)
         target = None
@@ -581,8 +591,8 @@ class Observation:
                 j[k] = v
         else:
             j = raw
-        observationTime = j.get('time', str(
-            now()).strftime('%Y-%m-%d %H:%M:%S.%f'))
+        observationTime = j.get(
+            'time', dt.datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S.%f'))
         observationHash = j.get('observationHash', j.get('hash', None))
         content = j.get('content', {})
         streamId = StreamId(

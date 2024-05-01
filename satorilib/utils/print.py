@@ -25,6 +25,7 @@ _ansiEsacpeCodesStyle = {
     'underlined': "\033[4m",
     'outlined': "\033[7m",
     'strikethru': "\033[9m"}
+
 _ansiEsacpeCodesColor = {
     'darkgrey': "\033[2m",
     'black': "\033[8m",
