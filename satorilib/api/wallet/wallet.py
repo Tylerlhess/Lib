@@ -661,13 +661,15 @@ class Wallet():
         ''' unused, untested '''
         if (
             amount <= 0 or
-            not TxUtils.isAmountDivisibilityValid(
-                amount=amount,
-                divisibility=8) or
+            # not TxUtils.isAmountDivisibilityValid(
+            #     amount=amount,
+            #     divisibility=8) or
             not Validate.address(address, self.symbol)
         ):
             raise TransactionFailure('bad params for currencyTransaction')
-        currencySats = TxUtils.asSats(amount)
+        currencySats = TxUtils.roundSatsDownToDivisibility(
+            sats=TxUtils.asSats(amount),
+            divisibility=8)
         (
             gatheredCurrencyUnspents,
             gatheredCurrencySats) = self._gatherCurrencyUnspents(
@@ -738,19 +740,21 @@ class Wallet():
         if (
             satoriAmount <= 0 or
             currencyAmount <= 0 or
-            not TxUtils.isAmountDivisibilityValid(
-                amount=satoriAmount,
-                divisibility=self.divisibility) or
-            not TxUtils.isAmountDivisibilityValid(
-                amount=currencyAmount,
-                divisibility=8) or
+            # not TxUtils.isAmountDivisibilityValid(
+            #    amount=satoriAmount,
+            #    divisibility=self.divisibility) or
+            # not TxUtils.isAmountDivisibilityValid(
+            #    amount=currencyAmount,
+            #    divisibility=8) or
             not Validate.address(address, self.symbol)
         ):
             raise TransactionFailure('satoriAndCurrencyTransaction bad params')
         satoriSats = TxUtils.roundSatsDownToDivisibility(
             sats=TxUtils.asSats(satoriAmount),
             divisibility=self.divisibility)
-        currencySats = TxUtils.asSats(currencyAmount)
+        currencySats = TxUtils.roundSatsDownToDivisibility(
+            sats=TxUtils.asSats(currencyAmount),
+            divisibility=8)
         (
             gatheredSatoriUnspents,
             gatheredSatoriSats) = self._gatherSatoriUnspents(satoriSats)
@@ -931,15 +935,16 @@ class Wallet():
             raise TransactionFailure('need completer details')
         if (
             amount <= 0 or
-            not TxUtils.isAmountDivisibilityValid(
-                amount=amount,
-                divisibility=self.divisibility) or
+            # not TxUtils.isAmountDivisibilityValid(
+            #    amount=amount,
+            #    divisibility=self.divisibility) or
             not Validate.address(address, self.symbol)
         ):
             raise TransactionFailure('satoriTransaction bad params')
         if pullFeeFromAmount:
             amount -= self.satoriFee
-        satoriTotalSats = TxUtils.asSats(amount + self.satoriFee)
+        satoriTotalSats = TxUtils.asSats(
+            amount) + TxUtils.asSats(self.satoriFee)
         satoriSats = TxUtils.roundSatsDownToDivisibility(
             sats=TxUtils.asSats(amount),
             divisibility=self.divisibility)
@@ -1204,7 +1209,7 @@ class Wallet():
                 {address:
                     TxUtils.roundSatsDownToDivisibility(
                         sats=TxUtils.asSats(
-                            self.balanceAmount - self.satoriFee),
+                            self.balanceAmount) - TxUtils.asSats(self.satoriFee),
                         divisibility=self.divisibility)}))
         satoriFeeOut = self._compileSatoriOutputs(
             {completerAddress: TxUtils.asSats(self.satoriFee)})[0]
