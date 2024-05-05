@@ -68,6 +68,7 @@ class Wallet():
         self.walletPath = walletPath
         self.temporary = temporary
         # maintain minimum amount of currency at all times to cover fees - server only
+        self.reserveAmount = reserve
         self.reserve = TxUtils.asSats(reserve)
         self.initRaw()
 
