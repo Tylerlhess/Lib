@@ -255,30 +255,34 @@ class SatoriServerClient(object):
         self,
         walletSignature: str,
         vaultSignature: str,
+        vaultPubkey: str,
+        address: str,
     ) -> tuple[bool, str]:
         ''' removes a stream from the server '''
         response = self._makeAuthenticatedCall(
             function=requests.post,
             endpoint='/mine_to_vault/enable',
             json=json.dumps({
-                'walletSignature':walletSignature,
-                'vaultSignature':vaultSignature,}))
-        if response.status_code < 400:
-            return response.json().get('success'), response.json().get('result')
-        return False, ''
+                'walletSignature': walletSignature,
+                'vaultSignature': vaultSignature,
+                'vaultPubkey': vaultPubkey,
+                'address': address}))
+        return response.status_code < 400, response.text
 
     def disableMineToVault(
         self,
         walletSignature: str,
         vaultSignature: str,
+        vaultPubkey: str,
+        address: str,
     ) -> tuple[bool, str]:
         ''' removes a stream from the server '''
         response = self._makeAuthenticatedCall(
             function=requests.post,
             endpoint='/mine_to_vault/disable',
             json=json.dumps({
-                'walletSignature':walletSignature,
-                'vaultSignature':vaultSignature,}))
-        if response.status_code < 400:
-            return response.json().get('success'), response.json().get('result')
-        return False, ''
+                'walletSignature': walletSignature,
+                'vaultSignature': vaultSignature,
+                'vaultPubkey': vaultPubkey,
+                'address': address}))
+        return response.status_code < 400, response.text
