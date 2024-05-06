@@ -256,20 +256,24 @@ class SatoriServerClient(object):
         response = self._makeAuthenticatedCall(
             function=requests.get,
             endpoint='/mine_to_vault/status')
-        if response.json().get('address') == '':
-            return False
-        if response.json().get('address') == None:
+        if response.status_code > 399:
             return None
+        if response.text in ['', 'null', 'None', 'NULL']:
+            return False
         return True
 
     def enableMineToVault(
         self,
-        walletSignature: str,
-        vaultSignature: str,
+        walletSignature: Union[str, bytes],
+        vaultSignature: Union[str, bytes],
         vaultPubkey: str,
         address: str,
     ) -> tuple[bool, str]:
         ''' removes a stream from the server '''
+        if isinstance(walletSignature, bytes):
+            walletSignature = walletSignature.decode()
+        if isinstance(vaultSignature, bytes):
+            vaultSignature = vaultSignature.decode()
         response = self._makeAuthenticatedCall(
             function=requests.post,
             endpoint='/mine_to_vault/enable',
@@ -282,12 +286,16 @@ class SatoriServerClient(object):
 
     def disableMineToVault(
         self,
-        walletSignature: str,
-        vaultSignature: str,
+        walletSignature: Union[str, bytes],
+        vaultSignature: Union[str, bytes],
         vaultPubkey: str,
         address: str,
     ) -> tuple[bool, str]:
         ''' removes a stream from the server '''
+        if isinstance(walletSignature, bytes):
+            walletSignature = walletSignature.decode()
+        if isinstance(vaultSignature, bytes):
+            vaultSignature = vaultSignature.decode()
         response = self._makeAuthenticatedCall(
             function=requests.post,
             endpoint='/mine_to_vault/disable',
