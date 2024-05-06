@@ -251,6 +251,17 @@ class SatoriServerClient(object):
             return response.json().get('success'), response.json().get('result')
         return False, ''
 
+    def minedToVault(self) -> Union[bool, None]:
+        '''  '''
+        response = self._makeAuthenticatedCall(
+            function=requests.get,
+            endpoint='/mine_to_vault/status')
+        if response.json().get('address') == '':
+            return False
+        if response.json().get('address') == None:
+            return None
+        return True
+
     def enableMineToVault(
         self,
         walletSignature: str,
