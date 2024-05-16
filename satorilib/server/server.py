@@ -305,3 +305,18 @@ class SatoriServerClient(object):
                 'vaultPubkey': vaultPubkey,
                 'address': address}))
         return response.status_code < 400, response.text
+
+    def betaStatus(self) -> tuple[bool, dict]:
+        ''' removes a stream from the server '''
+        response = self._makeAuthenticatedCall(
+            function=requests.get,
+            endpoint='/beta/status')
+        return response.status_code < 400,  response.json()
+
+    def betaClaim(self, ethAddress: str) -> tuple[bool, dict]:
+        ''' removes a stream from the server '''
+        response = self._makeAuthenticatedCall(
+            function=requests.post,
+            endpoint='/beta/claim',
+            json=json.dumps({'ethAddress': ethAddress}))
+        return response.status_code < 400,  response.json()

@@ -105,7 +105,11 @@ class EthereumWallet():
         return True
 
     def _generateAccount(self):
-        return Account.from_key(self._entropy)
+        return EthereumWallet.generateAccount(self._entropy)
+
+    @staticmethod
+    def generateAccount(entropy: bytes):
+        return Account.from_key(entropy)
 
     def _generatePublicKey(self):
         ''' 
