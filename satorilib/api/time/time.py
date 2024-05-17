@@ -1,3 +1,4 @@
+from typing import Union
 import datetime as dt
 
 
