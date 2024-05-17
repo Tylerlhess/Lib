@@ -3,11 +3,12 @@ Here's plan for the server - python server, you checkin with it,
 it returns a key you use to make a websocket connection with the pubsub server.
 '''
 from typing import Union
+from functools import partial
 import json
 import requests
 from satorilib import logging
 from satorilib.api.wallet import Wallet
-from functools import partial
+from satorineuron import config
 
 
 class SatoriServerClient(object):
@@ -31,6 +32,7 @@ class SatoriServerClient(object):
         json: Union[str, None] = None,
         challenge: str = None,
         useWallet: Wallet = None,
+        extraHeaders: Union[dict, None] = None,
     ):
         if json is not None:
             logging.info(
@@ -39,9 +41,12 @@ class SatoriServerClient(object):
                 print=True)
         r = function(
             self.url + endpoint,
-            headers=(useWallet or self.wallet).authPayload(
-                asDict=True,
-                challenge=challenge or self._getChallenge()),
+            headers={
+                **(useWallet or self.wallet).authPayload(
+                    asDict=True,
+                    challenge=challenge or self._getChallenge()),
+                **(extraHeaders or {}),
+            },
             json=json)
         try:
             r.raise_for_status()
@@ -158,11 +163,18 @@ class SatoriServerClient(object):
 
     def checkin(self) -> dict:
         challenge = self._getChallenge()
+        try:
+            pubkey = open(
+                config.root('config', 'referral.txt'),
+                mode='r').read().strip()
+        except Exception as _:
+            pubkey = None
         return self._makeAuthenticatedCall(
             function=requests.post,
             endpoint='/checkin',
             json=self.wallet.registerPayload(challenge=challenge),
-            challenge=challenge).json()
+            challenge=challenge,
+            extraHeaders={'referrer': pubkey} if pubkey else {}).json()
 
     def requestSimplePartial(self, network: str):
         ''' sends a satori partial transaction to the server '''
