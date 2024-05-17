@@ -25,6 +25,33 @@ def secondsToTimestamp(time: float) -> str:
     return datetimeToTimestamp(secondsToDatetime(time))
 
 
+def timeToTimestamp(time: Union[str, float, dt.datetime]) -> str:
+    if isinstance(time, str):
+        return time
+    if isinstance(time, float):
+        return secondsToTimestamp(time)
+    if isinstance(time, dt.datetime):
+        return datetimeToTimestamp(time)
+
+
+def timeToDatetime(time: Union[str, float, dt.datetime]) -> dt.datetime:
+    if isinstance(time, str):
+        return timestampToDatetime(time)
+    if isinstance(time, float):
+        return secondsToDatetime(time)
+    if isinstance(time, dt.datetime):
+        return time
+
+
+def timeToSeconds(time: Union[str, float, dt.datetime]) -> float:
+    if isinstance(time, str):
+        return timestampToSeconds(time)
+    if isinstance(time, float):
+        return time
+    if isinstance(time, dt.datetime):
+        return datetimeToSeconds(time)
+
+
 def earliestDate() -> dt.datetime:
     return dt.datetime(1000, 1, 1)
 
