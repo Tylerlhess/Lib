@@ -8,7 +8,6 @@ import json
 import requests
 from satorilib import logging
 from satorilib.api.wallet import Wallet
-from satorineuron import config
 
 
 class SatoriServerClient(object):
@@ -161,20 +160,14 @@ class SatoriServerClient(object):
             endpoint='/remove/stream',
             json=payload or json.dumps(stream or {}))
 
-    def checkin(self) -> dict:
+    def checkin(self, referrer: str = None) -> dict:
         challenge = self._getChallenge()
-        try:
-            pubkey = open(
-                config.root('config', 'referral.txt'),
-                mode='r').read().strip()
-        except Exception as _:
-            pubkey = None
         return self._makeAuthenticatedCall(
             function=requests.post,
             endpoint='/checkin',
             json=self.wallet.registerPayload(challenge=challenge),
             challenge=challenge,
-            extraHeaders={'referrer': pubkey} if pubkey else {}).json()
+            extraHeaders={'referrer': referrer} if referrer else {}).json()
 
     def requestSimplePartial(self, network: str):
         ''' sends a satori partial transaction to the server '''
