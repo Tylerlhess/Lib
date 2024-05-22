@@ -131,16 +131,18 @@ class Wallet():
             return (16 + 1) % (divisibility + 8 + 1)
 
         divisions = self.stats.get('divisions', 8)
-        circulatingSats = self.stats.get(
-            'sats_in_circulation', 100000000000000) / int('1' + ('0'*invertDivisibility(int(divisions))))
-        headTail = str(circulatingSats).split('.')
-        if headTail[1] == '0' or headTail[1] == '00000000':
-            circulatingSats = f"{int(headTail[0]):,}"
-        else:
-            circulatingSats = f"{int(headTail[0]):,}" + '.' + \
-                f"{headTail[1][0:4]}" + '.' + f"{headTail[1][4:]}"
+        circulatingCoins = TxUtils.asAmount(int(self.stats.get(
+            'sats_in_circulation', 100000000000000)))
+        #circulatingSats = self.stats.get(
+        #    'sats_in_circulation', 100000000000000) / int('1' + ('0'*invertDivisibility(int(divisions))))
+        #headTail = str(circulatingSats).split('.')
+        #if headTail[1] == '0' or headTail[1] == '00000000':
+        #    circulatingSats = f"{int(headTail[0]):,}"
+        #else:
+        #    circulatingSats = f"{int(headTail[0]):,}" + '.' + \
+        #        f"{headTail[1][0:4]}" + '.' + f"{headTail[1][4:]}"
         return f'''
-    Circulating Supply: {circulatingSats}
+    Circulating Supply: {circulatingCoins}
     Decimal Points: {divisions}
     Reissuable: {self.stats.get('reissuable', False)}
     Issuing Transactions: {self.stats.get('source', {}).get('tx_hash', self.satoriOriginalTxHash)}
