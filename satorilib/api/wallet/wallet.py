@@ -133,12 +133,12 @@ class Wallet():
         divisions = self.stats.get('divisions', 8)
         circulatingCoins = TxUtils.asAmount(int(self.stats.get(
             'sats_in_circulation', 100000000000000)))
-        #circulatingSats = self.stats.get(
+        # circulatingSats = self.stats.get(
         #    'sats_in_circulation', 100000000000000) / int('1' + ('0'*invertDivisibility(int(divisions))))
-        #headTail = str(circulatingSats).split('.')
-        #if headTail[1] == '0' or headTail[1] == '00000000':
+        # headTail = str(circulatingSats).split('.')
+        # if headTail[1] == '0' or headTail[1] == '00000000':
         #    circulatingSats = f"{int(headTail[0]):,}"
-        #else:
+        # else:
         #    circulatingSats = f"{int(headTail[0]):,}" + '.' + \
         #        f"{headTail[1][0:4]}" + '.' + f"{headTail[1][4:]}"
         return f'''
@@ -1258,49 +1258,62 @@ class Wallet():
                             success=True,
                             tx=None,
                             msg='creating partial, need feeSatsReserved.')
+                    # logging.debug('a', color='magenta')
                     result = self.sendAllPartialSimple(
                         address=address,
                         feeSatsReserved=feeSatsReserved,
                         completerAddress=completerAddress,
                         changeAddress=changeAddress,
                     )
-                    # logging.debug('result of sendAllPartialSimple',
+                    # #logging.debug('result of sendAllPartialSimple',
                     #               result, color='yellow')
+                    # logging.debug('b', result, color='magenta')
                     if result is None:
+                        # logging.debug('c', color='magenta')
                         return TransactionResult(
                             result=None,
                             success=False,
                             msg='Send Failed: try again in a few minutes.')
+                    # logging.debug('d', color='magenta')
                     return TransactionResult(
                         result=result,
                         success=True,
                         tx=result[0],
                         reportedFeeSats=result[1],
                         msg='send transaction requires fee.')
+                # logging.debug('e', color='magenta')
                 result = self.sendAllTransaction(address)
+                # logging.debug('f', result, color='magenta')
                 if result is None:
+                    # logging.debug('g', color='magenta')
                     return TransactionResult(
                         result=result,
                         success=False,
                         msg='Send Failed: try again in a few minutes.')
+                # logging.debug('h', result, color='magenta')
                 return TransactionResult(result=str(result), success=True)
             except TransactionFailure as e:
+                # logging.debug('i', color='magenta')
                 return TransactionResult(
                     result=None,
                     success=False,
                     msg=f'Send Failed: {e}')
         else:
+            # logging.debug('j', color='magenta')
             try:
                 if self.currency < self.reserve:
                     # if we have to make a partial we need more data so we need
                     # to return, telling them we need more data, asking for more
                     # information, and then if we get more data we can do this:
+                    # logging.debug('k', color='magenta')
                     if feeSatsReserved == 0 or completerAddress is None:
+                        # logging.debug('l', color='magenta')
                         return TransactionResult(
                             result='try again',
                             success=True,
                             tx=None,
                             msg='creating partial, need feeSatsReserved.')
+                    # logging.debug('m', color='magenta')
                     result = self.satoriOnlyPartialSimple(
                         amount=amount,
                         address=address,
@@ -1308,25 +1321,33 @@ class Wallet():
                         feeSatsReserved=feeSatsReserved,
                         completerAddress=completerAddress,
                         changeAddress=changeAddress)
+                    # logging.debug('n', color='magenta')
                     if result is None:
+                        # logging.debug('o', color='magenta')
                         return TransactionResult(
                             result=None,
                             success=False,
                             msg='Send Failed: try again in a few minutes.')
+                    # logging.debug('p', color='magenta')
                     return TransactionResult(
                         result=result,
                         success=True,
                         tx=result[0],
                         reportedFeeSats=result[1],
                         msg='send transaction requires fee.')
+                # logging.debug('q', color='magenta')
                 result = self.satoriTransaction(amount=amount, address=address)
+                # logging.debug('r', result,  color='magenta')
                 if result is None:
+                    # logging.debug('s', color='magenta')
                     return TransactionResult(
                         result=result,
                         success=False,
                         msg='Send Failed: try again in a few minutes.')
+                # logging.debug('t', color='magenta')
                 return TransactionResult(result=str(result), success=True)
             except TransactionFailure as e:
+                # logging.debug('v', color='magenta')
                 return TransactionResult(
                     result=None,
                     success=False,
