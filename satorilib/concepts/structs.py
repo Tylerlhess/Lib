@@ -4,6 +4,7 @@ import pandas as pd
 import datetime as dt
 from functools import partial
 # from satorilib.api.hash import generatePathId
+# from enum import Enum
 
 
 class StreamId:
