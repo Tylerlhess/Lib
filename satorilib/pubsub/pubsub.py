@@ -37,10 +37,17 @@ class SatoriPubSubConn(object):
             self.ear.start()
         self.payload = payload
         self.command = command
+        self.start = kwargs.get('start', None)
+        if self.start is None:
+            self.setStart()
         self.send(self.command + ':' + self.payload)
         if then is not None:
             time.sleep(3)
             self.send(then)
+
+    def setStart(self):
+        from satorineuron.init.start import getStart
+        self.start = getStart()
 
     def reestablish(self, err: str = '', payload: str = None):
         # logging.debug('connection error', err)
@@ -93,11 +100,13 @@ class SatoriPubSubConn(object):
         while not ws.connected:
             try:
                 ws.connect(f'{self.url}?uid={self.uid}')
+                self.start.connPubsubQueue.put(True)
                 return ws
             except Exception as e:
                 # except OSError as e:
                 # OSError: [Errno 99] Cannot assign requested address
                 # pubsub server went down
+                self.start.connPubsubQueue.put(False)
                 logging.error(
                     e, 'failed to connect to pubsub server, retrying...', print=True)
                 time.sleep(30)
@@ -138,6 +147,7 @@ class SatoriPubSubConn(object):
         self.shouldReconnect = reconnect
         self.listening = False
         self.send(title='notify', topic='connection', data='False')
+        self.start.connPubsubQueue.put(False)
         self.ws.close()  # server should detect we closed the connection
         assert (self.ws.connected == False)
 
