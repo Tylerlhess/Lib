@@ -28,6 +28,8 @@ class SatoriPubSubConn(object):
         super(SatoriPubSubConn, self).__init__(*args, **kwargs)
         self.uid = uid
         self.url = url or 'ws://satorinet.io:3000'
+        self.onConnect = onConnect
+        self.onDisconnect = onDisconnect
         self.router = router
         self.ws = self.connect()
         self.listening = listening
@@ -38,8 +40,6 @@ class SatoriPubSubConn(object):
             self.ear.start()
         self.payload = payload
         self.command = command
-        self.onConnect = onConnect
-        self.onDisconnect = onDisconnect
         self.send(self.command + ':' + self.payload)
         if then is not None:
             time.sleep(3)
@@ -102,9 +102,9 @@ class SatoriPubSubConn(object):
                 # except OSError as e:
                 # OSError: [Errno 99] Cannot assign requested address
                 # pubsub server went down
-                self.onDisconnect()
                 logging.error(
                     e, 'failed to connect to pubsub server, retrying...', print=True)
+                self.onDisconnect()
                 time.sleep(30)
 
     def send(
