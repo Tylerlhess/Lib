@@ -17,7 +17,6 @@ class SatoriServerClient(object):
         url: str = None,
         *args, **kwargs
     ):
-        super(SatoriServerClient, self).__init__(*args, **kwargs)
         self.wallet = wallet
         self.url = url or 'https://satorinet.io'
 

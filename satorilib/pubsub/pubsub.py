@@ -25,7 +25,6 @@ class SatoriPubSubConn(object):
         onConnect: callable = None, onDisconnect: callable = None,
         *args, **kwargs
     ):
-        super(SatoriPubSubConn, self).__init__(*args, **kwargs)
         self.uid = uid
         self.url = url or 'ws://satorinet.io:3000'
         self.onConnect = onConnect

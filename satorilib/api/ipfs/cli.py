@@ -7,7 +7,6 @@ import subprocess
 
 class CliCommunicator(object):
     def __init__(self, timeout: int = 0, *args):
-        super(CliCommunicator, self).__init__(*args)
         self.shell = []
         if os.name == 'nt':
             self.shell = ['powershell', '-Command']
