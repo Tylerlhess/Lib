@@ -10,7 +10,7 @@
 # since the engine will not even be started until after the router is complete,
 # and all messages saved to the disk, this should be fine.
 
-from typing import Union
+from typing import Union, Callable
 import json
 import time
 import threading
@@ -95,7 +95,8 @@ class SatoriPubSubConn(object):
         while not ws.connected:
             try:
                 ws.connect(f'{self.url}?uid={self.uid}')
-                self.onConnect()
+                if isinstance(self.onConnect, Callable):
+                    self.onConnect()
                 return ws
             except Exception as e:
                 # except OSError as e:
@@ -103,7 +104,8 @@ class SatoriPubSubConn(object):
                 # pubsub server went down
                 logging.error(
                     e, 'failed to connect to pubsub server, retrying...', print=True)
-                self.onDisconnect()
+                if isinstance(self.onDisconnect, Callable):
+                    self.onDisconnect()
                 time.sleep(30)
 
     def send(
@@ -125,7 +127,6 @@ class SatoriPubSubConn(object):
                 'data': str(data),
                 'hash': str(observationHash),
             }))
-        # logging.debug('sending:', payload)
         try:
             self.ws.send(payload)
         except Exception as e:
@@ -142,7 +143,8 @@ class SatoriPubSubConn(object):
         self.shouldReconnect = reconnect
         self.listening = False
         self.send(title='notify', topic='connection', data='False')
-        self.onDisconnect()
+        if isinstance(self.onDisconnect, Callable):
+            self.onDisconnect()
         self.ws.close()  # server should detect we closed the connection
         assert (self.ws.connected == False)
 
