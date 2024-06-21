@@ -83,11 +83,11 @@ class SatoriPubSubConn(object):
             except Exception as _:
                 pass
                 # logging.debug('pubsub broke because of router behavior:', e)
-        # logging.debug('restarting')
         if self.shouldReconnect:
             self.restart()
-            if self.threaded:
-                raise Exception('pubsub restarted, start listening again.')
+            # if self.threaded:
+            #   raise Exception('pubsub restarted, start listening again.')
+            #   exit()
 
     def connect(self):
         import websocket
