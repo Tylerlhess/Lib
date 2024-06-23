@@ -36,6 +36,7 @@ class RavencoinP2SHWallet(Wallet):
             scripthash=self.scripthash,
             servers=[
                 'moontree.com:50002',
+                '146.190.149.237:50002',
             ])
 
     @property

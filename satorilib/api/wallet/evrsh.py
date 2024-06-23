@@ -36,6 +36,7 @@ class EvrmoreP2SHWallet(Wallet):
             scripthash=self.scripthash,
             servers=[
                 'moontree.com:50022',  # mainnet ssl evr
+                '146.190.149.237:50022',  # mainnet ssl evr
             ])
 
     @property
