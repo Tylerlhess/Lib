@@ -1,4 +1,4 @@
-''' 
+'''
 usually we use threads, because we typically have few but in some cases where we
 need to scale the number of simple concurrent operations we can use asyncio.
 yet the main thread is not run as an asyncio event loop, so we need to set up a
@@ -12,6 +12,7 @@ import asyncio
 import threading
 import datetime as dt
 from satorilib import logging
+import traceback
 
 
 class AsyncThread():
@@ -38,6 +39,7 @@ class AsyncThread():
         except Exception as e:
             # Handle or log the exception as needed
             logging.error(f'Exception in asyncWrapper: {e}', print=True)
+            traceback.print_exc()
             raise
 
     async def delayedWrapper(self, *args, func: callable, delay: float, **kwargs):
