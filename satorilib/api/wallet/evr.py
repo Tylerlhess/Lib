@@ -36,7 +36,7 @@ class EvrmoreWallet(Wallet):
             scripthash=self.scripthash,
             servers=[
                 'moontree.com:50022',  # mainnet ssl evr
-                '146.190.149.237:50022',  # mainnet ssl evr
+                # '146.190.149.237:50022',  # mainnet ssl evr # not working yet
 
                 # updated to more recent version, now getting errors:
                 # """{'code': -32601, 'message': 'unknown method "blockchain.scripthash.listassets"'} <class 'dict'>"""
