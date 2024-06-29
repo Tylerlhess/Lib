@@ -371,14 +371,39 @@ class Wallet():
                 logging.error('openSafely err:', supposedDict, e)
                 return None
 
+        def getBalanceTheHardWay() -> int:
+            '''
+            using unspents get all transactions
+            cycle through the vouts to find the asset you want and that was sent to your address:
+            'vout': [{
+                'n': 0, 
+                'scriptPubKey': {
+                    'type': 'transfer_asset', 
+                    'asset': {
+                        'name': 'KINKAJOU/GROOMER1', 
+                        'amount': 1.0}, 
+                    'addresses': ['Eevy1hooby2SmCMZHcGbFVArPMYUY8EThs']}}] 
+            OR you could get a list of all addresses that hold the asset and find your address in the list:
+            e.send('blockchain.asset.list_addresses_by_asset', 'SATORI')
+            {
+                'Eagq7rNFUEnR7kciQafV38kzpocef74J44': 1.0, 
+                'EbdsuYpb3URjafVLaSCzfnjGAc9gzH8gwg': 136.0, 
+                'EdLRYNrPVJLqXz9Pxp6fwD4gNdvk4dZNnP': 1.0
+            }
+            '''
+            return self.electrumx.getAssetHolders(self.address).get(self.address, 0)
+
         # x = Evrmore(self.address, self.scripthash, config.electrumxServers())
         # todo: this list of servers should be parameterized from configuration
 
         # todo:
         # on connect ask for peers, add each to our list of electrumxServers
         # if unable to connect, remove that server from our list
+        if not hasattr(self, 'electrumx'):
+            self.connect()
         self.electrumx.get(allWalletInfo)
         self.currencyOnChain = self.electrumx.currency
+        print(self.electrumx.currency)
         self.balanceOnChain = self.electrumx.balance
         self.stats = self.electrumx.stats
         # self.divisibility = self.stats.get('divisions', 8)
@@ -396,12 +421,25 @@ class Wallet():
             openSafely(x, 'value')
         self.currency = sum([x.get('value') for x in self.unspentCurrency])
         # for logging purposes
-        for x in self.unspentAssets:
-            openSafely(x, 'value')
-            openSafely(x, 'name')
-        self.balance = sum([
-            x.get('value') for x in self.unspentAssets
-            if x.get('name') == 'SATORI' and x.get('value') > 0])
+        #for x in self.unspentAssets:
+        #    openSafely(x, 'value')
+        #    openSafely(x, 'name')
+        if (
+            isinstance(self.unspentAssets, dict)
+            and self.unspentAssets.get('message') == 'unknown method "blockchain.scripthash.listassets"'
+        ):
+            self.balance = getBalanceTheHardWay()
+            # I have to figure out what the VOUTs are myself - 
+            # and I have to split them into lists of currency and Satori outputs
+            # get history, loop through all transactions, gather all vouts
+            # loop through all transactions again, remove the vouts that are referenced by vins
+            # loop through the remaining vouts which are the unspent vouts
+            # and throw the ones away that are assets but not satori, 
+            # and save the others as currency or satori outputs
+        else:
+            self.balance = sum([
+                x.get('value') for x in self.unspentAssets
+                if x.get('name') == 'SATORI' and x.get('value') > 0])
         self.currencyAmount = TxUtils.asAmount(self.currency or 0, 8)
         self.balanceAmount = TxUtils.asAmount(
             self.balance or 0, self.divisibility)

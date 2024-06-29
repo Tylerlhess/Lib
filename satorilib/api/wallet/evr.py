@@ -30,12 +30,25 @@ class EvrmoreWallet(Wallet):
             password=password)
 
     def connect(self):
+        print('self.chain', self.chain)
+        print('self.address', self.address)
+        print('self.scripthash', self.scripthash)
+
+        # self.chain Evrmore
+        # self.address EcMbFTwRqaDqH6zEc3qSD5n3dZhaVaowrz
+        # self.scripthash 318512078c0e5f0b653de1c1e6b66da03d71f1e5996dab6c2618b95e7d4f7c7d
+
+        # Eevy1hooby2SmCMZHcGbFVArPMYUY8EThs
+
         self.electrumx = ElectrumXAPI(
             chain=self.chain,
             address=self.address,
             scripthash=self.scripthash,
             servers=[
-                'moontree.com:50022',  # mainnet ssl evr
+                # 'moontree.com:50022',  # mainnet ssl evr
+                'electrum1-mainnet.evrmorecoin.org:50002',
+                'electrum2-mainnet.evrmorecoin.org:50002',
+
                 # '146.190.149.237:50022',  # mainnet ssl evr # not working yet
 
                 # updated to more recent version, now getting errors:
