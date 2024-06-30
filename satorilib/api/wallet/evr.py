@@ -46,6 +46,7 @@ class EvrmoreWallet(Wallet):
             scripthash=self.scripthash,
             servers=[
                 # 'moontree.com:50022',  # mainnet ssl evr
+                '146.190.149.237:50002',
                 'electrum1-mainnet.evrmorecoin.org:50002',
                 'electrum2-mainnet.evrmorecoin.org:50002',
 
