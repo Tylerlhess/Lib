@@ -187,8 +187,9 @@ class Wallet():
                     encrypted=encrypted,
                     password=self.password,
                     keys=['entropy', 'privateKey', 'words',
+                          # we used to encrypt these, but we don't anymore...
                           'address' if len(encrypted.get(self.symbol, {}).get(
-                              'address', '')) != 34 else '',  # == 108 else '',
+                              'address', '')) > 34 else '',  # == 108 else '',
                           'scripthash' if len(encrypted.get(
                               'scripthash', '')) != 64 else '',  # == 152 else '',
                           'publicKey' if len(encrypted.get(
