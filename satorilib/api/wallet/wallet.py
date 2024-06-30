@@ -404,7 +404,6 @@ class Wallet():
             self.connect()
         self.electrumx.get(allWalletInfo)
         self.currencyOnChain = self.electrumx.currency
-        print(self.electrumx.currency)
         self.balanceOnChain = self.electrumx.balance
         self.stats = self.electrumx.stats
         # self.divisibility = self.stats.get('divisions', 8)

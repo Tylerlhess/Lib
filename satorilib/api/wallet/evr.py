@@ -30,16 +30,6 @@ class EvrmoreWallet(Wallet):
             password=password)
 
     def connect(self):
-        print('self.chain', self.chain)
-        print('self.address', self.address)
-        print('self.scripthash', self.scripthash)
-
-        # self.chain Evrmore
-        # self.address EcMbFTwRqaDqH6zEc3qSD5n3dZhaVaowrz
-        # self.scripthash 318512078c0e5f0b653de1c1e6b66da03d71f1e5996dab6c2618b95e7d4f7c7d
-
-        # Eevy1hooby2SmCMZHcGbFVArPMYUY8EThs
-
         self.electrumx = ElectrumXAPI(
             chain=self.chain,
             address=self.address,
