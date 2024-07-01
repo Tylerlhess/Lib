@@ -73,21 +73,23 @@ class SatoriPubSubConn(object):
             try:
                 response = self.ws.recv()
                 # logging.debug('response', response)
+                try:
+                    self.router(response)
+                except Exception as _:
+                    pass
+                    # logging.debug('pubsub broke because of router behavior:', e)
             except Exception as _:
                 # except WebSocketConnectionClosedException as e:
                 # except ConnectionResetError:
                 # logging.debug('pubsub broke:', e)
-                break
-            try:
-                self.router(response)
-            except Exception as _:
-                pass
-                # logging.debug('pubsub broke because of router behavior:', e)
-        if self.shouldReconnect:
-            self.restart()
+                # break
+                time.sleep(30)
+                self.ws = self.connect()
+        # if self.shouldReconnect:
+            # self.restart()
             # if self.threaded:
-            #   raise Exception('pubsub restarted, start listening again.')
-            #   exit()
+            # raise Exception('pubsub restarted, start listening again.')
+            # exit()
 
     def connect(self):
         import websocket
@@ -102,8 +104,9 @@ class SatoriPubSubConn(object):
                 # except OSError as e:
                 # OSError: [Errno 99] Cannot assign requested address
                 # pubsub server went down
-                logging.error(
-                    e, 'failed to connect to pubsub server, retrying...', print=True)
+                time.sleep(30)
+                # logging.error(
+                #    e, 'failed to connect to pubsub server, retrying...', print=True)
                 if isinstance(self.onDisconnect, Callable):
                     self.onDisconnect()
                 time.sleep(30)
@@ -133,7 +136,8 @@ class SatoriPubSubConn(object):
             # BrokenPipeError
             # WebSocketConnectionClosedException
             # WebSocketTimeoutException
-            self.reestablish(e, payload)
+            # self.reestablish(e, payload)
+            pass
 
     def publish(self, topic: str, data: str, time: str, observationHash: str):
         self.send(title='publish', topic=topic, data=data,
