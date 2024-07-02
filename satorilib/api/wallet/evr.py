@@ -21,13 +21,15 @@ class EvrmoreWallet(Wallet):
         reserve: float = .1,
         isTestnet: bool = False,
         password: Union[str, None] = None,
+        use: Wallet = None,
     ):
         super().__init__(
             walletPath,
             temporary=temporary,
             reserve=reserve,
             isTestnet=isTestnet,
-            password=password)
+            password=password,
+            use=use)
 
     def connect(self):
         self.electrumx = ElectrumXAPI(
@@ -36,7 +38,7 @@ class EvrmoreWallet(Wallet):
             scripthash=self.scripthash,
             servers=[
                 # 'moontree.com:50022',  # mainnet ssl evr
-                # '146.190.149.237:50002', # unspentCurrency issue
+                '146.190.149.237:50002',  # unspentCurrency issue? can't recreate
                 'electrum1-mainnet.evrmorecoin.org:50002',
                 'electrum2-mainnet.evrmorecoin.org:50002',
 

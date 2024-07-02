@@ -42,29 +42,35 @@ class Wallet():
         reserve: float = .01,
         isTestnet: bool = False,
         password: str = None,
+        use: 'Wallet' = None,
     ):
         self.satoriFee = 1
         self.isTestnet = isTestnet
         self.password = password
         self._entropy = None
         self._privateKeyObj = None
-        self._addressObj = None
-        self.publicKey = None
         self.privateKey = None
         self.words = None
-        self.address = None
-        self.scripthash = None
-        self.stats = None
-        self.alias = None
-        self.banner = None
-        self.currency = None
-        self.balance = None
-        self.currencyAmount = 0
-        self.balanceAmount = 0
-        self.divisibility = 0
-        self.transactionHistory: list[dict] = None
-        self.transactions = []  # TransactionStruct
-        self.assetTransactions = []
+        self._addressObj = None if use is None else use._addressObj
+        self.publicKey = None if use is None else use.publicKey
+        self.address = None if use is None else use.address
+        self.scripthash = None if use is None else use.scripthash
+        self.stats = {} if use is None else use.stats
+        self.alias = None if use is None else use.alias
+        self.banner = None if use is None else use.banner
+        self.currency = None if use is None else use.currency
+        self.balance = None if use is None else use.balance
+        self.currencyAmount = 0 if use is None else use.currencyAmount
+        self.balanceAmount = 0 if use is None else use.balanceAmount
+        self.divisibility = 0 if use is None else use.divisibility
+        self.transactionHistory: list[dict] = None if use is None else use.transactionHistory
+        self.transactions = [] if use is None else use.transactions  # TransactionStruct
+        self.assetTransactions = [] if use is None else use.assetTransactions
+        self.electrumx = None if use is None else use.electrumx
+        self.currencyOnChain = None if use is None else use.currencyOnChain
+        self.balanceOnChain = None if use is None else use.balanceOnChain
+        self.unspentCurrency = None if use is None else use.unspentCurrency
+        self.unspentAssets = None if use is None else use.unspentAssets
         self.walletPath = walletPath
         self.temporary = temporary
         # maintain minimum amount of currency at all times to cover fees - server only
@@ -118,6 +124,15 @@ class Wallet():
     @property
     def isDecrypted(self) -> bool:
         return not self.isEncrypted
+
+    def close(self) -> None:
+        if self.password is not None:
+            self.password = None
+            self._entropy = None
+            self._entropyStr = ''
+            self._privateKeyObj = None
+            self.privateKey = ''
+            self.words = ''
 
     def setAlias(self, alias: Union[str, None] = None) -> None:
         self.alias = alias
@@ -175,9 +190,15 @@ class Wallet():
 
     def initRaw(self):
         ''' try to load, else generate and save '''
-        if not self.loadRaw():
-            self.generate()
-            self.save()
+        if isinstance(self.password, str):
+            if not self.load():
+                if not self.loadRaw():
+                    self.generate()
+                    self.save()
+        else:
+            if not self.loadRaw():
+                self.generate()
+                self.save()
 
     def decryptWallet(self, encrypted: dict) -> dict:
         if isinstance(self.password, str):
