@@ -21,13 +21,15 @@ class RavencoinWallet(Wallet):
         reserve: float = .1,
         isTestnet: bool = True,
         password: Union[str, None] = None,
+        use: Wallet = None,
     ):
         super().__init__(
             walletPath,
             temporary=temporary,
             reserve=reserve,
             isTestnet=isTestnet,
-            password=password)
+            password=password,
+            use=use)
 
     def connect(self):
         self.electrumx = ElectrumXAPI(

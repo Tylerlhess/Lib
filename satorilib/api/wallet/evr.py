@@ -128,7 +128,7 @@ class EvrmoreWallet(Wallet):
                     AssetTransaction.satoriHex(self.symbol) +
                     TxUtils.padHexStringTo8Bytes(
                         TxUtils.intToLittleEndianHex(
-                            TxUtils.toSats(self.satoriFee)))))
+                            TxUtils.asSats(self.satoriFee)))))
             if x == OP_EVR_ASSET:
                 nextOne = True
         return False
