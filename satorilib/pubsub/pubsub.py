@@ -135,7 +135,8 @@ class SatoriPubSubConn(object):
             # WebSocketTimeoutException
             logging.error(
                 e, '\nfailed while sending to Satori Pubsub, reconnecting in 30 seconds...', print=True)
-            time.sleep(30)
+            import time as t
+            t.sleep(30)
             self.connect()
 
     def publish(self, topic: str, data: str, time: str, observationHash: str):
