@@ -270,6 +270,8 @@ class EvrmoreWallet(Wallet):
     def _createPartialOriginatorSimple(self, txins: list, txinScripts: list, txouts: list) -> CMutableTransaction:
         ''' simple version SIGHASH_ANYONECANPAY | SIGHASH_ALL '''
         tx = CMutableTransaction(txins, txouts)
+        # logging.debug('txins', txins)
+        # logging.debug('txouts', txouts)
         for i, (txin, txinScriptPubKey) in enumerate(zip(txins, txinScripts)):
             self._signInput(
                 tx=tx,
