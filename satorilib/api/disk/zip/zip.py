@@ -22,9 +22,11 @@ def zipSelected(folderPath, outputPath, selectedFiles):
 
 
 def zipByBash(folderPath, outputPath, selectedFiles):
+    ''' requires RUN apt-get install -y zip '''
     import subprocess
     # Construct the command with the arguments
-    command = ['./zip.sh', folderPath, outputPath] + selectedFiles
+    command = ['/Satori/Lib/satorilib/api/disk/zip/zip.sh',
+               folderPath, outputPath] + selectedFiles
     # Run the command
     result = subprocess.run(command, stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE, text=True)

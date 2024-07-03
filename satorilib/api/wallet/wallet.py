@@ -44,7 +44,7 @@ class Wallet():
         password: str = None,
         use: 'Wallet' = None,
     ):
-        self.satoriFee = .1  # ~50 cents
+        self.satoriFee = .01  # ~50 cents
         self.isTestnet = isTestnet
         self.password = password
         self._entropy = None
@@ -126,13 +126,13 @@ class Wallet():
         return not self.isEncrypted
 
     def close(self) -> None:
-        if self.password is not None:
-            self.password = None
-            self._entropy = None
-            self._entropyStr = ''
-            self._privateKeyObj = None
-            self.privateKey = ''
-            self.words = ''
+        # if self.password is not None:
+        self.password = None
+        self._entropy = None
+        self._entropyStr = ''
+        self._privateKeyObj = None
+        self.privateKey = ''
+        self.words = ''
 
     def setAlias(self, alias: Union[str, None] = None) -> None:
         self.alias = alias
