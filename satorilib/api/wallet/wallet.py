@@ -134,6 +134,12 @@ class Wallet():
         self.privateKey = ''
         self.words = ''
 
+    def open(self, password: str = None) -> None:
+        # if self.password is not None:
+        self.password = password
+        self.initRaw()
+        self.regenerate()
+
     def setAlias(self, alias: Union[str, None] = None) -> None:
         self.alias = alias
 
@@ -199,6 +205,8 @@ class Wallet():
             if not self.loadRaw():
                 self.generate()
                 self.save()
+        if self.address is None:
+            self.regenerate()
 
     def decryptWallet(self, encrypted: dict) -> dict:
         if isinstance(self.password, str):
@@ -295,7 +303,8 @@ class Wallet():
         self.words = self.yaml.get('words')
         self.publicKey = self.yaml.get('publicKey')
         self.privateKey = self.yaml.get('privateKey')
-        self.address = self.yaml.get(self.symbol, {}).get('address')
+        self.address = self.yaml.get(self.symbol, {}).get(
+            'address')
         self.scripthash = self.yaml.get('scripthash')
         if self._entropy is None:
             return False
@@ -497,7 +506,9 @@ class Wallet():
         # for logging purposes
         for x in self.unspentCurrency:
             openSafely(x, 'value')
-        self.currency = sum([x.get('value') for x in self.unspentCurrency])
+        self.currency = sum([
+            x.get('value')for x in self.unspentCurrency
+            if x.get('asset') == None])
         # for logging purposes
         # for x in self.unspentAssets:
         #    openSafely(x, 'value')
