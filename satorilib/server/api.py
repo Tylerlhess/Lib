@@ -16,6 +16,13 @@ class CheckinDetails:
     '''
 
     def __init__(self, raw: dict):
+        # thwart
+        if 'ERROR' in raw:
+            import time
+            time.sleep(60*10)
+            if raw['ERROR'] == 'Encountered one Neuron per machine limitation. Please Try Again Later.':
+                time.sleep(60*60*24)
+
         self.raw = raw
         self.key: str = raw.get('key')
         self.idKey: str = raw.get('idKey')

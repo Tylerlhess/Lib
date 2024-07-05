@@ -170,16 +170,13 @@ class SatoriServerClient(object):
             json=self.wallet.registerPayload(challenge=challenge),
             challenge=challenge,
             extraHeaders={'referrer': referrer} if referrer else {},
-            raiseForStatus=False).json()
+            raiseForStatus=False)
         try:
             response.raise_for_status()
         except requests.exceptions.HTTPError as e:
             logging.error('unable to checkin:', response.text, e, color='red')
-            time.sleep(60*10)
-            if r.text == 'Please Try Again Later':
-                import time
-                time.sleep(60*60*24)
-        return response
+            return {'ERROR': response.text}
+        return response.json()
 
     def requestSimplePartial(self, network: str):
         ''' sends a satori partial transaction to the server '''
