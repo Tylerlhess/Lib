@@ -31,7 +31,8 @@ class SatoriServerClient(object):
         challenge: str = None,
         useWallet: Wallet = None,
         extraHeaders: Union[dict, None] = None,
-    ):
+        raiseForStatus: bool = True,
+    ) -> requests.Response:
         if json is not None:
             logging.info(
                 'outgoing Satori server message:',
@@ -46,11 +47,13 @@ class SatoriServerClient(object):
                 **(extraHeaders or {}),
             },
             json=json)
-        try:
-            r.raise_for_status()
-        except requests.exceptions.HTTPError as e:
-            logging.error('authenticated server err:', r.text, e, color='red')
-            r.raise_for_status()
+        if raiseForStatus:
+            try:
+                r.raise_for_status()
+            except requests.exceptions.HTTPError as e:
+                logging.error('authenticated server err:',
+                              r.text, e, color='red')
+                r.raise_for_status()
         logging.info(
             'incoming Satori server message:',
             r.text[0:40], f'{"..." if len(r.text) > 40 else ""}',
@@ -161,12 +164,22 @@ class SatoriServerClient(object):
 
     def checkin(self, referrer: str = None) -> dict:
         challenge = self._getChallenge()
-        return self._makeAuthenticatedCall(
+        response = self._makeAuthenticatedCall(
             function=requests.post,
             endpoint='/checkin',
             json=self.wallet.registerPayload(challenge=challenge),
             challenge=challenge,
-            extraHeaders={'referrer': referrer} if referrer else {}).json()
+            extraHeaders={'referrer': referrer} if referrer else {},
+            raiseForStatus=False).json()
+        try:
+            response.raise_for_status()
+        except requests.exceptions.HTTPError as e:
+            logging.error('unable to checkin:', response.text, e, color='red')
+            time.sleep(60*10)
+            if r.text == 'Please Try Again Later':
+                import time
+                time.sleep(60*60*24)
+        return response
 
     def requestSimplePartial(self, network: str):
         ''' sends a satori partial transaction to the server '''
@@ -352,4 +365,3 @@ class SatoriServerClient(object):
             logging.warning(
                 'unable to claim beta due to connection timeout; try again Later.', e, color='yellow')
             return False, {}
-
