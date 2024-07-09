@@ -18,7 +18,7 @@ class SatoriServerClient(object):
         *args, **kwargs
     ):
         self.wallet = wallet
-        self.url = url or 'https://satorinet.io'
+        self.url = url or 'https://central.satorinet.io'
 
     def _getChallenge(self):
         return requests.get(self.url + '/time').text
