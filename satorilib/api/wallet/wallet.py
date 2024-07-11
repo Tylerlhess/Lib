@@ -604,7 +604,7 @@ class Wallet():
         unspentCurrency = [
             x for x in self.unspentCurrency if x.get('value') == exactSats]
         if len(unspentCurrency) == 0:
-            return False
+            return None
         return unspentCurrency[0]
 
     def _gatherOneCurrencyUnspent(self, atleastSats: int = 0) -> tuple:
