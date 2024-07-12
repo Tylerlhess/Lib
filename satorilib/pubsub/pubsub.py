@@ -33,6 +33,7 @@ class SatoriPubSubConn(object):
         self.payload = payload
         self.command = command
         self.connect()
+        self.topicsTime: dict[str, float] = {}
         self.listening = listening
         self.threaded = threaded
         self.shouldReconnect = True
@@ -42,6 +43,9 @@ class SatoriPubSubConn(object):
         if then is not None:
             time.sleep(3)
             self.send(then)
+
+    def setTopicTime(self, topic: str):
+        self.topicsTimes[topic] = time.time
 
     # old never called, necessary?
     def reestablish(self, err: str = '', payload: str = None):
@@ -117,6 +121,8 @@ class SatoriPubSubConn(object):
         time: Union[str, None] = None,
         observationHash: Union[str, None] = None,
     ):
+        if self.ws.connected == False:
+            return
         if payload is None and title is None and topic is None and data is None:
             raise ValueError(
                 'payload or (title, topic, data) must not be None')
@@ -140,6 +146,9 @@ class SatoriPubSubConn(object):
             self.connect()
 
     def publish(self, topic: str, data: str, time: str, observationHash: str):
+        if self.topicTime.get('topic', 0) > time.time() - 55:
+            return
+        self.setTopicTime(topic)
         self.send(title='publish', topic=topic, data=data,
                   time=time, observationHash=observationHash)
 
