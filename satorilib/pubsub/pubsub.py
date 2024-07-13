@@ -36,6 +36,7 @@ class SatoriPubSubConn(object):
         self.listening = listening
         self.threaded = threaded
         self.shouldReconnect = True
+        self.ws = None
         if self.threaded:
             self.ear = threading.Thread(
                 target=self.connectThenListen, daemon=True)
@@ -53,16 +54,15 @@ class SatoriPubSubConn(object):
 
     def connect(self):
         import websocket
-        self.ws = websocket.WebSocket()
-        while not ws.connected:
+        self.ws = self.ws or websocket.WebSocket()
+        while not self.ws.connected:
             try:
-                ws.connect(f'{self.url}?uid={self.uid}')
+                self.ws.connect(f'{self.url}?uid={self.uid}')
                 if isinstance(self.onConnect, Callable):
                     self.onConnect()
-                self.ws = ws
                 self.send(self.command + ':' + self.payload)
                 logging.info('connected to Satori Pubsub', print=True)
-                return ws
+                return self.ws
             except Exception as e:
                 # except OSError as e:
                 # OSError: [Errno 99] Cannot assign requested address
