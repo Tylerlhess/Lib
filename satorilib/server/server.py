@@ -26,7 +26,8 @@ class SatoriServerClient(object):
         self.topicTime[topic] = time.time
 
     def _getChallenge(self):
-        return requests.get(self.url + '/time').text
+        #return requests.get(self.url + '/time').text
+        return str(time.time())
 
     def _makeAuthenticatedCall(
         self,
