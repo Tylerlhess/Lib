@@ -12,7 +12,7 @@
 
 from typing import Union, Callable
 import json
-import time
+import time as systemTime
 import threading
 from satorilib import logging
 
@@ -32,45 +32,46 @@ class SatoriPubSubConn(object):
         self.router = router
         self.payload = payload
         self.command = command
-        self.connect()
-        self.topicsTime: dict[str, float] = {}
+        self.topicTime: dict[str, float] = {}
         self.listening = listening
         self.threaded = threaded
         self.shouldReconnect = True
         if self.threaded:
-            self.ear = threading.Thread(target=self.listen, daemon=True)
+            self.ear = threading.Thread(
+                target=self.connectThenListen, daemon=True)
             self.ear.start()
-        if then is not None:
-            time.sleep(3)
-            self.send(then)
 
-    def setTopicTime(self, topic: str):
-        self.topicsTimes[topic] = time.time
-
-    # old never called, necessary?
-    def reestablish(self, err: str = '', payload: str = None):
-        # logging.debug('connection error', err)
-        time.sleep(3)
+    def connectThenListen(self):
         while True:
-            try:
-                # logging.debug('re-establishing pubsub connection')
-                self.restart(payload)
-            except Exception as _:
-                pass
-                # logging.debug('restarting pubsub connection failed', e)
-            time.sleep(2)
-            if (self.ws.connected):
-                break
+            self.connect()
+            if self.then is not None:
+                systemTime.sleep(3)
+                self.send(self.then)
+                # don't send again
+                self.then = None
+            self.listen()
 
-    def restart(self, payload: str = None):
-        self = self.__init__(
-            uid=self.uid,
-            payload=self.payload,
-            url=self.url,
-            router=self.router,
-            listening=self.listening,
-            command=self.command,
-            then=payload)
+    def connect(self):
+        import websocket
+        self.ws = websocket.WebSocket()
+        while not ws.connected:
+            try:
+                ws.connect(f'{self.url}?uid={self.uid}')
+                if isinstance(self.onConnect, Callable):
+                    self.onConnect()
+                self.ws = ws
+                self.send(self.command + ':' + self.payload)
+                logging.info('connected to Satori Pubsub', print=True)
+                return ws
+            except Exception as e:
+                # except OSError as e:
+                # OSError: [Errno 99] Cannot assign requested address
+                # pubsub server went down
+                logging.error(
+                    e, '\nfailed to connect to Satori Pubsub, retrying in 60 seconds...', print=True)
+                if isinstance(self.onDisconnect, Callable):
+                    self.onDisconnect()
+                systemTime.sleep(60)
 
     def listen(self):
         logging.info('listening to Satori Pubsub', print=True)
@@ -86,31 +87,37 @@ class SatoriPubSubConn(object):
                 # except WebSocketConnectionClosedException as e:
                 # except ConnectionResetError:
                 logging.error(
-                    e, '\nfailed while listening Satori Pubsub, reconnecting in 30 seconds...', print=True)
-                time.sleep(30)
-                self.connect()
+                    e, '\nfailed while listening Satori Pubsub, reconnecting in 60 seconds...', print=True)
+                systemTime.sleep(60)
+                break
 
-    def connect(self):
-        import websocket
-        ws = websocket.WebSocket()
-        while not ws.connected:
+    def setTopicTime(self, topic: str):
+        self.topicTime[topic] = systemTime.time
+
+    # old never called, necessary?
+    def reestablish(self, err: str = '', payload: str = None):
+        # logging.debug('connection error', err)
+        systemTime.sleep(3)
+        while True:
             try:
-                ws.connect(f'{self.url}?uid={self.uid}')
-                if isinstance(self.onConnect, Callable):
-                    self.onConnect()
-                self.ws = ws
-                self.send(self.command + ':' + self.payload)
-                logging.info('connected to Satori Pubsub', print=True)
-                return ws
-            except Exception as e:
-                # except OSError as e:
-                # OSError: [Errno 99] Cannot assign requested address
-                # pubsub server went down
-                # logging.error(
-                #    e, '\nfailed to connect to Satori Pubsub, retrying in 30 seconds...', print=True)
-                if isinstance(self.onDisconnect, Callable):
-                    self.onDisconnect()
-                time.sleep(30)
+                # logging.debug('re-establishing pubsub connection')
+                self.restart(payload)
+            except Exception as _:
+                pass
+                # logging.debug('restarting pubsub connection failed', e)
+            systemTime.sleep(2)
+            if (self.ws.connected):
+                break
+
+    def restart(self, payload: str = None):
+        self = self.__init__(
+            uid=self.uid,
+            payload=self.payload,
+            url=self.url,
+            router=self.router,
+            listening=self.listening,
+            command=self.command,
+            then=payload)
 
     def send(
         self,
@@ -146,7 +153,7 @@ class SatoriPubSubConn(object):
             self.connect()
 
     def publish(self, topic: str, data: str, time: str, observationHash: str):
-        if self.topicTime.get('topic', 0) > time.time() - 55:
+        if self.topicTime.get('topic', 0) > systemTime.time() - 55:
             return
         self.setTopicTime(topic)
         self.send(title='publish', topic=topic, data=data,

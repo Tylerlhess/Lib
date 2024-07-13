@@ -4,6 +4,7 @@ it returns a key you use to make a websocket connection with the pubsub server.
 '''
 from typing import Union
 from functools import partial
+import time
 import json
 import requests
 from satorilib import logging
@@ -19,6 +20,10 @@ class SatoriServerClient(object):
     ):
         self.wallet = wallet
         self.url = url or 'https://central.satorinet.io'
+        self.topicTime: dict[str, float] = {}
+
+    def setTopicTime(self, topic: str):
+        self.topicTime[topic] = time.time
 
     def _getChallenge(self):
         return requests.get(self.url + '/time').text
@@ -118,14 +123,14 @@ class SatoriServerClient(object):
             json=payload or json.dumps(subscription))
 
     def registerPin(self, pin: dict, payload: str = None):
-        ''' 
+        '''
         report a pin to the server.
         example: {
-            'author': {'pubkey': '22a85fb71485c6d7c62a3784c5549bd3849d0afa3ee44ce3f9ea5541e4c56402d8'}, 
-            'stream': {'source': 'satori', 'pubkey': '22a85fb71485c6d7c62a3784c5549bd3849d0afa3ee44ce3f9ea5541e4c56402d8', 'stream': 'stream1', 'target': 'target', 'cadence': None, 'offset': None, 'datatype': None, 'url': None, 'description': 'raw data'},, 
-            'ipns': 'ipns', 
-            'ipfs': 'ipfs', 
-            'disk': 1, 
+            'author': {'pubkey': '22a85fb71485c6d7c62a3784c5549bd3849d0afa3ee44ce3f9ea5541e4c56402d8'},
+            'stream': {'source': 'satori', 'pubkey': '22a85fb71485c6d7c62a3784c5549bd3849d0afa3ee44ce3f9ea5541e4c56402d8', 'stream': 'stream1', 'target': 'target', 'cadence': None, 'offset': None, 'datatype': None, 'url': None, 'description': 'raw data'},,
+            'ipns': 'ipns',
+            'ipfs': 'ipfs',
+            'disk': 1,
             'count': 27},
         '''
         return self._makeAuthenticatedCall(
@@ -362,3 +367,39 @@ class SatoriServerClient(object):
             logging.warning(
                 'unable to claim beta due to connection timeout; try again Later.', e, color='yellow')
             return False, {}
+
+    def publishPrediction(
+        self,
+        topic: str,
+        data: str,
+        observationTime: str,
+        observationHash: str,
+    ) -> Union[bool, None]:
+        ''' publish predictions '''
+        if self.topicTime.get('topic', 0) > time.time() - 55:
+            return
+        self.setTopicTime(topic)
+        try:
+            response = self._makeUnauthenticatedCall(
+                function=requests.get,
+                endpoint='/record/prediction',
+                payload=json.dumps({
+                    'topic': topic,
+                    'data': str(data),
+                    'time': str(observationTime),
+                    'hash': str(observationHash),
+                }))
+            # response = self._makeAuthenticatedCall(
+            #    function=requests.get,
+            #    endpoint='/record/prediction')
+            if response.status_code == 200:
+                return True
+            if response.status_code > 399:
+                return None
+            if response.text.lower() in ['fail', 'null', 'none', 'error']:
+                return False
+        except Exception as _:
+            # logging.warning(
+            #    'unable to determine if prediction was accepted; try again Later.', e, color='yellow')
+            return None
+        return True
