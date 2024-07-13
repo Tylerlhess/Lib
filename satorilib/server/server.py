@@ -200,13 +200,14 @@ class SatoriServerClient(object):
         tx: bytes,
         feeSatsReserved: float,
         reportedFeeSats: float,
+        walletId: float,
         network: str
     ):
         ''' sends a satori partial transaction to the server '''
         return self._makeUnauthenticatedCall(
             function=requests.post,
             url=self.sendingUrl,
-            endpoint=f'/simple_partial/broadcast/{network}/{feeSatsReserved}/{reportedFeeSats}',
+            endpoint=f'/simple_partial/broadcast/{network}/{feeSatsReserved}/{reportedFeeSats}/{walletId}',
             payload=tx)
 
     def removeWalletAlias(self):
