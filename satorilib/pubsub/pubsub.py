@@ -67,8 +67,8 @@ class SatoriPubSubConn(object):
                 # except OSError as e:
                 # OSError: [Errno 99] Cannot assign requested address
                 # pubsub server went down
-                logging.error(
-                    e, '\nfailed to connect to Satori Pubsub, retrying in 60 seconds...', print=True)
+                #logging.error(
+                #    e, '\nfailed to connect to Satori Pubsub, retrying in 60 seconds...', print=True)
                 if isinstance(self.onDisconnect, Callable):
                     self.onDisconnect()
                 systemTime.sleep(60)
