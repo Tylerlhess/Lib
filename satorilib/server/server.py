@@ -16,23 +16,26 @@ class SatoriServerClient(object):
         self,
         wallet: Wallet,
         url: str = None,
+        sendingUrl: str = None,
         *args, **kwargs
     ):
         self.wallet = wallet
         self.url = url or 'https://central.satorinet.io'
+        self.sendingUrl = sendingUrl or 'https://sending.satorinet.io'
         self.topicTime: dict[str, float] = {}
 
     def setTopicTime(self, topic: str):
         self.topicTime[topic] = time.time
 
     def _getChallenge(self):
-        #return requests.get(self.url + '/time').text
+        # return requests.get(self.url + '/time').text
         return str(time.time())
 
     def _makeAuthenticatedCall(
         self,
         function: callable,
         endpoint: str,
+        url: str = None,
         json: Union[str, None] = None,
         challenge: str = None,
         useWallet: Wallet = None,
@@ -45,7 +48,7 @@ class SatoriServerClient(object):
                 json[0:40], f'{"..." if len(json) > 40 else ""}',
                 print=True)
         r = function(
-            self.url + endpoint,
+            (url or self.url) + endpoint,
             headers={
                 **(useWallet or self.wallet).authPayload(
                     asDict=True,
@@ -70,6 +73,7 @@ class SatoriServerClient(object):
         self,
         function: callable,
         endpoint: str,
+        url: str = None,
         headers: Union[dict, None] = None,
         payload: Union[str, bytes, None] = None,
     ):
@@ -88,7 +92,7 @@ class SatoriServerClient(object):
         else:
             headers = headers or {}
         r = function(
-            self.url + endpoint,
+            (url or self.url) + endpoint,
             headers=headers,
             json=json,
             data=data)
@@ -188,6 +192,7 @@ class SatoriServerClient(object):
         ''' sends a satori partial transaction to the server '''
         return self._makeUnauthenticatedCall(
             function=requests.get,
+            url=self.sendingUrl,
             endpoint=f'/simple_partial/request/{network}').json()
 
     def broadcastSimplePartial(
@@ -200,6 +205,7 @@ class SatoriServerClient(object):
         ''' sends a satori partial transaction to the server '''
         return self._makeUnauthenticatedCall(
             function=requests.post,
+            url=self.sendingUrl,
             endpoint=f'/simple_partial/broadcast/{network}/{feeSatsReserved}/{reportedFeeSats}',
             payload=tx)
 
