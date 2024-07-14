@@ -44,7 +44,7 @@ class Wallet():
         password: str = None,
         use: 'Wallet' = None,
     ):
-        self.satoriFee = 0.001  # ~50 cents
+        self.satoriFee = 0.00000001
         self.isTestnet = isTestnet
         self.password = password
         self._entropy = None
