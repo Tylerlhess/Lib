@@ -21,7 +21,7 @@ class SatoriServerClient(object):
     ):
         self.wallet = wallet
         self.url = url or 'https://central.satorinet.io'
-        self.sendingUrl = sendingUrl or 'https://sending.satorinet.io'
+        self.sendingUrl = sendingUrl or 'https://mundo.satorinet.io'
         self.topicTime: dict[str, float] = {}
 
     def setTopicTime(self, topic: str):
@@ -389,7 +389,7 @@ class SatoriServerClient(object):
         self.setTopicTime(topic)
         try:
             response = self._makeUnauthenticatedCall(
-                function=requests.get,
+                function=requests.post,
                 endpoint='/record/prediction',
                 payload=json.dumps({
                     'topic': topic,
