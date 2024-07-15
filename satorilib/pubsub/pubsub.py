@@ -46,12 +46,14 @@ class SatoriPubSubConn(object):
     def connectThenListen(self):
         while True:
             self.connect()
-            if self.then is not None:
-                systemTime.sleep(3)
-                self.send(self.then)
-                # don't send again
-                self.then = None
-            self.listen()
+            if self.ws and self.ws.connected:
+                if self.then is not None:
+                    systemTime.sleep(3)
+                    self.send(self.then)
+                    # don't send again
+                    self.then = None
+                self.listen()
+            systemTime.sleep(60)
 
     def connect(self):
         import websocket
@@ -77,6 +79,9 @@ class SatoriPubSubConn(object):
     def listen(self):
         logging.info('listening to Satori Pubsub', print=True)
         while True:
+            if not self.ws or not self.ws.connected:
+                logging.error('WebSocket is not connected, reconnecting...')
+                break
             try:
                 response = self.ws.recv()
                 # don't break listener because of router behavior
