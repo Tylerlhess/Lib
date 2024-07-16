@@ -39,7 +39,7 @@ class Wallet():
         self,
         walletPath: str,
         temporary: bool = False,
-        reserve: float = .01,
+        reserve: float = .003,
         isTestnet: bool = False,
         password: str = None,
         use: 'Wallet' = None,
