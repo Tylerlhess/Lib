@@ -81,6 +81,7 @@ class SatoriPubSubConn(object):
         while True:
             if not self.ws or not self.ws.connected:
                 logging.error('WebSocket is not connected, reconnecting...')
+                systemTime.sleep(60)
                 break
             try:
                 response = self.ws.recv()
