@@ -27,6 +27,7 @@ class SatoriPubSubConn(object):
     ):
         self.uid = uid
         self.url = url or 'ws://pubsub.satorinet.io:3000'
+        print(self.url)
         self.onConnect = onConnect
         self.onDisconnect = onDisconnect
         self.router = router
