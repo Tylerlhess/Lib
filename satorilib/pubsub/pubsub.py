@@ -12,7 +12,7 @@
 
 from typing import Union, Callable
 import json
-import time as systemTime
+import time
 import threading
 from satorilib import logging
 
@@ -48,12 +48,12 @@ class SatoriPubSubConn(object):
             self.connect()
             if self.ws and self.ws.connected:
                 if self.then is not None:
-                    systemTime.sleep(3)
+                    time.sleep(3)
                     self.send(self.then)
                     # don't send again
                     self.then = None
                 self.listen()
-            systemTime.sleep(60)
+            time.sleep(60)
 
     def connect(self):
         import websocket
@@ -74,14 +74,14 @@ class SatoriPubSubConn(object):
                     e, '\nfailed to connect to Satori Pubsub, retrying in 60 seconds...', print=True)
                 if isinstance(self.onDisconnect, Callable):
                     self.onDisconnect()
-                systemTime.sleep(60)
+                time.sleep(60)
 
     def listen(self):
         logging.info('listening to Satori Pubsub', print=True)
         while True:
             if not self.ws or not self.ws.connected:
                 logging.error('WebSocket is not connected, reconnecting...')
-                systemTime.sleep(60)
+                time.sleep(60)
                 break
             try:
                 response = self.ws.recv()
@@ -95,16 +95,16 @@ class SatoriPubSubConn(object):
                 # except ConnectionResetError:
                 logging.error(
                     e, '\nfailed while listening Satori Pubsub, reconnecting in 60 seconds...', print=True)
-                systemTime.sleep(60)
+                time.sleep(60)
                 break
 
     def setTopicTime(self, topic: str):
-        self.topicTime[topic] = systemTime.time
+        self.topicTime[topic] = time.time()
 
     # old never called, necessary?
     def reestablish(self, err: str = '', payload: str = None):
         # logging.debug('connection error', err)
-        systemTime.sleep(3)
+        time.sleep(3)
         while True:
             try:
                 # logging.debug('re-establishing pubsub connection')
@@ -112,7 +112,7 @@ class SatoriPubSubConn(object):
             except Exception as _:
                 pass
                 # logging.debug('restarting pubsub connection failed', e)
-            systemTime.sleep(2)
+            time.sleep(2)
             if (self.ws.connected):
                 break
 
@@ -132,7 +132,7 @@ class SatoriPubSubConn(object):
         title: Union[str, None] = None,
         topic: Union[str, None] = None,
         data: Union[str, None] = None,
-        time: Union[str, None] = None,
+        observationTime: Union[str, None] = None,
         observationHash: Union[str, None] = None,
     ):
         if self.ws.connected == False:
@@ -143,8 +143,8 @@ class SatoriPubSubConn(object):
         payload = payload or (
             title + ':' + json.dumps({
                 'topic': topic,
-                'time': str(time),
                 'data': str(data),
+                'time': str(observationTime),
                 'hash': str(observationHash),
             }))
         try:
@@ -155,16 +155,19 @@ class SatoriPubSubConn(object):
             # WebSocketTimeoutException
             logging.error(
                 e, '\nfailed while sending to Satori Pubsub, reconnecting in 30 seconds...', print=True)
-            import time as t
-            t.sleep(30)
+            time.sleep(30)
             self.connect()
 
-    def publish(self, topic: str, data: str, time: str, observationHash: str):
-        if self.topicTime.get('topic', 0) > systemTime.time() - 55:
+    def publish(self, topic: str, data: str, observationTime: str, observationHash: str):
+        if self.topicTime.get('topic', 0) > time.time() - 55:
             return
         self.setTopicTime(topic)
-        self.send(title='publish', topic=topic, data=data,
-                  time=time, observationHash=observationHash)
+        self.send(
+            title='publish',
+            topic=topic,
+            data=data,
+            observationTime=observationTime,
+            observationHash=observationHash)
 
     def disconnect(self, reconnect: bool = False):
         self.shouldReconnect = reconnect
