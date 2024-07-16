@@ -376,7 +376,7 @@ class SatoriServerClient(object):
                 'unable to claim beta due to connection timeout; try again Later.', e, color='yellow')
             return False, {}
 
-    def publishPrediction(
+    def publish(
         self,
         topic: str,
         data: str,

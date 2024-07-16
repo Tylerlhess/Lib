@@ -7,6 +7,7 @@ Satroi Neurons
 class CheckinDetails:
     ''' 
         {'key': '...',
+        'oracleKey': '...',
         'idKey': '...',
         'subscriptionKeys': [],
         'publicationKeys': [],
@@ -25,6 +26,7 @@ class CheckinDetails:
 
         self.raw = raw
         self.key: str = raw.get('key')
+        self.oracleKey: str = raw.get('oracleKey')
         self.idKey: str = raw.get('idKey')
         self.subscriptionKeys: list[str] = raw.get('subscriptionKeys')
         self.publicationKeys: list[str] = raw.get('publicationKeys')
@@ -36,6 +38,7 @@ class CheckinDetails:
         return (
             'CheckinDetails('
             f'\n\tkey: {self.key},'
+            f'\n\toracleKey: {self.oracleKey},'
             f'\n\tidKey: {self.idKey},'
             f'\n\tsubscriptionKeys: {self.subscriptionKeys},'
             f'\n\tpublicationKeys: {self.publicationKeys},'
