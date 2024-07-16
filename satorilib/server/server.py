@@ -382,15 +382,16 @@ class SatoriServerClient(object):
         data: str,
         observationTime: str,
         observationHash: str,
+        isPrediction: bool = True,
     ) -> Union[bool, None]:
         ''' publish predictions '''
-        if self.topicTime.get('topic', 0) > time.time() - 59*60*6:
+        if self.topicTime.get('topic', 0) < time.time() - 59*60*6:
             return
         self.setTopicTime(topic)
         try:
             response = self._makeUnauthenticatedCall(
                 function=requests.post,
-                endpoint='/record/prediction',
+                endpoint='/record/prediction' if isPrediction else '/record/observation',
                 payload=json.dumps({
                     'topic': topic,
                     'data': str(data),
