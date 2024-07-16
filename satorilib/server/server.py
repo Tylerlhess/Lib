@@ -384,7 +384,7 @@ class SatoriServerClient(object):
         observationHash: str,
     ) -> Union[bool, None]:
         ''' publish predictions '''
-        if self.topicTime.get('topic', 0) > time.time() - 55:
+        if self.topicTime.get('topic', 0) > time.time() - 59*60*6:
             return
         self.setTopicTime(topic)
         try:
