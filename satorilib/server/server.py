@@ -44,7 +44,7 @@ class SatoriServerClient(object):
     ) -> requests.Response:
         if json is not None:
             logging.info(
-                'outgoing Satori server message:',
+                'outgoing:',
                 json[0:40], f'{"..." if len(json) > 40 else ""}',
                 print=True)
         r = function(
@@ -64,7 +64,7 @@ class SatoriServerClient(object):
                               r.text, e, color='red')
                 r.raise_for_status()
         logging.info(
-            'incoming Satori server message:',
+            'incoming:',
             r.text[0:40], f'{"..." if len(r.text) > 40 else ""}',
             print=True)
         return r

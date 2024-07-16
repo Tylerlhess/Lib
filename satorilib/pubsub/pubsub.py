@@ -27,7 +27,6 @@ class SatoriPubSubConn(object):
     ):
         self.uid = uid
         self.url = url or 'ws://pubsub.satorinet.io:3000'
-        print(self.url)
         self.onConnect = onConnect
         self.onDisconnect = onDisconnect
         self.router = router
@@ -65,7 +64,8 @@ class SatoriPubSubConn(object):
                 if isinstance(self.onConnect, Callable):
                     self.onConnect()
                 self.send(self.command + ':' + self.payload)
-                logging.info('connected to Satori Pubsub', print=True)
+                logging.info('connected to:', 'publishing' if self.router ==
+                             None else 'subscriptions', color='green')
                 return self.ws
             except Exception as e:
                 # except OSError as e:
@@ -78,7 +78,6 @@ class SatoriPubSubConn(object):
                 time.sleep(60)
 
     def listen(self):
-        logging.info('listening to Satori Pubsub', print=True)
         while True:
             if not self.ws or not self.ws.connected:
                 logging.error('WebSocket is not connected, reconnecting...')
@@ -88,7 +87,8 @@ class SatoriPubSubConn(object):
                 response = self.ws.recv()
                 # don't break listener because of router behavior
                 try:
-                    self.router(response)
+                    if self.router is not None:
+                        self.router(response)
                 except Exception as _:
                     pass
             except Exception as e:
