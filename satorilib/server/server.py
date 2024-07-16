@@ -25,7 +25,7 @@ class SatoriServerClient(object):
         self.topicTime: dict[str, float] = {}
 
     def setTopicTime(self, topic: str):
-        self.topicTime[topic] = time.time
+        self.topicTime[topic] = time.time()
 
     def _getChallenge(self):
         # return requests.get(self.url + '/time').text
