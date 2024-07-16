@@ -388,7 +388,7 @@ class SatoriServerClient(object):
         print(self.topicTime.get('topic', 0))
         print(self.topicTime.get('topic', 0) > time.time() - 59*60*6)
         print(time.time() - 59*60*6)
-        if self.topicTime.get('topic', 0) > time.time() - 59*60*6:
+        if self.topicTime.get(topic, 0) > time.time() - 59*60*6:
             return
         self.setTopicTime(topic)
         try:
