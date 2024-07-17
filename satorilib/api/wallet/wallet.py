@@ -205,7 +205,7 @@ class Wallet():
             if not self.loadRaw():
                 self.generate()
                 self.save()
-        if self.address is None:
+        if self.address or self._privateKeyObj is None:
             self.regenerate()
 
     def decryptWallet(self, encrypted: dict) -> dict:
