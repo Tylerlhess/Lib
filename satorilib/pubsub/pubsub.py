@@ -85,6 +85,7 @@ class SatoriPubSubConn(object):
                 break
             try:
                 response = self.ws.recv()
+                print('received:', response)
                 # don't break listener because of router behavior
                 try:
                     if self.router is not None:
