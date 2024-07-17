@@ -488,7 +488,10 @@ class Wallet():
         # on connect ask for peers, add each to our list of electrumxServers
         # if unable to connect, remove that server from our list
         if not hasattr(self, 'electrumx') or not self.electrumx.connected():
-            self.connect()
+            try:
+                self.connect()
+            except Exception as e:
+                return
         self.electrumx.get(allWalletInfo)
         self.currencyOnChain = self.electrumx.currency
         self.balanceOnChain = self.electrumx.balance
