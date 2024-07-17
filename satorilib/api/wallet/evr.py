@@ -33,7 +33,7 @@ class EvrmoreWallet(Wallet):
 
     def connect(self):
         i = 0
-        while i < 10:
+        while i < 3:
             i += 1
             try:
                 self.electrumx = ElectrumXAPI(
@@ -65,11 +65,13 @@ class EvrmoreWallet(Wallet):
                         # 'electrum1-testnet.evrmorecoin.org:50002', # ssl
                         # 'electrum1-testnet.evrmorecoin.org:50004', # wss
                     ])
+                break
             except Exception as e:
                 logging.warning(
                     'unable to connect to Evrmore servers, continuing with limited wallet ability', e)
                 # import time
-                # time.sleep(60)
+                # time.sleep(30)
+                break
 
     @property
     def symbol(self) -> str:
