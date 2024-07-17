@@ -64,7 +64,7 @@ class SatoriPubSubConn(object):
                 if isinstance(self.onConnect, Callable):
                     self.onConnect()
                 self.send(self.command + ':' + self.payload)
-                logging.info('connected to:', 'publishing' if self.router ==
+                logging.info('connected to:', self.url, 'for', 'publishing' if self.router ==
                              None else 'subscriptions', color='green')
                 return self.ws
             except Exception as e:
@@ -85,7 +85,6 @@ class SatoriPubSubConn(object):
                 break
             try:
                 response = self.ws.recv()
-                print('received:', response)
                 # don't break listener because of router behavior
                 try:
                     if self.router is not None:
