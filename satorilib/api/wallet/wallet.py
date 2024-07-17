@@ -492,7 +492,16 @@ class Wallet():
                 self.connect()
             except Exception as e:
                 return
-        self.electrumx.get(allWalletInfo)
+
+        try:
+            self.electrumx.get(allWalletInfo)
+        except Exception as e:
+            try:
+                self.connect()
+                self.electrumx.get(allWalletInfo)
+            except Exception as e:
+                return
+
         self.currencyOnChain = self.electrumx.currency
         self.balanceOnChain = self.electrumx.balance
         self.stats = self.electrumx.stats
