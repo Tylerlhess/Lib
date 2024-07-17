@@ -65,11 +65,11 @@ class EvrmoreWallet(Wallet):
                         # 'electrum1-testnet.evrmorecoin.org:50002', # ssl
                         # 'electrum1-testnet.evrmorecoin.org:50004', # wss
                     ])
-        except Exception as e:
-            logging.warning(
-                'unable to connect to Evrmore servers, continuing with limited wallet ability', e)
-            # import time
-            # time.sleep(60)
+            except Exception as e:
+                logging.warning(
+                    'unable to connect to Evrmore servers, continuing with limited wallet ability', e)
+                # import time
+                # time.sleep(60)
 
     @property
     def symbol(self) -> str:
