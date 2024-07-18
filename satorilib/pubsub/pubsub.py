@@ -23,6 +23,7 @@ class SatoriPubSubConn(object):
         router: Union['function', None] = None, listening: bool = True,
         then: Union[str, None] = None, command: str = 'key', threaded: bool = True,
         onConnect: callable = None, onDisconnect: callable = None,
+        emergencyRestart: callable = None,
         *args, **kwargs
     ):
         self.uid = uid
@@ -38,6 +39,7 @@ class SatoriPubSubConn(object):
         self.shouldReconnect = True
         self.ws = None
         self.then = then
+        self.emergencyRestart = emergencyRestart
         if self.threaded:
             self.ear = threading.Thread(
                 target=self.connectThenListen, daemon=True)
@@ -71,8 +73,8 @@ class SatoriPubSubConn(object):
                 # except OSError as e:
                 # OSError: [Errno 99] Cannot assign requested address
                 # pubsub server went down
-                # logging.error(
-                #    e, f'\ndropped {"publishing" if self.router is None else "subscribing"} {self.url}, retrying in 60 seconds...')
+                logging.error(
+                    e, f'\ndropped {"publishing" if self.router is None else "subscribing"} {self.url}, retrying in 60 seconds...')
                 if isinstance(self.onDisconnect, Callable):
                     self.onDisconnect()
                 time.sleep(60)
@@ -85,6 +87,11 @@ class SatoriPubSubConn(object):
                 break
             try:
                 response = self.ws.recv()
+                try:
+                    if response == '---STOP!---':
+                        self.emergencyRestart()
+                except Exception as _:
+                    pass
                 # don't break listener because of router behavior
                 try:
                     if self.router is not None:
