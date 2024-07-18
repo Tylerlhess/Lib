@@ -71,8 +71,8 @@ class SatoriPubSubConn(object):
                 # except OSError as e:
                 # OSError: [Errno 99] Cannot assign requested address
                 # pubsub server went down
-                logging.error(
-                    e, f'\ndropped {"publishing" if self.router is None else "subscribing"} {self.url}, retrying in 60 seconds...', print=True)
+                # logging.error(
+                #    e, f'\ndropped {"publishing" if self.router is None else "subscribing"} {self.url}, retrying in 60 seconds...')
                 if isinstance(self.onDisconnect, Callable):
                     self.onDisconnect()
                 time.sleep(60)
