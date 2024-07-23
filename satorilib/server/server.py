@@ -406,7 +406,7 @@ class SatoriServerClient(object):
         ''' publish predictions '''
         if isPrediction and self.topicTime.get(topic, 0) > time.time() - 30:
             return
-        if isPrediction and self.topicTime.get(topic, 0) > time.time() - 50:
+        if isPrediction and self.topicTime.get(topic, 0) > time.time() - 55:
             return
         self.setTopicTime(topic)
         try:
