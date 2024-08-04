@@ -393,14 +393,14 @@ class Wallet():
     def _generateScriptPubKeyFromAddress(self, address: str):
         ''' returns CScript object from address '''
 
-    def getUnspentSignatures(self) -> bool:
+    def getUnspentSignatures(self, force:bool = False) -> bool:
         '''
         we don't need to get the scriptPubKey every time we open the wallet,
         and it requires lots of calls for individual transactions.
         we just need them available when we're creating transactions.
 
         '''
-        if (
+        if (not force and
             len([
                 u for u in self.unspentCurrency + self.unspentAssets
                 if 'scriptPubKey' not in u]) == 0
