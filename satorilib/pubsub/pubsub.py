@@ -26,6 +26,7 @@ class SatoriPubSubConn(object):
         emergencyRestart: callable = None,
         *args, **kwargs
     ):
+        self.c = 0
         self.uid = uid
         self.url = url or 'ws://pubsub.satorinet.io:24603'
         self.onConnect = onConnect
@@ -67,14 +68,16 @@ class SatoriPubSubConn(object):
                     self.onConnect()
                 self.send(self.command + ':' + self.payload)
                 logging.info('connected to:', self.url, 'for', 'publishing' if self.router ==
-                             None else 'subscriptions', color='green')
+                             None else 'subscriptions', 'as', self.uid, color='green')
                 return self.ws
             except Exception as e:
                 # except OSError as e:
                 # OSError: [Errno 99] Cannot assign requested address
                 # pubsub server went down
-                # logging.error(
-                #    e, f'\ndropped {"publishing" if self.router is None else "subscribing"} {self.url}, retrying in 60 seconds...')
+                if 'Forbidden' in str(e):
+                    exit()
+                logging.error(
+                    e, f'\ndropped {"publishing" if self.router is None else "subscribing"} {self.url}, retrying in 60 seconds...')
                 if isinstance(self.onDisconnect, Callable):
                     self.onDisconnect()
                 time.sleep(60)
@@ -101,8 +104,8 @@ class SatoriPubSubConn(object):
             except Exception as e:
                 # except WebSocketConnectionClosedException as e:
                 # except ConnectionResetError:
-                # logging.error(
-                #    e, '\nfailed while listening Satori Pubsub, reconnecting in 60 seconds...', print=True)
+                logging.error(
+                    e, '\nfailed while listening Satori Pubsub, reconnecting in 60 seconds...', print=True)
                 time.sleep(60)
                 break
 
@@ -115,11 +118,11 @@ class SatoriPubSubConn(object):
         time.sleep(3)
         while True:
             try:
-                # logging.debug('re-establishing pubsub connection')
+                logging.debug('re-establishing pubsub connection')
                 self.restart(payload)
             except Exception as _:
+                logging.debug('restarting pubsub connection failed', e)
                 pass
-                # logging.debug('restarting pubsub connection failed', e)
             time.sleep(2)
             if (self.ws.connected):
                 break
