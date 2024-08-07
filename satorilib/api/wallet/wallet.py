@@ -39,7 +39,7 @@ class Wallet():
         self,
         walletPath: str,
         temporary: bool = False,
-        reserve: float = .003,
+        reserve: float = .25,
         isTestnet: bool = False,
         password: str = None,
         use: 'Wallet' = None,
@@ -401,10 +401,10 @@ class Wallet():
 
         '''
         if (not force and
-                len([
-                    u for u in self.unspentCurrency + self.unspentAssets
-                    if 'scriptPubKey' not in u]) == 0
-            ):
+                    len([
+                        u for u in self.unspentCurrency + self.unspentAssets
+                        if 'scriptPubKey' not in u]) == 0
+                ):
             # already have them all
             return True
 
@@ -513,8 +513,10 @@ class Wallet():
         self.unspentCurrency = self.electrumx.unspentCurrency
         self.unspentAssets = self.electrumx.unspentAssets
         # mempool sends all unspent transactions in currency and assets so we have to filter them here:
-        self.unspentCurrency = [x for x in self.unspentCurrency if x.get('asset') == None]
-        self.unspentAssets = [x for x in self.unspentAssets if x.get('asset') != None]
+        self.unspentCurrency = [
+            x for x in self.unspentCurrency if x.get('asset') == None]
+        self.unspentAssets = [
+            x for x in self.unspentAssets if x.get('asset') != None]
         # for logging purposes
         for x in self.unspentCurrency:
             openSafely(x, 'value')
