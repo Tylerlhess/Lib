@@ -411,6 +411,20 @@ class SatoriServerClient(object):
             return False
         return False
 
+    def stakeCheck(self) -> bool:
+        ''' gets wallet stats '''
+        try:
+            response = self._makeAuthenticatedCall(
+                function=requests.get,
+                endpoint='/stake/check')
+            if response.text == 'TRUE':
+                return True
+        except Exception as e:
+            logging.warning(
+                'unable to disable status of Mine-To-Vault feature due to connection timeout; try again Later.', e, color='yellow')
+            return False
+        return False
+
     def betaStatus(self) -> tuple[bool, dict]:
         ''' removes a stream from the server '''
         try:
