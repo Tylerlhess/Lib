@@ -401,10 +401,10 @@ class Wallet():
 
         '''
         if (not force and
-                    len([
+            len([
                         u for u in self.unspentCurrency + self.unspentAssets
                         if 'scriptPubKey' not in u]) == 0
-                ):
+            ):
             # already have them all
             return True
 
@@ -643,6 +643,7 @@ class Wallet():
                 'tx: must retain a reserve of currency to cover fees')
         gatheredCurrencySats = 0
         gatheredCurrencyUnspents = []
+        encounteredDust = False
         while (
             gatheredCurrencySats < sats + TxUtils.estimatedFee(
                 inputCount=inputCount + len(gatheredCurrencyUnspents),
@@ -654,9 +655,38 @@ class Wallet():
                 gatheredCurrencyUnspents.append(randomUnspent)
                 gatheredCurrencySats += randomUnspent.get('value')
             else:
-                smallestUnspent = unspentCurrency.pop(0)
-                gatheredCurrencyUnspents.append(smallestUnspent)
-                gatheredCurrencySats += smallestUnspent.get('value')
+                try:
+                    smallestUnspent = unspentCurrency.pop(0)
+                    gatheredCurrencyUnspents.append(smallestUnspent)
+                    gatheredCurrencySats += smallestUnspent.get('value')
+                except IndexError as _:
+                    # this usually happens when people have lots of dust.
+                    encounteredDust = True
+                    break
+        if encounteredDust:
+            unspentCurrency = gatheredCurrencyUnspents
+            gatheredCurrencySats = 0
+            gatheredCurrencyUnspents = []
+            while (
+                gatheredCurrencySats < sats + TxUtils.estimatedFee(
+                    inputCount=inputCount + len(gatheredCurrencyUnspents),
+                    outputCount=outputCount)
+            ):
+                if randomly:
+                    randomUnspent = unspentCurrency.pop(
+                        randrange(len(unspentCurrency)))
+                    gatheredCurrencyUnspents.append(randomUnspent)
+                    gatheredCurrencySats += randomUnspent.get('value')
+                else:
+                    try:
+                        largestUnspent = unspentCurrency.pop()
+                        gatheredCurrencyUnspents.append(largestUnspent)
+                        gatheredCurrencySats += largestUnspent.get('value')
+                    except IndexError as _:
+                        # they simply do not have enough currency to send
+                        # it might all be dust.
+                        # at least we can still try to make the transaction...
+                        break
         return (gatheredCurrencyUnspents, gatheredCurrencySats)
 
     def _gatherSatoriUnspents(
