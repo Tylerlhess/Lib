@@ -511,8 +511,7 @@ class SatoriServerClient(object):
                 function=requests.post,
                 endpoint='/stake/proxy/approve',
                 json=json.dumps({'child': address, 'childId': childId}))
-            print(response.status_code < 400, response.text)
-            return response.status_code < 400,  response.json()
+            return response.status_code < 400, response.text
         except Exception as e:
             logging.warning(
                 'unable to stakeProxyApprove due to connection timeout; try again Later.', e, color='yellow')
@@ -525,8 +524,7 @@ class SatoriServerClient(object):
                 function=requests.post,
                 endpoint='/stake/proxy/deny',
                 json=json.dumps({'child': address, 'childId': childId}))
-            print(response.status_code < 400, response.text)
-            return response.status_code < 400,  response.json()
+            return response.status_code < 400, response.text
         except Exception as e:
             logging.warning(
                 'unable to stakeProxyDeny due to connection timeout; try again Later.', e, color='yellow')
@@ -539,8 +537,7 @@ class SatoriServerClient(object):
                 function=requests.post,
                 endpoint='/stake/proxy/remove',
                 json=json.dumps({'child': address, 'childId': childId}))
-            print(response.status_code < 400, response.text)
-            return response.status_code < 400,  response.json()
+            return response.status_code < 400, response.text
         except Exception as e:
             logging.warning(
                 'unable to stakeProxyRemove due to connection timeout; try again Later.', e, color='yellow')
