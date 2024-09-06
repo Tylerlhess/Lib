@@ -4,17 +4,25 @@ from unittest.mock import patch, MagicMock
 from evrmore.core import CMutableTxOut, CScript
 from evrmore.core.script import CScript, OP_DUP, OP_HASH160, OP_EQUALVERIFY, OP_CHECKSIG, OP_EVR_ASSET, OP_DROP
 from satorilib.api.wallet.evr import EvrmoreWallet
-from satorilib.api.wallet.wallet import Wallet,TransactionFailure, TransactionResult
+from satorilib.api.wallet.wallet import Wallet, TransactionFailure, TransactionResult
 
 class TestEvrmoreWallet(unittest.TestCase):
 
     @patch('satorilib.api.wallet.wallet.WalletApi.config', new_callable=MagicMock)
     @patch('satorilib.api.wallet.wallet.Wallet.loadRaw', return_value=True)
-    def setUp(self, mock_loadRaw,mock_config):
+    def setUp(self, mock_loadRaw, mock_config):
         # Mock the configuration to return a valid dictionary
         mock_config.get.return_value = {'some_key': 'some_value'}
-        self.wallet = EvrmoreWallet(walletPath='/Satori/Neuron/wallet/wallet.yaml')
-        self.wallet._entropy = b'test_entropy'
+        self.wallet = EvrmoreWallet(walletPath='/Satori/Lib/tests/api/wallet/artifacts/wallet.yaml')
+        self.wallet_values = {
+            'entropy': 'rJVnqSyzmJl6Hw5RcWLES8/cZHy0bmHeKdXV1IvYAD4=',
+            'address': 'EXybyoeyn7uHWArTJA1iVddBKcAeF99kjb',
+            'privateKey': 'L31C2MCzXQuKinRft6NeLBr4HjZ65hgvnLtRiioDMtfzLgEFXfxc',
+            'publicKey': '027aebc5ad86be6f9c0005809d1431388f09c3a2d0708f40f5f22ec82b4aaac4ae',
+            'scripthash': '01527fc8ceba87a4af978ae157192cf1c6bb0242c6a390a10c65c2e1fcf1c739',
+            'words': 'prosper private tumble floor define erosion trick tide fabric mention rain nurse worry cram version miss gift vanish install produce emerge ugly abstract surround'}
+        self.vault = ''' TODO: an encrypted wallet '''
+        self.vault_values = {}
 
     def test_symbol(self):
         self.assertEqual(self.wallet.symbol, 'evr')
@@ -34,17 +42,21 @@ class TestEvrmoreWallet(unittest.TestCase):
     def test_satoriOriginalTxHash(self):
         self.assertEqual(self.wallet.satoriOriginalTxHash, 'df745a3ee1050a9557c3b449df87bdd8942980dff365f7f5a93bc10cb1080188')
 
-    @patch('evrmore.wallet.CEvrmoreSecret.from_secret_bytes')
-    def test_generatePrivateKey(self, mock_from_secret_bytes):
-        mock_private_key = MagicMock()
-        mock_from_secret_bytes.return_value = mock_private_key
-        self.wallet._entropy = b'test_entropy'
+    def test_generatePrivateKey(self):
         result = self.wallet._generatePrivateKey()
-        # print(type(result))
-        # print(type(mock_private_key))
-        mock_from_secret_bytes.assert_called_once_with(b'test_entropy')
-        self.assertEqual(result, mock_private_key)
-        
+        self.assertEqual(result, self.wallet_values['privateKey'])
+
+    #@patch('evrmore.wallet.CEvrmoreSecret.from_secret_bytes')
+    #def test_generatePrivateKey(self, mock_from_secret_bytes):
+    #    mock_private_key = MagicMock()
+    #    mock_from_secret_bytes.return_value = mock_private_key
+    #    self.wallet._entropy = b'test_entropy'
+    #    result = self.wallet._generatePrivateKey()
+    #    # print(type(result))
+    #    # print(type(mock_private_key))
+    #    mock_from_secret_bytes.assert_called_once_with(b'test_entropy')
+    #    self.assertEqual(result, mock_private_key)
+
 
     @patch('evrmore.wallet.P2PKHEvrmoreAddress.from_pubkey')
     def test_generateAddress(self, mock_from_pubkey):
@@ -80,13 +92,13 @@ class TestEvrmoreWallet(unittest.TestCase):
     def test_generateScriptPubKeyFromAddress(self, mock_CEvrmoreAddress):
         test_address = "EXAMPLEEvrmoreAddressXYZ123"
         expected_script_pubkey = b'example_script_pubkey'
-        
+
         mock_address = MagicMock()
         mock_address.to_scriptPubKey.return_value = expected_script_pubkey
         mock_CEvrmoreAddress.return_value = mock_address
-        
+
         result = self.wallet._generateScriptPubKeyFromAddress(test_address)
-        
+
         mock_CEvrmoreAddress.assert_called_once_with(test_address)
         mock_address.to_scriptPubKey.assert_called_once()
         self.assertEqual(result, expected_script_pubkey)
@@ -135,7 +147,7 @@ class TestEvrmoreWallet(unittest.TestCase):
         result = self.wallet._checkSatoriValue(valid_output)
         # print(f"_checkSatoriValue result: {result}")
         self.assertTrue(result)
-    
+
 
     def test_compileSatoriChangeOutput(self):
         self.wallet.address = 'test_address'
@@ -143,14 +155,14 @@ class TestEvrmoreWallet(unittest.TestCase):
              patch('satorilib.api.wallet.evr.AssetTransaction.satoriHex') as mock_satoriHex, \
              patch('satorilib.api.wallet.evr.TxUtils.padHexStringTo8Bytes') as mock_padHexStringTo8Bytes, \
              patch('satorilib.api.wallet.evr.TxUtils.intToLittleEndianHex') as mock_intToLittleEndianHex:
-            
+
             mock_addressToH160Bytes.return_value = b'\x00' * 20
             mock_satoriHex.return_value = '7361746f72695f686578'
             mock_padHexStringTo8Bytes.return_value = '00000000'
             mock_intToLittleEndianHex.return_value = '00000000'
-            
+
             result = self.wallet._compileSatoriChangeOutput(100, 200)
-            
+
             self.assertIsInstance(result, CMutableTxOut)
             self.assertEqual(result.nValue, 0)
             self.assertIsInstance(result.scriptPubKey, CScript)
