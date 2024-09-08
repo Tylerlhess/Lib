@@ -125,29 +125,7 @@ class EvrmoreWallet(Wallet):
 
     def verify(self, message: str, sig: bytes, address: Union[str, None] = None):
         return evrmore.verify(address=address or self.address, message=message, signature=sig)
-
-    # def _checkSatoriValue(self, output: CMutableTxOut) -> bool:
-    #     '''
-    #     Returns true if the output is a Satori output of self.satoriFee
-    #     '''
-    #     # print(f"Checking Satori value for symbol: {self.symbol}")
-    #     # print(f"Satori fee: {self.satoriFee}")
-    #     for i, x in enumerate(output.scriptPubKey):
-    #         if x == OP_EVR_ASSET:
-    #             if i + 1 < len(output.scriptPubKey):
-    #                 expected_value = bytes.fromhex(
-    #                     AssetTransaction.satoriHex(self.symbol) +
-    #                     TxUtils.padHexStringTo8Bytes(
-    #                         TxUtils.intToLittleEndianHex(
-    #                             TxUtils.asSats(self.satoriFee))))
-    #                 actual_value = output.scriptPubKey[i + 1]
-    #                 actual_value_bytes = actual_value.to_bytes((actual_value.bit_length() + 7) // 8, 'big')
-    #                 # print(f"Expected: {expected_value.hex()}")
-    #                 # print(f"Actual: {actual_value_bytes.hex()}")
-    #                 return actual_value_bytes.startswith(expected_value)
-    #     # print("OP_EVR_ASSET not found in scriptPubKey")
-    #     return False
-
+    
     def _checkSatoriValue(self, output: CMutableTxOut) -> bool:
         '''
         returns true if the output is a satori output of self.satoriFee
