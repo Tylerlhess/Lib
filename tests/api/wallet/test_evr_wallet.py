@@ -18,22 +18,22 @@ class TestEvrmoreWallet(unittest.TestCase):
         # mock_config.get.return_value = {'some_key': 'some_value'}
         WalletApi.config = {
             '/Satori/Lib/tests/api/wallet/artifacts/wallet.yaml': {
-                'entropy': 'rJVnqSyzmJl6Hw5RcWLES8/cZHy0bmHeKdXV1IvYAD4=',
-                'address': 'EXybyoeyn7uHWArTJA1iVddBKcAeF99kjb',
-                'privateKey': 'L31C2MCzXQuKinRft6NeLBr4HjZ65hgvnLtRiioDMtfzLgEFXfxc',
-                'publicKey': '027aebc5ad86be6f9c0005809d1431388f09c3a2d0708f40f5f22ec82b4aaac4ae',
-                'scripthash': '01527fc8ceba87a4af978ae157192cf1c6bb0242c6a390a10c65c2e1fcf1c739',
-                'words': 'prosper private tumble floor define erosion trick tide fabric mention rain nurse worry cram version miss gift vanish install produce emerge ugly abstract surround'
+                'entropy': '',
+                'address': '',
+                'privateKey': '',
+                'publicKey': '',
+                'scripthash': '',
+                'words': ''
             }
         }
         self.wallet = EvrmoreWallet(walletPath='/Satori/Lib/tests/api/wallet/artifacts/wallet.yaml')
         self.wallet_values = {
-            'entropy': 'rJVnqSyzmJl6Hw5RcWLES8/cZHy0bmHeKdXV1IvYAD4=',
+            'entropy': '',
             'address': 'EXybyoeyn7uHWArTJA1iVddBKcAeF99kjb',
-            'privateKey': 'L31C2MCzXQuKinRft6NeLBr4HjZ65hgvnLtRiioDMtfzLgEFXfxc',
+            'privateKey': '',
             'publicKey': '027aebc5ad86be6f9c0005809d1431388f09c3a2d0708f40f5f22ec82b4aaac4ae',
-            'scripthash': '01527fc8ceba87a4af978ae157192cf1c6bb0242c6a390a10c65c2e1fcf1c739',
-            'words': 'prosper private tumble floor define erosion trick tide fabric mention rain nurse worry cram version miss gift vanish install produce emerge ugly abstract surround'}
+            'scripthash': '',
+            'words': ''}
         self.vault = ''' TODO: an encrypted wallet '''
         self.vault_values = {}
 
@@ -92,7 +92,8 @@ class TestEvrmoreWallet(unittest.TestCase):
 
     def test_sign(self):
         result = self.wallet.sign(self.wallet_values["words"])
-        self.assertIsNotNone(result)
+        self.assertEqual(len(result),88)
+        self.assertTrue(bytes(result).startswith(b'I') or bytes(result).startswith(b'H') )
 
     def test_verify(self):
         result = self.wallet.verify(self.wallet_values["words"],self.wallet.sign(self.wallet_values["words"]))
