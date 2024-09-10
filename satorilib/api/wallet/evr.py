@@ -10,7 +10,7 @@ from satoriwallet import evrmore
 from satoriwallet import TxUtils, AssetTransaction
 from satorilib import logging
 from satorilib.api.wallet.wallet import Wallet, TransactionFailure
-
+import yaml
 
 class EvrmoreWallet(Wallet):
 
@@ -125,14 +125,16 @@ class EvrmoreWallet(Wallet):
 
     def verify(self, message: str, sig: bytes, address: Union[str, None] = None):
         return evrmore.verify(address=address or self.address, message=message, signature=sig)
-
+    
     def _checkSatoriValue(self, output: CMutableTxOut) -> bool:
         '''
         returns true if the output is a satori output of self.satoriFee
         '''
         nextOne = False
         for i, x in enumerate(output.scriptPubKey):
+            
             if nextOne:
+                # print(type(x))
                 # doesn't padd with 0s at the end
                 # b'rvnt\x06SATORI\x00\xe1\xf5\x05'
                 # b'rvnt\x06SATORI\x00\xe1\xf5\x05\x00\x00\x00\x00'
@@ -144,7 +146,6 @@ class EvrmoreWallet(Wallet):
             if x == OP_EVR_ASSET:
                 nextOne = True
         return False
-
     def _compileInputs(
         self,
         gatheredCurrencyUnspents: list = None,
