@@ -11,11 +11,8 @@ from satorilib.api.disk.wallet import WalletApi
 
 class TestEvrmoreWallet(unittest.TestCase):
 
-    # @patch('satorilib.api.wallet.wallet.WalletApi.config', new_callable=MagicMock)
-    # @patch('satorilib.api.wallet.wallet.Wallet.loadRaw', return_value=True)
     def setUp(self):
-        # Mock the configuration to return a valid dictionary
-        # mock_config.get.return_value = {'some_key': 'some_value'}
+        # Set up mock wallet configuration
         WalletApi.config = {
             '/Satori/Lib/tests/api/wallet/artifacts/wallet.yaml': {
                 'entropy': '',
@@ -26,7 +23,9 @@ class TestEvrmoreWallet(unittest.TestCase):
                 'words': ''
             }
         }
+        # Initialize wallet for testing
         self.wallet = EvrmoreWallet(walletPath='/Satori/Lib/tests/api/wallet/artifacts/wallet.yaml')
+        # Set up test wallet values
         self.wallet_values = {
             'entropy': '',
             'address': 'EXybyoeyn7uHWArTJA1iVddBKcAeF99kjb',
@@ -38,24 +37,31 @@ class TestEvrmoreWallet(unittest.TestCase):
         self.vault_values = {}
 
     def test_symbol(self):
+        # Verify wallet symbol is 'evr'
         self.assertEqual(self.wallet.symbol, 'evr')
 
     def test_chain(self):
+        # Verify wallet chain is 'Evrmore'
         self.assertEqual(self.wallet.chain, 'Evrmore')
 
     def test_networkByte(self):
+        # Verify network byte is correct
         self.assertEqual(self.wallet.networkByte, b'\x21')
 
     def test_networkByteP2PKH(self):
+        # Verify P2PKH network byte is correct
         self.assertEqual(self.wallet.networkByteP2PKH, b'\x21')
 
     def test_networkByteP2SH(self):
+        # Verify P2SH network byte is correct
         self.assertEqual(self.wallet.networkByteP2SH, b'\x5c')
 
     def test_satoriOriginalTxHash(self):
+        # Verify Satori original transaction hash
         self.assertEqual(self.wallet.satoriOriginalTxHash, 'df745a3ee1050a9557c3b449df87bdd8942980dff365f7f5a93bc10cb1080188')
 
     def test_generatePrivateKey(self):
+        # Test private key generation
         private_key = self.wallet._generatePrivateKey()
         self.assertIsInstance(private_key, CEvrmoreSecret)
         wif = str(private_key)
@@ -63,6 +69,7 @@ class TestEvrmoreWallet(unittest.TestCase):
         self.assertIn(wif[0], ['L', 'K'])
 
     def test_generateAddress(self):
+        # Test address generation
         address = self.wallet._generateAddress()
         self.assertIsInstance(address, P2PKHEvrmoreAddress)
         wif = str(address)
@@ -70,10 +77,12 @@ class TestEvrmoreWallet(unittest.TestCase):
         self.assertEqual(wif[0], 'E')
 
     def test_generateAddress_static(self):
+        # Test static address generation
         result = self.wallet.generateAddress(self.wallet_values["publicKey"])
         self.assertEqual(result, self.wallet_values["address"])
   
     def test_generateScriptPubKeyFromAddress(self):
+        # Test script public key generation from address
         script_pubkey = self.wallet._generateScriptPubKeyFromAddress(self.wallet_values["address"])
         self.assertIsInstance(script_pubkey, CScript)
         script_ops = list(script_pubkey)
@@ -88,18 +97,20 @@ class TestEvrmoreWallet(unittest.TestCase):
         
         # Verify the script ends with the expected OP_EQUALVERIFY and OP_CHECKSIG bytes
         self.assertTrue(bytes(script_pubkey).endswith(b'\x88\xac'))
-        # self.assertEqual(script_pubkey, b'v\xa9\x14\xa2\x97\x1b\x8f\xcb\x9d\xf5I\x00#\xdd\x10qcL\x9d\xc9\xd6\x86I\x88\xac')
 
     def test_sign(self):
+        # Test signing functionality
         result = self.wallet.sign(self.wallet_values["words"])
         self.assertEqual(len(result),88)
         self.assertTrue(bytes(result).startswith(b'I') or bytes(result).startswith(b'H') )
 
     def test_verify(self):
+        # Test signature verification
         result = self.wallet.verify(self.wallet_values["words"],self.wallet.sign(self.wallet_values["words"]))
         self.assertTrue(result)
 
     def test_checkSatoriValue(self):
+        # Test Satori value checking
         Script =CScript([
                     OP_DUP, OP_HASH160,
                     TxUtils.addressToH160Bytes(self.wallet_values["address"]),
@@ -113,9 +124,8 @@ class TestEvrmoreWallet(unittest.TestCase):
         result = self.wallet._checkSatoriValue(txt_out)
         self.assertTrue(result)
 
-
-
     def test_compileSatoriChangeOutput(self):
+        # Test Satori change output compilation
         result = self.wallet._compileSatoriChangeOutput(100, 150)
         self.assertIsInstance(result, CMutableTxOut)
         self.assertEqual(result.nValue, 0)
@@ -130,23 +140,23 @@ class TestEvrmoreWallet(unittest.TestCase):
         self.assertEqual(script[25], OP_EVR_ASSET)
         self.assertEqual(script[-1], OP_DROP)
 
-
-        # Test case 4: Large change value
+        # Test case: Large change value
         result = self.wallet._compileSatoriChangeOutput(1000000, 2000000)
         self.assertIsInstance(result, CMutableTxOut)
         self.assertEqual(result.nValue, 0)
 
-        # Test case 5: Minimum change value
+        # Test case: Minimum change value
         result = self.wallet._compileSatoriChangeOutput(100, 101)
         self.assertIsInstance(result, CMutableTxOut)
         self.assertEqual(result.nValue, 0)
 
-
     def test_compileSatoriChangeOutput_no_change(self):
+        # Test compilation with no change
         result = self.wallet._compileSatoriChangeOutput(100, 100)
         self.assertIsNone(result)
 
     def test_compileSatoriChangeOutput_negative_change(self):
+        # Test compilation with negative change (should raise exception)
         with self.assertRaises(TransactionFailure):
             self.wallet._compileSatoriChangeOutput(200, 100)
 
