@@ -26,6 +26,7 @@ class SatoriPubSubConn(object):
         emergencyRestart: callable = None,
         *args, **kwargs
     ):
+        self.c = 0
         self.uid = uid
         self.url = url or 'ws://pubsub.satorinet.io:24603'
         self.onConnect = onConnect
@@ -59,6 +60,12 @@ class SatoriPubSubConn(object):
 
     def connect(self):
         import websocket
+        if self.ws is not None:
+            try:
+                self.ws.close()
+                self.ws = None
+            except:
+                pass
         self.ws = self.ws or websocket.WebSocket()
         while not self.ws.connected:
             try:
@@ -67,12 +74,14 @@ class SatoriPubSubConn(object):
                     self.onConnect()
                 self.send(self.command + ':' + self.payload)
                 logging.info('connected to:', self.url, 'for', 'publishing' if self.router ==
-                             None else 'subscriptions', color='green')
+                             None else 'subscriptions', 'as', self.uid, color='green')
                 return self.ws
             except Exception as e:
                 # except OSError as e:
                 # OSError: [Errno 99] Cannot assign requested address
                 # pubsub server went down
+                if 'Forbidden' in str(e):
+                    exit()
                 logging.error(
                     e, f'\ndropped {"publishing" if self.router is None else "subscribing"} {self.url}, retrying in 60 seconds...')
                 if isinstance(self.onDisconnect, Callable):
@@ -115,11 +124,11 @@ class SatoriPubSubConn(object):
         time.sleep(3)
         while True:
             try:
-                # logging.debug('re-establishing pubsub connection')
+                logging.debug('re-establishing pubsub connection')
                 self.restart(payload)
             except Exception as _:
+                logging.debug('restarting pubsub connection failed', e)
                 pass
-                # logging.debug('restarting pubsub connection failed', e)
             time.sleep(2)
             if (self.ws.connected):
                 break
@@ -180,11 +189,12 @@ class SatoriPubSubConn(object):
     def disconnect(self, reconnect: bool = False):
         self.shouldReconnect = reconnect
         self.listening = False
-        self.send(title='notic', topic='connection', data='False')
+        self.send(title='notice', topic='connection', data='False')
         if isinstance(self.onDisconnect, Callable):
             self.onDisconnect()
         self.ws.close()  # server should detect we closed the connection
         assert (self.ws.connected == False)
+        self.ws = None
 
     def setRouter(self, router: 'function' = None):
         self.router = router
