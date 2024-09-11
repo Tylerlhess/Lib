@@ -637,6 +637,48 @@ class SatoriServerClient(object):
                 'unable to stakeProxyRemove due to connection timeout; try again Later.', e, color='yellow')
             return False, {}
 
+    def publish(
+        self,
+        topic: str,
+        data: str,
+        observationTime: str,
+        observationHash: str,
+        isPrediction: bool = True,
+    ) -> Union[bool, None]:
+        ''' publish predictions '''
+        # if not isPrediction and self.topicTime.get(topic, 0) > time.time() - (Stream.minimumCadence*.95):
+        #    return
+        # if isPrediction and self.topicTime.get(topic, 0) > time.time() - 60*60:
+        #    return
+        if self.topicTime.get(topic, 0) > time.time() - (Stream.minimumCadence*.95):
+            return
+        self.setTopicTime(topic)
+        try:
+            response = self._makeUnauthenticatedCall(
+                function=requests.post,
+                endpoint='/record/prediction' if isPrediction else '/record/observation',
+                payload=json.dumps({
+                    'topic': topic,
+                    'data': str(data),
+                    'time': str(observationTime),
+                    'hash': str(observationHash),
+                }))
+            # response = self._makeAuthenticatedCall(
+            #    function=requests.get,
+            #    endpoint='/record/prediction')
+            if response.status_code == 200:
+                return True
+            if response.status_code > 399:
+                return None
+            if response.text.lower() in ['fail', 'null', 'none', 'error']:
+                return False
+        except Exception as _:
+            # logging.warning(
+            #    'unable to determine if prediction was accepted; try again Later.', e, color='yellow')
+            return None
+        return True
+
+
     def getProposals(self):
         """
         Function to get all proposals by calling the API endpoint.
