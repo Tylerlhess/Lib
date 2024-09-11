@@ -622,46 +622,6 @@ class SatoriServerClient(object):
                 'unable to delegateRemove due to connection timeout; try again Later.', e, color='yellow')
             return False, {}
 
-    def stakeProxyRequest(self, address: str) -> tuple[bool, dict]:
-        ''' removes a stream from the server '''
-        try:
-            response = self._makeAuthenticatedCall(
-                function=requests.post,
-                endpoint='/stake/proxy/request',
-                json=json.dumps({'parent': address}))
-            print(response.status_code < 400, response.text)
-            return response.status_code < 400, response.text
-        except Exception as e:
-            logging.warning(
-                'unable to stakeProxyRequest due to connection timeout; try again Later.', e, color='yellow')
-            return False, {}
-
-    def stakeProxyApprove(self, address: str, childId: int) -> tuple[bool, dict]:
-        ''' removes a stream from the server '''
-        try:
-            response = self._makeAuthenticatedCall(
-                function=requests.post,
-                endpoint='/stake/proxy/approve',
-                json=json.dumps({'child': address, 'childId': childId}))
-            return response.status_code < 400, response.text
-        except Exception as e:
-            logging.warning(
-                'unable to stakeProxyApprove due to connection timeout; try again Later.', e, color='yellow')
-            return False, {}
-
-    def stakeProxyDeny(self, address: str, childId: int) -> tuple[bool, dict]:
-        ''' removes a stream from the server '''
-        try:
-            response = self._makeAuthenticatedCall(
-                function=requests.post,
-                endpoint='/stake/proxy/deny',
-                json=json.dumps({'child': address, 'childId': childId}))
-            return response.status_code < 400, response.text
-        except Exception as e:
-            logging.warning(
-                'unable to stakeProxyDeny due to connection timeout; try again Later.', e, color='yellow')
-            return False, {}
-
     def stakeProxyRemove(self, address: str, childId: int) -> tuple[bool, dict]:
         ''' removes a stream from the server '''
         try:
