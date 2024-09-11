@@ -29,6 +29,8 @@ from satorilib import logging
 from satorilib.api.time.time import timeToTimestamp
 from satorilib.api.wallet import Wallet
 from satorilib.concepts.structs import Stream
+from satorilib.server.api import ProposalSchema, VoteSchema
+from marshmallow import ValidationError
 
 
 class SatoriServerClient(object):
@@ -635,43 +637,49 @@ class SatoriServerClient(object):
                 'unable to stakeProxyRemove due to connection timeout; try again Later.', e, color='yellow')
             return False, {}
 
-    def publish(
-        self,
-        topic: str,
-        data: str,
-        observationTime: str,
-        observationHash: str,
-        isPrediction: bool = True,
-    ) -> Union[bool, None]:
-        ''' publish predictions '''
-        # if not isPrediction and self.topicTime.get(topic, 0) > time.time() - (Stream.minimumCadence*.95):
-        #    return
-        # if isPrediction and self.topicTime.get(topic, 0) > time.time() - 60*60:
-        #    return
-        if self.topicTime.get(topic, 0) > time.time() - (Stream.minimumCadence*.95):
-            return
-        self.setTopicTime(topic)
+    def getProposals(self):
+        """
+        Function to get all proposals by calling the API endpoint.
+        """
         try:
             response = self._makeUnauthenticatedCall(
-                function=requests.post,
-                endpoint='/record/prediction' if isPrediction else '/record/observation',
-                payload=json.dumps({
-                    'topic': topic,
-                    'data': str(data),
-                    'time': str(observationTime),
-                    'hash': str(observationHash),
-                }))
-            # response = self._makeAuthenticatedCall(
-            #    function=requests.get,
-            #    endpoint='/record/prediction')
+                function=requests.get,
+                endpoint='/proposals'
+            )
             if response.status_code == 200:
-                return True
-            if response.status_code > 399:
-                return None
-            if response.text.lower() in ['fail', 'null', 'none', 'error']:
-                return False
-        except Exception as _:
-            # logging.warning(
-            #    'unable to determine if prediction was accepted; try again Later.', e, color='yellow')
-            return None
-        return True
+                # Fetch JSON data from the response
+                response_data = response.json()
+
+                # Load proposals using the schema
+                proposals = ProposalSchema(many=True).load(response_data)
+                return proposals
+            else:
+                print(
+                    f"Failed to get proposals. Status code: {response.status_code}")
+                return []
+        except requests.RequestException as e:
+            print(f"Error occurred while fetching proposals: {str(e)}")
+            return []
+
+    def submitProposalVote(self, proposal_id: str, vote: str) -> tuple[bool, dict]:
+        '''Submits a vote for a proposal'''
+        try:
+            print(f"Submitting vote: proposal_id={proposal_id}, vote={vote}")
+            vote_data = {
+                "proposal_id": str(proposal_id),
+                "vote": vote == 'yes'
+            }
+            response = self._makeAuthenticatedCall(
+                function=requests.post,
+                endpoint='/proposals_votes',
+                json=json.dumps(vote_data)
+            )
+            print(f"Response status code: {response.status_code}")
+            print(f"Response content: {response.text}")
+            return response.status_code < 400, response.json() if response.status_code < 400 else {}
+        except Exception as e:
+            logging.warning(
+                'Unable to submitProposalVote due to an error; try again later.',
+                exc_info=e
+            )
+            return False, {}
