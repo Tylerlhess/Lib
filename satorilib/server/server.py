@@ -495,34 +495,6 @@ class SatoriServerClient(object):
                 'unable to disable status of Mine-To-Vault feature due to connection timeout; try again Later.', e, color='yellow')
             return ''
 
-    def ticketApplication(self, tx: str) -> bool:
-        ''' gets wallet stats '''
-        try:
-            response = self._makeAuthenticatedCall(
-                function=requests.get,
-                endpoint=f'/ticket/application/{tx}')
-            if response.text in ('OK', 'OK, ALREADY EXISTS'):
-                return True
-        except Exception as e:
-            logging.warning(
-                'unable to disable status of Mine-To-Vault feature due to connection timeout; try again Later.', e, color='yellow')
-        # if response.text in ('INVALID TX', 'FAILED'):
-        return False
-
-    def ticketCheck(self) -> bool:
-        ''' gets wallet stats '''
-        try:
-            response = self._makeAuthenticatedCall(
-                function=requests.get,
-                endpoint='/ticket/check')
-            if response.text in ('True', 'Probably'):
-                return True
-        except Exception as e:
-            logging.warning(
-                'unable to disable status of Mine-To-Vault feature due to connection timeout; try again Later.', e, color='yellow')
-            return False
-        return False
-
     def stakeCheck(self) -> bool:
         ''' gets wallet stats '''
         try:
@@ -681,17 +653,19 @@ class SatoriServerClient(object):
     def getProposalVotes(self):
         ''' add to get all votes on this proposal'''
 
-    def getMyProposalVotes(self):
-        ''' add to get my vote'''
+    def submitProposal(self,) -> tuple[bool, dict]:
+        '''submits proposal'''
+        # finish
 
     def getProposals(self):
         """
         Function to get all proposals by calling the API endpoint.
         """
         try:
-            response = self._makeAuthenticatedCall(
+            response = self._makeUnauthenticatedCall(
                 function=requests.get,
-                endpoint='/proposals'
+                endpoint='/proposals/get'
+                # json= could request a subset - active, historic, etc.
             )
             if response.status_code == 200:
                 # Fetch JSON data from the response
@@ -712,7 +686,7 @@ class SatoriServerClient(object):
         '''Submits a vote for a proposal'''
         try:
             print(f"Submitting vote: proposal_id={proposal_id}, vote={vote}")
-            #VoteSchema
+            # VoteSchema
             vote_data = {
                 "proposal_id": str(proposal_id),
                 "vote": vote
@@ -720,7 +694,8 @@ class SatoriServerClient(object):
             response = self._makeAuthenticatedCall(
                 function=requests.post,
                 endpoint='/proposals_votes',
-                json=json.dumps(vote_data) # turn this into an api object for the server
+                # turn this into an api object for the server
+                json=json.dumps(vote_data)
             )
             print(f"Response status code: {response.status_code}")
             print(f"Response content: {response.text}")
