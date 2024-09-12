@@ -4,7 +4,7 @@ Satroi Neurons
 '''
 
 # from marshmallow import Schema, fields, validate
-
+# from marshmallow import ValidationError
 
 # class ProposalSchema(Schema):
 # id = fields.Integer(

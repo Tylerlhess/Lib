@@ -30,7 +30,6 @@ from satorilib.api.time.time import timeToTimestamp
 from satorilib.api.wallet import Wallet
 from satorilib.concepts.structs import Stream
 from satorilib.server.api import ProposalSchema, VoteSchema
-from marshmallow import ValidationError
 
 
 class SatoriServerClient(object):
