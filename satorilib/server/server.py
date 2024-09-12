@@ -678,13 +678,18 @@ class SatoriServerClient(object):
             return None
         return True
 
+    def getProposalVotes(self):
+        ''' add to get all votes on this proposal'''
+
+    def getMyProposalVotes(self):
+        ''' add to get my vote'''
 
     def getProposals(self):
         """
         Function to get all proposals by calling the API endpoint.
         """
         try:
-            response = self._makeUnauthenticatedCall(
+            response = self._makeAuthenticatedCall(
                 function=requests.get,
                 endpoint='/proposals'
             )
@@ -707,14 +712,15 @@ class SatoriServerClient(object):
         '''Submits a vote for a proposal'''
         try:
             print(f"Submitting vote: proposal_id={proposal_id}, vote={vote}")
+            #VoteSchema
             vote_data = {
                 "proposal_id": str(proposal_id),
-                "vote": vote == 'yes'
+                "vote": vote
             }
             response = self._makeAuthenticatedCall(
                 function=requests.post,
                 endpoint='/proposals_votes',
-                json=json.dumps(vote_data)
+                json=json.dumps(vote_data) # turn this into an api object for the server
             )
             print(f"Response status code: {response.status_code}")
             print(f"Response content: {response.text}")
