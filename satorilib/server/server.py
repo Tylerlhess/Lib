@@ -625,10 +625,10 @@ class SatoriServerClient(object):
             return
         self.setTopicTime(topic)
         try:
-            response = self._makeUnauthenticatedCall(
+            response = self._makeAuthenticatedCall(
                 function=requests.post,
                 endpoint='/record/prediction' if isPrediction else '/record/observation',
-                payload=json.dumps({
+                json=json.dumps({
                     'topic': topic,
                     'data': str(data),
                     'time': str(observationTime),
