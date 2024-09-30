@@ -433,6 +433,58 @@ class SatoriServerClient(object):
                 'unable to determine status of mine to address feature due to connection timeout; try again Later.', e, color='yellow')
             return False, ''
 
+    def lendToAddress(
+        self,
+        vaultSignature: Union[str, bytes],
+        vaultPubkey: str,
+        address: str
+    ) -> tuple[bool, str]:
+        ''' add lend address '''
+        try:
+            if isinstance(vaultSignature, bytes):
+                vaultSignature = vaultSignature.decode()
+            response = self._makeAuthenticatedCall(
+                function=requests.post,
+                endpoint='/stake/lend/to/address',
+                raiseForStatus=False,
+                payload=json.dumps({
+                    'vaultSignature': vaultSignature,
+                    'vaultPubkey': vaultPubkey,
+                    'address': address}))
+            return response.status_code < 400, response.text
+        except Exception as e:
+            logging.warning(
+                'unable to determine status of mine to address feature due to connection timeout; try again Later.', e, color='yellow')
+            return False, ''
+
+    def lendRemove(self) -> tuple[bool, dict]:
+        ''' removes a stream from the server '''
+        try:
+            response = self._makeAuthenticatedCall(
+                function=requests.get,
+                endpoint='/stake/lend/remove')
+            return response.status_code < 400, response.text
+        except Exception as e:
+            logging.warning(
+                'unable to stakeProxyRemove due to connection timeout; try again Later.', e, color='yellow')
+            return False, {}
+
+    def lendAddress(self) -> Union[str, None]:
+        ''' get lending address '''
+        try:
+            response = self._makeAuthenticatedCall(
+                function=requests.get,
+                endpoint='/stake/lend/address')
+            if response.status_code > 399:
+                return 'Unknown'
+            if response.text in ['null', 'None', 'NULL']:
+                return ''
+            return response.text
+        except Exception as e:
+            logging.warning(
+                'unable to get reward address; try again Later.', e, color='yellow')
+            return ''
+
     def reportVault(
         self,
         walletSignature: Union[str, bytes],
@@ -726,7 +778,6 @@ class SatoriServerClient(object):
             logging.error(error_message)
             logging.error(traceback.format_exc())
             return False, {"error": error_message}
-
 
     def getProposals(self):
         """
