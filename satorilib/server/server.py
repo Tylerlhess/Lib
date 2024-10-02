@@ -715,7 +715,7 @@ class SatoriServerClient(object):
                 response = self._makeAuthenticatedCall(
                     function=requests.post,
                     endpoint='/record/prediction/authed' if isPrediction else '/record/observation/authed',
-                    json=json.dumps({
+                    payload=json.dumps({
                         'topic': topic,
                         'data': str(data),
                         'time': str(observationTime),
