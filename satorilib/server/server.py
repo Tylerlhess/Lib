@@ -617,6 +617,18 @@ class SatoriServerClient(object):
                 'unable to claim beta due to connection timeout; try again Later.', e, color='yellow')
             return False, {}
 
+    def poolAddresses(self) -> tuple[bool, dict]:
+        ''' removes a stream from the server '''
+        try:
+            response = self._makeAuthenticatedCall(
+                function=requests.get,
+                endpoint='/stake/lend/addresses')
+            return response.status_code < 400, response.text
+        except Exception as e:
+            logging.warning(
+                'unable to stakeProxyRequest due to connection timeout; try again Later.', e, color='yellow')
+            return False, {}
+
     def stakeProxyChildren(self) -> tuple[bool, dict]:
         ''' removes a stream from the server '''
         try:
