@@ -378,7 +378,7 @@ class SatoriServerClient(object):
             response = self._makeAuthenticatedCall(
                 function=requests.post,
                 endpoint='/mine/to/address',
-                json=js)
+                payload=js)
             return response.status_code < 400, response.text
         except Exception as e:
             logging.warning(
